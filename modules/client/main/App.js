@@ -192,9 +192,24 @@ export default function App() {
                 unpkg.com/react@^16/umd/react.production.min.js
               </Link>
             </li>
+
+            <p 
+              css={{ 
+                color: 'red' 
+              }}
+            >
+              Before choosing to use the latest version, please check if the format exists. 
+            </p>
+              
             <li>
-              <Link href="/react/umd/react.production.min.js">
-                unpkg.com/react/umd/react.production.min.js
+              <p>
+                The latest version of React, 19.0.0, no longer produces packages in umd format. Developers using the latest version of the link should replace it with 18.3.1.
+              </p>
+              <Link href="/react@18.3.1/umd/react.production.min.js">
+                unpkg.com/react@18.3.1/umd/react.production.min.js
+              </Link>
+              <Link href="/react/cjs/react.production.js">
+                unpkg.com/cjs/react.production.js
               </Link>
             </li>
           </ul>
