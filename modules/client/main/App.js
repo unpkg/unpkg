@@ -193,8 +193,8 @@ export default function App() {
               </Link>
             </li>
             <li>
-              <Link href="/react/umd/react.production.min.js">
-                unpkg.com/react/umd/react.production.min.js
+              <Link href="/react/index.js">
+                unpkg.com/react/index.js
               </Link>
             </li>
           </ul>
