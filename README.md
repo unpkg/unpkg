@@ -8,7 +8,3 @@
 ### Documentation
 
 Please visit [the UNPKG website](https://unpkg.com) to learn more about how to use it.
-
-### Sponsors
-
-Our sponsors and backers are listed [in SPONSORS.md](SPONSORS.md).
