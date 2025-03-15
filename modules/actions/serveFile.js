@@ -18,7 +18,8 @@ export default function serveFile(req, res) {
       'Cache-Control': 'public, max-age=31536000', // 1 year
       'Last-Modified': req.entry.lastModified,
       ETag: etag(req.entry.content),
-      'Cache-Tag': tags.join(', ')
+      'Cache-Tag': tags.join(', '),
+      'Cross-Origin-Resource-Policy': 'cross-origin',
     })
     .send(req.entry.content);
 }
