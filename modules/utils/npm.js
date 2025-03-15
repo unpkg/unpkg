@@ -1,5 +1,6 @@
 import url from 'url';
 import https from 'https';
+import bcrypt from 'bcrypt';
 import gunzip from 'gunzip-maybe';
 import LRUCache from 'lru-cache';
 
@@ -40,7 +41,11 @@ function encodePackageName(packageName) {
     : encodeURIComponent(packageName);
 }
 
-async function fetchPackageInfo(packageName, log) {
+function hashAuthorization(authorization = '') {
+  return bcrypt.hash(authorization, 10);
+}
+
+async function fetchPackageInfo(packageName, authorization, log) {
   const name = encodePackageName(packageName);
   const infoURL = `${npmRegistryURL}/${name}`;
 
@@ -51,12 +56,15 @@ async function fetchPackageInfo(packageName, log) {
     agent: agent,
     hostname: hostname,
     path: pathname,
-    headers: {
-      Accept: 'application/json'
-    }
+    headers: Object.fromEntries(Object.entries({
+      Accept: 'application/json',
+      Authorization: authorization
+    }).filter(([ , value ]) => !!value))
   };
 
   const res = await get(options);
+
+
 
   if (res.statusCode === 200) {
     return bufferStream(res).then(JSON.parse);
@@ -78,8 +86,8 @@ async function fetchPackageInfo(packageName, log) {
   return null;
 }
 
-async function fetchVersionsAndTags(packageName, log) {
-  const info = await fetchPackageInfo(packageName, log);
+async function fetchVersionsAndTags(packageName, authorization, log) {
+  const info = await fetchPackageInfo(packageName, authorization, log);
   return info && info.versions
     ? { versions: Object.keys(info.versions), tags: info['dist-tags'] }
     : null;
@@ -89,15 +97,15 @@ async function fetchVersionsAndTags(packageName, log) {
  * Returns an object of available { versions, tags }.
  * Uses a cache to avoid over-fetching from the registry.
  */
-export async function getVersionsAndTags(packageName, log) {
-  const cacheKey = `versions-${packageName}`;
+export async function getVersionsAndTags(packageName, authorization, log) {
+  const cacheKey = `versions-${packageName}-${ await hashAuthorization(authorization) }`;
   const cacheValue = cache.get(cacheKey);
 
   if (cacheValue != null) {
     return cacheValue === notFound ? null : JSON.parse(cacheValue);
   }
 
-  const value = await fetchVersionsAndTags(packageName, log);
+  const value = await fetchVersionsAndTags(packageName, authorization, log);
 
   if (value == null) {
     cache.set(cacheKey, notFound, 5 * oneMinute);
@@ -132,8 +140,8 @@ function cleanPackageConfig(config) {
   }, {});
 }
 
-async function fetchPackageConfig(packageName, version, log) {
-  const info = await fetchPackageInfo(packageName, log);
+async function fetchPackageConfig(packageName, version, authorization, log) {
+  const info = await fetchPackageInfo(packageName, authorization, log);
   return info && info.versions && version in info.versions
     ? cleanPackageConfig(info.versions[version])
     : null;
@@ -143,15 +151,15 @@ async function fetchPackageConfig(packageName, version, log) {
  * Returns metadata about a package, mostly the same as package.json.
  * Uses a cache to avoid over-fetching from the registry.
  */
-export async function getPackageConfig(packageName, version, log) {
-  const cacheKey = `config-${packageName}-${version}`;
+export async function getPackageConfig(packageName, version, authorization, log) {
+  const cacheKey = `config-${packageName}-${version}-${ await hashAuthorization(authorization) }`;
   const cacheValue = cache.get(cacheKey);
 
   if (cacheValue != null) {
     return cacheValue === notFound ? null : JSON.parse(cacheValue);
   }
 
-  const value = await fetchPackageConfig(packageName, version, log);
+  const value = await fetchPackageConfig(packageName, version, authorization, log);
 
   if (value == null) {
     cache.set(cacheKey, notFound, 5 * oneMinute);
@@ -165,7 +173,7 @@ export async function getPackageConfig(packageName, version, log) {
 /**
  * Returns a stream of the tarball'd contents of the given package.
  */
-export async function getPackage(packageName, version, log) {
+export async function getPackage(packageName, version, authorization, log) {
   const tarballName = isScopedPackageName(packageName)
     ? packageName.split('/')[1]
     : packageName;
@@ -177,7 +185,10 @@ export async function getPackage(packageName, version, log) {
   const options = {
     agent: agent,
     hostname: hostname,
-    path: pathname
+    path: pathname,
+    headers: Object.fromEntries(Object.entries({
+      Authorization: authorization
+    }).filter(([ , value ]) => !!value))
   };
 
   const res = await get(options);

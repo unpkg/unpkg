@@ -17,8 +17,8 @@ function semverRedirect(req, res, newVersion) {
     );
 }
 
-async function resolveVersion(packageName, range, log) {
-  const versionsAndTags = await getVersionsAndTags(packageName, log);
+async function resolveVersion(packageName, range, authorization, log) {
+  const versionsAndTags = await getVersionsAndTags(packageName, authorization, log);
 
   if (versionsAndTags) {
     const { versions, tags } = versionsAndTags;
@@ -44,6 +44,7 @@ async function validateVersion(req, res, next) {
   const version = await resolveVersion(
     req.packageName,
     req.packageVersion,
+    req.headers.authorization,
     req.log
   );
 
@@ -61,6 +62,7 @@ async function validateVersion(req, res, next) {
   req.packageConfig = await getPackageConfig(
     req.packageName,
     req.packageVersion,
+    req.headers.authorization,
     req.log
   );
 

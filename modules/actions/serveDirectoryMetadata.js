@@ -90,7 +90,7 @@ function getMetadata(entry, entries) {
 }
 
 async function serveDirectoryMetadata(req, res) {
-  const stream = await getPackage(req.packageName, req.packageVersion, req.log);
+  const stream = await getPackage(req.packageName, req.packageVersion, req.headers.authorization, req.log);
 
   const filename = req.filename.slice(0, -1) || '/';
   const entries = await findMatchingEntries(stream, filename);

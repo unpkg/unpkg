@@ -22,6 +22,7 @@
     "@babel/plugin-syntax-import-meta": "^7.2.0",
     "@emotion/core": "^10.0.6",
     "@reach/visually-hidden": "^0.1.4",
+    "bcrypt": "^5.0.1",
     "cheerio": "^1.0.0-rc.2",
     "cors": "^2.8.5",
     "date-fns": "^1.30.1",
