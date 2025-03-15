@@ -61,6 +61,10 @@ const testCases = [
     after: 'import("./something.js?module");'
   },
   {
+    before: 'import(`./something.js`);',
+    after: 'import(`./something.js?module`);'
+  },
+  {
     before: 'import("react");',
     after: 'import("https://unpkg.com/react@15.6.1?module");'
   }
