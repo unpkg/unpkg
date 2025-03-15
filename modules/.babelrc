@@ -1,3 +1,0 @@
-{
-  "presets": [["@babel/preset-env", { "loose": true, "targets": "node 8" }]]
-}
