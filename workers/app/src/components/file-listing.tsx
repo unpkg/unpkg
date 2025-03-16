@@ -202,7 +202,6 @@ function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo
   let tags = packageInfo["dist-tags"];
   let latestVersion = tags.latest;
   let latestVersionDate = new Date(packageInfo.time[latestVersion]);
-  let versions = Object.keys(packageInfo.versions);
 
   let packageJson = packageInfo.versions[version];
 
@@ -274,16 +273,6 @@ function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo
       </p>
       <p class="text-sm">
         <span class="text-slate-500">{formatTimeAgo(latestVersionDate)}</span>
-      </p>
-
-      <p class="pt-4 text-sm">
-        <a
-          href={hrefs.releases(packageInfo.name)}
-          title={`View all ${packageInfo.name} releases`}
-          class="text-blue-600 hover:underline"
-        >
-          + {versions.length - 1} {plural("release", versions.length - 1)}
-        </a>
       </p>
     </div>
   );

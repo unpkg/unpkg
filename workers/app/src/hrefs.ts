@@ -21,8 +21,4 @@ export class HrefBuilder {
   raw(packageName: string, version: string, filename: string): string {
     return `${this.#env.WWW_ORIGIN}/${packageName}@${version}${filename}`;
   }
-
-  releases(packageName: string): string {
-    return `/${packageName}/releases`;
-  }
 }
