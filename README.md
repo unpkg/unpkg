@@ -40,11 +40,13 @@ The dev server will be listening on `http://localhost:3000`. [Wrangler](https://
 
 To deploy the workers, you'll need to have a [Cloudflare](https://cloudflare.com) account. You will also need to edit the `wrangler.json` file in each worker and update its [`routes`](https://developers.cloudflare.com/workers/wrangler/configuration/) to your own domain(s). You'll also need to adjust each worker's environment `vars` (in `wrangler.json`) so they can find one another in production.
 
+Make sure that you have node v23 on Linux, otherwise `build-assets.ts` won't run.
+
 Once you've done that, you can deploy each worker with:
 
 ```sh
-cd workers/www && pnpm deploy
-cd workers/app && pnpm deploy
+cd workers/www && pnpm run deploy
+cd workers/app && pnpm run deploy
 ```
 
 ## License
