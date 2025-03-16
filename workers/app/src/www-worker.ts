@@ -1,9 +1,9 @@
-import { type PackageFile, type PackageFileMetadata, type PackageFileListing } from "../../www/src/index.ts";
+import type { PackageFile, PackageFileMetadata, PackageFileListing } from "../../www/src/index.tsx";
 
-export { type PackageFile, type PackageFileMetadata, type PackageFileListing };
+export type { PackageFile, PackageFileMetadata, PackageFileListing };
 
 /**
- * Proxies all requests for files and metadata through to the raw worker service.
+ * Proxies requests for files and metadata through to the workers/www service.
  */
 export class WwwWorkerProxy {
   #service: Fetcher;
