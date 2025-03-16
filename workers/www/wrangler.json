@@ -1,0 +1,40 @@
+{
+  "compatibility_date": "2024-12-05",
+  "compatibility_flags": ["nodejs_compat_v2"],
+  "main": "./src/index.tsx",
+
+  "name": "unpkg-www",
+  "assets": { "directory": "./public" },
+  "routes": [{ "pattern": "new.unpkg.com", "custom_domain": true }],
+  "vars": {
+    "APP_HOST": "app.unpkg.com",
+    "ASSETS_ORIGIN": "https://new.unpkg.com",
+    "HOST": "new.unpkg.com",
+    "MODE": "production"
+  },
+
+  "env": {
+    "dev": {
+      "name": "unpkg-www-local",
+      "routes": [],
+      "vars": {
+        "APP_HOST": "localhost:3001",
+        "ASSETS_ORIGIN": "http://localhost:8000",
+        "HOST": "localhost:3000",
+        "MODE": "development"
+      }
+    },
+
+    "staging": {
+      "name": "unpkg-www-dev",
+      "observability": { "enabled": true },
+      "routes": [{ "pattern": "unpkg.dev", "custom_domain": true }],
+      "vars": {
+        "APP_HOST": "app.unpkg.dev",
+        "ASSETS_ORIGIN": "https://unpkg.dev",
+        "HOST": "unpkg.dev",
+        "MODE": "staging"
+      }
+    }
+  }
+}

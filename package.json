@@ -1,0 +1,19 @@
+{
+  "name": "unpkg-dev",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=23"
+  },
+  "dependencies": {
+    "@types/node": "^22.10.2",
+    "chalk": "^5.4.1",
+    "esbuild": "^0.24.2",
+    "prettier": "^3.4.2",
+    "pretty-bytes": "^6.1.1",
+    "typescript": "^5.7.2"
+  },
+  "scripts": {
+    "clean": "git clean -fdX ."
+  }
+}
