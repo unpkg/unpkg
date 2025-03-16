@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "@mjackson/tar-parser": "^0.2.0",
+    "es-module-lexer": "^1.6.0",
     "highlight.js": "^11.11.1",
     "mrmime": "^2.0.0",
     "preact": "^10.25.2",

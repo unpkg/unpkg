@@ -201,7 +201,12 @@ describe("www worker", () => {
   });
 
   describe("?module requests", () => {
-    // TODO
+    it("rewrites imports in JavaScript files", async () => {
+      let response = await mf.dispatchFetch("https://unpkg.com/preact@10.26.4/src/component.js?module");
+      assert.equal(response.status, 200);
+      let text = await response.text();
+      assert.match(text, /import { assign } from '\.\/util\?module';/);
+    });
   });
 
   describe("/browse/* requests", () => {

@@ -27,6 +27,8 @@ export const miniflare = new Miniflare({
         return Response.json(fixtures.packageInfo.react);
       case "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz":
         return binaryResponse(fixtures.packageTarballs.lodash["4.17.21"]);
+      case "https://registry.npmjs.org/preact/-/preact-10.26.4.tgz":
+        return binaryResponse(fixtures.packageTarballs.preact["10.26.4"]);
       case "https://registry.npmjs.org/react/-/react-18.2.0.tgz":
         return binaryResponse(fixtures.packageTarballs.react["18.2.0"]);
       default:

@@ -10,17 +10,15 @@ export const packageInfo = {
 };
 
 async function readPackageInfo(packageName: string): Promise<any> {
-  return JSON.parse(
-    await fsp.readFile(
-      path.resolve(__dirname, `./fixtures/package-info/${packageName}.json`),
-      "utf8"
-    )
-  );
+  return JSON.parse(await fsp.readFile(path.resolve(__dirname, `./fixtures/package-info/${packageName}.json`), "utf8"));
 }
 
 export const packageTarballs = {
   lodash: {
     "4.17.21": await readPackageTarball("lodash-4.17.21"),
+  },
+  preact: {
+    "10.26.4": await readPackageTarball("preact-10.26.4"),
   },
   react: {
     "18.2.0": await readPackageTarball("react-18.2.0"),
@@ -28,7 +26,5 @@ export const packageTarballs = {
 };
 
 function readPackageTarball(packageName: string): Promise<Uint8Array> {
-  return fsp.readFile(
-    path.resolve(__dirname, `./fixtures/package-tarballs/${packageName}.tgz`)
-  );
+  return fsp.readFile(path.resolve(__dirname, `./fixtures/package-tarballs/${packageName}.tgz`));
 }

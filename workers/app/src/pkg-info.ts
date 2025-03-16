@@ -23,6 +23,7 @@ export interface PackageJson {
   browser?: string | Record<string, string>;
   dependencies: Record<string, string>;
   description: string;
+  devDependencies?: Record<string, string>;
   exports?: string | ExportConditions;
   homepage?: string;
   license?: string;
@@ -30,6 +31,7 @@ export interface PackageJson {
   // See https://medium.com/webpack/webpack-and-rollup-the-same-but-different-a41ad427058c
   module?: string;
   name: string;
+  peerDependencies?: Record<string, string>;
   repository?: { url: string; type?: string; directory?: string };
   unpkg?: string;
   version: string;

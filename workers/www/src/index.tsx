@@ -12,6 +12,7 @@ import { resolvePackageExport } from "./pkg-exports.ts";
 import { fetchPackageInfo } from "./pkg-info.ts";
 import { fetchPackageTarball } from "./pkg-tarball.ts";
 import { resolvePackageVersion } from "./pkg-version.ts";
+import { rewriteImports } from "./rewrite-imports.ts";
 
 export default {
   async fetch(request, env, ctx) {
@@ -22,7 +23,7 @@ export default {
     }
 
     // This worker caches its own successful responses so it can avoid parsing the
-    // same package tarball again and again.
+    // same package tarball again and again
     // @ts-ignore - Looks like @cloudflare/workers-types is missing this?
     let cache = caches.default as Cache;
     let response = await cache.match(request);
@@ -68,7 +69,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     });
   }
 
-  // Redirect legacy /browse/* URLs to the app worker's /files view.
+  // Redirect legacy /browse/* URLs to the app worker's /files view
   if (url.pathname.startsWith("/browse/")) {
     let parsed = parsePackagePathname(url.pathname.slice(7));
     if (parsed) {
@@ -79,25 +80,24 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   }
 
   let parsed = parsePackagePathname(url.pathname);
-
   if (parsed == null) {
     return notFound(`Invalid URL pathname: ${url.pathname}`);
   }
 
   let packageInfo = await fetchPackageInfo(parsed, env, ctx);
-
   if (packageInfo == null) {
     return notFound(`Package not found: ${parsed.package}`);
   }
 
   let version = resolvePackageVersion(packageInfo, parsed.version);
-
   if (version == null || packageInfo.versions[version] == null) {
     return notFound(`Package version not found: ${parsed.package}@${parsed.version}`);
   }
 
+  let packageJson = packageInfo.versions[version];
   let filename = parsed.filename;
 
+  // Handle ?meta requests
   if (url.searchParams.has("meta")) {
     let prefix = filename == null ? "/" : filename.replace(/\/*$/, "/");
 
@@ -124,7 +124,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     });
   }
 
-  // Support "append a /" behavior for viewing file listings that are now handled by the app worker.
+  // Support "append a /" behavior for viewing file listings that are now handled by the app worker
   if (filename != null && filename.endsWith("/")) {
     url.host = env.APP_HOST;
     url.pathname = createFilesPathname(parsed.package, version, filename);
@@ -132,7 +132,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   }
 
   try {
-    let packageJson = packageInfo.versions[version];
     let useLegacyModuleField = url.searchParams.has("module");
     let useLegacyBrowserField = url.searchParams.has("browser");
     let conditions = url.searchParams.has("conditions")
@@ -159,6 +158,8 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     // file in the package (which is common) so ignore the error.
   }
 
+  // Maximize cache hits by redirecting to the correct version if the resolved version
+  // is different from the one that was requested in the URL
   if (version !== parsed.version) {
     let location = `${url.origin}/${parsed.package}@${version}${filename ?? ""}${url.search}`;
     return redirect(location, {
@@ -173,6 +174,14 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
     if (file != null) {
       let [algorithm, hash] = file.integrity.split("-", 2);
+
+      // Rewrite imports for JavaScript modules when ?module is used
+      if (file.type === "text/javascript" && url.searchParams.has("module")) {
+        let code = new TextDecoder().decode(file.body);
+        let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies);
+        let newCode = rewriteImports(code, url.origin, deps);
+        file.body = new TextEncoder().encode(newCode);
+      }
 
       return new Response(file.body, {
         headers: {
