@@ -1,6 +1,6 @@
 import { type HydrateComponentTable, hydrateAll } from "./hydration.ts";
 
-import { HomeNav } from "./components/home.tsx";
+import { HomeNav } from "./components/home-nav.tsx";
 
 const StatefulComponents: HydrateComponentTable = {
   HomeNav,

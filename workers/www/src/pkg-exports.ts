@@ -1,4 +1,4 @@
-import { type PackageJson, type ExportConditions } from "./pkg-info.ts";
+import type { PackageJson, ExportConditions } from "./pkg-info.ts";
 
 interface ResolvePackageExportOptions {
   conditions?: string[];

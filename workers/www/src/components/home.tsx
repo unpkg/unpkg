@@ -1,45 +1,142 @@
 import { type VNode, Fragment } from "preact";
-import { useEffect, useState } from "preact/hooks";
 
+import { CodeBlock } from "./code-block.tsx";
+import { HomeNav } from "./home-nav.tsx";
 import { Hydrate } from "./hydrate.tsx";
 
 export function Home(): VNode {
+  let navItems = {
+    overview: "Overview",
+    "browsing-files": "Browsing Files",
+    "metadata-api": "Metadata API",
+    "cache-performance": "Cache Performance",
+    about: "About",
+  };
+
   return (
     <Fragment>
-      <header class="mx-auto lg:max-w-screen-lg">
+      <header class="mx-auto lg:max-w-screen-md">
         <h1 class="mt-32 text-7xl text-center font-black text-black">UNPKG</h1>
       </header>
 
-      <main class="mx-auto lg:max-w-screen-lg text-slate-900 leading-relaxed">
-        <div class="pt-16 pb-32 px-8 lg:pt-32 lg:grid lg:grid-cols-4 lg:gap-14">
-          <div class="lg:col-span-3">
-            <p>
-              UNPKG is a fast, global content delivery network for everything on npm. Use it to quickly and easily load
-              any file on npm using a URL like:
-            </p>
-
-            <p class="mt-12 p-4 text-center bg-slate-100">
-              <code class="text-sm">unpkg.com/:pkg@:ver/:file</code>
-            </p>
-
+      <main class="mx-auto lg:max-w-screen-md text-slate-900 leading-relaxed">
+        <div class="relative mt-16 mb-32 px-8 lg:mt-32">
+          <div>
             <section id="overview">
-              <SectionHeading id="overview">Overview</SectionHeading>
-
-              <p class="mt-2">This is the overview.</p>
-            </section>
-
-            <section id="package-indexes">
-              <SectionHeading id="package-indexes">Package Indexes</SectionHeading>
-
-              <p class="mt-2">
-                Append a <code class="text-sm bg-slate-100">/</code> at the end of a URL to view a listing of all the
-                files in a package root or subdirectory.
+              <p>
+                UNPKG is a fast, global content delivery network for everything on{" "}
+                <a class="text-blue-600 hover:underline" href="https://www.npmjs.com/">
+                  npm
+                </a>{" "}
+                . Use it to quickly and easily load any file on npm using a URL like:
               </p>
 
-              <ul class="mt-2 ml-2 list-disc list-inside">
+              <p class="mt-12 p-4 text-center bg-slate-100">
+                <code class="text-sm sm:hidden">unpkg.com/:pkg@:ver/:file</code>
+                <code class="text-sm hidden sm:block">https://unpkg.com/:package@:version/:file</code>
+              </p>
+
+              <p class="mt-12">Where:</p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li class="marker:pr-2">
+                  <span>
+                    <code class="text-sm bg-slate-100 sm:hidden">:pkg</code>
+                    <code class="text-sm bg-slate-100 hidden sm:inline">:package</code>
+                  </span>{" "}
+                  is the name of the package on npm
+                </li>
+                <li class="marker:pr-2">
+                  <span>
+                    <code class="text-sm bg-slate-100 sm:hidden">:ver</code>
+                    <code class="text-sm bg-slate-100 hidden sm:inline">:version</code>
+                  </span>{" "}
+                  is the version of the package
+                </li>
+                <li>
+                  <code class="text-sm bg-slate-100">:file</code> is the path to a file in the package
+                </li>
+              </ul>
+
+              <p class="mt-4">Using a fixed version number:</p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/react@18.3.1/umd/react.production.min.js">
+                    unpkg.com/react@18.3.1/umd/react.production.min.js
+                  </a>
+                </li>
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/preact@10.26.4/dist/preact.min.js">
+                    unpkg.com/preact@10.26.4/dist/preact.min.js
+                  </a>
+                </li>
+              </ul>
+
+              <p class="mt-4">
+                You can also use any valid{" "}
+                <a class="text-blue-600 hover:underline" href="https://docs.npmjs.com/about-semantic-versioning">
+                  semver
+                </a>{" "}
+                range or{" "}
+                <a class="text-blue-600 hover:underline" href="https://docs.npmjs.com/adding-dist-tags-to-packages">
+                  npm tag
+                </a>
+                :
+              </p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/react@^18/umd/react.production.min.js">
+                    unpkg.com/react@^18/umd/react.production.min.js
+                  </a>
+                </li>
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/preact@latest/dist/preact.min.js">
+                    unpkg.com/preact@latest/dist/preact.min.js
+                  </a>
+                </li>
+              </ul>
+
+              <p class="mt-4">
+                If you don't specify a version, the <code class="text-sm bg-slate-100">latest</code> tag is used by
+                default:
+              </p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li>
+                  <a class="text-blue-600 hover:underline" href="/preact/dist/preact.min.js">
+                    unpkg.com/preact/dist/preact.min.js
+                  </a>
+                </li>
+                <li>
+                  <a class="text-blue-600 hover:underline" href="/vue/dist/vue.esm-browser.prod.js">
+                    unpkg.com/vue/dist/vue.esm-browser.prod.js
+                  </a>
+                </li>
+              </ul>
+
+              <p class="mt-4">If you don't specify a file path, </p>
+            </section>
+
+            <section id="browsing-files">
+              <SectionHeading id="browsing-files">Browsing Files</SectionHeading>
+
+              <p class="mt-4">
+                In addition to being a global content-delivery network, UNPKG is also allows you to browse and link to
+                individual files on npm. Just append a <code class="text-sm bg-slate-100">/</code> at the end of any
+                directory URL to view a listing of all the files in a package or any of its folders.
+              </p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
                   <a class="text-blue-600 hover:underline" href="/react/">
                     unpkg.com/react/
+                  </a>
+                </li>
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/preact/src/">
+                    unpkg.com/preact/src/
                   </a>
                 </li>
                 <li>
@@ -48,19 +145,36 @@ export function Home(): VNode {
                   </a>
                 </li>
               </ul>
-            </section>
 
-            <section id="package-metadata">
-              <SectionHeading id="package-metadata">Package Metadata</SectionHeading>
-
-              <p class="mt-2">
-                You can get metadata about the files in any npm package by appending{" "}
-                <code class="text-sm bg-slate-100">?meta</code> to any root package URL or subdirectory URL.
+              <p class="mt-4">
+                If you'd like to browse an older version of a package, include the version number in the URL.
               </p>
 
-              <p class="mt-2">For example:</p>
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/react@18/">
+                    unpkg.com/react@18/
+                  </a>
+                </li>
+                <li>
+                  <a class="text-blue-600 hover:underline" href="/react-router@5/">
+                    unpkg.com/react-router@5/
+                  </a>
+                </li>
+              </ul>
+            </section>
 
-              <ul class="mt-2 ml-2 list-disc list-inside">
+            <section id="metadata-api">
+              <SectionHeading id="metadata-api">Metadata API</SectionHeading>
+
+              <p class="mt-4">
+                UNPKG serves metadata about the files in a package when you append{" "}
+                <code class="text-sm bg-slate-100">?meta</code> to any package root or subdirectory URL.
+              </p>
+
+              <p class="mt-4">For example:</p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
                 <li>
                   <a class="text-blue-600 hover:underline" href="/react@19.0.0/?meta">
                     unpkg.com/react@19.0.0/?meta
@@ -72,13 +186,56 @@ export function Home(): VNode {
                   </a>
                 </li>
               </ul>
+
+              <p class="mt-4">
+                This will return a JSON object with information about the files in that directory, including path, size,
+                type, and{" "}
+                <a
+                  class="text-blue-600 hover:underline"
+                  href="https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity"
+                >
+                  subresource integrity
+                </a>{" "}
+                value.
+              </p>
+
+              <div class="mt-8">
+                <CodeBlock>
+                  {`
+                {
+                  package: "react",
+                  version: "19.0.0",
+                  prefix: "/",
+                  files: [
+                    {
+                      path: "/LICENSE",
+                      size: 1088,
+                      type: "text/plain",
+                      integrity: "sha256-2m03A+0Ry+Qr0hLHJZV8mNojy/8ZmMBfpLPZdtGljpM="
+                    },
+                    {
+                      path: "/index.js",
+                      size: 186,
+                      type: "text/javascript",
+                      integrity: "sha256-YMr/3svcXbO8TsToPflIg0XMsnHQdTO5IQv1dQkY2X4="
+                    },
+                    // ...
+                  ]
+                }`}
+                </CodeBlock>
+              </div>
             </section>
 
             <section id="cache-performance">
               <SectionHeading id="cache-performance">Cache Performance</SectionHeading>
 
               <p class="mt-2">
-                UNPKG runs entirely on{" "}
+                UNPKG is a mirror of everything on npm. Every file on npm is automatically available on unpkg.com within
+                minutes of it being published.
+              </p>
+
+              <p class="mt-2">
+                Additionally, UNPKG runs on{" "}
                 <a class="text-blue-600 hover:underline" href="https://www.cloudflare.com">
                   Cloudflare's
                 </a>{" "}
@@ -86,22 +243,42 @@ export function Home(): VNode {
                 <a class="text-blue-600 hover:underline" href="https://workers.cloudflare.com/">
                   Cloudflare Workers
                 </a>
-                . This allows UNPKG to scale to serve billions of requests every day with low latency from hundreds of
-                locations worldwide. In addition, the "serverless" architecture of Cloudflare Workers allows UNPKG to
-                scale immediately to satisfy sudden spikes in traffic.
+                , which allow UNPKG to serve billions of requests every day with low latency from hundreds of locations
+                worldwide. The "serverless" nature of Cloudflare Workers also allows UNPKG to scale immediately to
+                satisfy sudden spikes in traffic.
               </p>
 
               <p class="mt-2">
-                Files are cached based on their permanent URL, which includes the npm package version. This works
-                because npm does not allow package authors to overwrite a package that has already been published with a
-                different one at the same version number.
+                Files are cached on Cloudflare's global content-delivery network based on their permanent URL, which
+                includes the npm package version. This works because npm does not allow package authors to overwrite a
+                package that has already been published with a different one at the same version number.
               </p>
 
               <p class="mt-2">
                 URLs that do not specify a fully resolved package version number redirect to one that does. This is the{" "}
                 <code class="text-sm bg-slate-100">latest</code> version when none is specified, or the maximum
-                satisfying version when a semver range is given. For the best chance of getting a cache hit, use the
-                full package version number in your UNPKG URLs instead of an npm tag or semver range.
+                satisfying version when a semver range is given.{" "}
+                <span class="font-semibold">
+                  For the best chance of getting a cache hit, use the full package version number and file path in your
+                  UNPKG URLs instead of an npm tag or semver range
+                </span>
+                .
+              </p>
+
+              <p class="mt-2">
+                For example, a URL like{" "}
+                <a class="text-blue-600 hover:underline" href="/preact@10">
+                  unpkg.com/preact@10
+                </a>{" "}
+                will not be a direct cache hit because UNPKG needs to resolve the version{" "}
+                <code class="text-sm bg-slate-100">10</code> to the latest matching version of Preact published with
+                that major, plus it needs to figure out which file to serve. So a short URL like this will always cause
+                a redirect to the permanent URL for that resource. If you need to make sure you hit the cache, use a
+                fixed version number and the full file path, like{" "}
+                <a class="text-blue-600 hover:underline" href="/preact@10.5.0/dist/preact.min.js">
+                  unpkg.com/preact@10.5.0/dist/preact.min.js
+                </a>
+                .
               </p>
             </section>
 
@@ -127,84 +304,16 @@ export function Home(): VNode {
             </section>
           </div>
 
-          <div class="hidden lg:block lg:col-span-1">
+          <div class="hidden xl:block absolute h-full w-48 top-0 -right-52">
             <div class="sticky top-12">
               <Hydrate>
-                <HomeNav
-                  items={{
-                    overview: "Overview",
-                    "package-indexes": "Package Indexes",
-                    "package-metadata": "Package Metadata",
-                    "cache-performance": "Cache Performance",
-                    about: "About",
-                  }}
-                />
+                <HomeNav items={navItems} />
               </Hydrate>
             </div>
           </div>
         </div>
       </main>
     </Fragment>
-  );
-}
-
-export function HomeNav({ items }: { items: Record<string, string> }): VNode {
-  let [currentSectionId, setCurrentSectionId] = useState<string | null>(null);
-
-  useEffect(() => {
-    function handleScroll() {
-      let sections = document.querySelectorAll("main section");
-      let currentSectionId: string | undefined;
-
-      let lastSection = sections[sections.length - 1];
-      if (lastSection != null && window.scrollY + window.innerHeight >= document.body.scrollHeight - 100) {
-        // Quick check to see if the window is scrolled close to the bottom. If so, just select the last section.
-        currentSectionId = lastSection.id;
-      } else {
-        // Otherwise, find the first section whose header is close to the top of the window.
-        for (let section of sections) {
-          let rect = section.getBoundingClientRect();
-
-          if (rect.top < 120 && rect.bottom > 40) {
-            currentSectionId = section.id;
-            break;
-          }
-        }
-
-        // If we didn't find one, default to the first section.
-        if (currentSectionId == null) {
-          currentSectionId = sections[0]?.id;
-        }
-      }
-
-      setCurrentSectionId(currentSectionId);
-    }
-
-    // Call it manually once up front
-    handleScroll();
-
-    document.addEventListener("scroll", handleScroll);
-
-    return () => document.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  let markerTop = 0;
-  if (currentSectionId != null) {
-    let navItem = document.getElementById(`${currentSectionId}-nav-item`)!;
-    markerTop = navItem.offsetTop;
-  }
-
-  return (
-    <nav class="relative border-l-1 border-gray-300 text-slate-600">
-      <div class="absolute w-1 h-6.5 transition-all duration-300 bg-gray-600" style={{ top: markerTop }} />
-      <ol>
-        {Object.entries(items).map(([id, title]) => (
-          <li id={`${id}-nav-item`} class={id === currentSectionId ? "my-2 pl-8 text-slate-900" : "my-2 pl-8"}>
-            <a href={`#${id}`}>{title}</a>
-          </li>
-        ))}
-      </ol>
-    </nav>
   );
 }
 
