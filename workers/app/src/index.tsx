@@ -20,25 +20,21 @@ export default {
     if (url.pathname === "/favicon.ico") {
       return notFound();
     }
-
     if (url.pathname === "/") {
       return redirect(env.WWW_ORIGIN);
     }
 
     let parsed = parsePackagePathname(url.pathname);
-
     if (parsed == null) {
       return notFound(`Invalid package pathname: ${url.pathname}`);
     }
 
     let packageInfo = await fetchPackageInfo(parsed, env, ctx);
-
     if (packageInfo == null) {
       return notFound(`Package not found: "${parsed.package}"`);
     }
 
     let version = resolvePackageVersion(packageInfo, parsed.version);
-
     if (version == null) {
       return notFound(`Package version not found: ${parsed.package}@${parsed.version}`);
     }
@@ -55,9 +51,9 @@ export default {
     }
 
     let wwwProxy = new WwwWorkerProxy(env.WWW, env.WWW_ORIGIN);
+    let fileListing = await wwwProxy.getFileListing(packageInfo.name, version, "/");
 
     let filename = parsed.filename ?? "/";
-    let fileListing = await wwwProxy.getFileListing(packageInfo.name, version, "/");
 
     if (filename === "/") {
       return renderPage(
