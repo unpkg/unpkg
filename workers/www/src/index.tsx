@@ -60,7 +60,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   if (url.pathname === "/favicon.ico") {
     return notFound();
   }
-
   if (url.pathname === "/") {
     return renderPage(<Home />, env, {
       headers: {
