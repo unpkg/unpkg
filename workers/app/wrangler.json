@@ -11,7 +11,7 @@
     "ASSETS_ORIGIN": "https://app.unpkg.com",
     "HOST": "app.unpkg.com",
     "MODE": "production",
-    "WWW_ORIGIN": "https://new.unpkg.com"
+    "WWW_ORIGIN": "https://unpkg.com"
   },
 
   "env": {

@@ -6,11 +6,11 @@
 
   "name": "unpkg-www",
   "assets": { "directory": "./public" },
-  "routes": [{ "pattern": "new.unpkg.com", "custom_domain": true }],
+  "routes": [{ "pattern": "unpkg.com", "custom_domain": true }],
   "vars": {
     "APP_HOST": "app.unpkg.com",
-    "ASSETS_ORIGIN": "https://new.unpkg.com",
-    "HOST": "new.unpkg.com",
+    "ASSETS_ORIGIN": "https://unpkg.com",
+    "HOST": "unpkg.com",
     "MODE": "production"
   },
 
