@@ -32,7 +32,7 @@ export default {
       try {
         response = await handleRequest(request, env, ctx);
 
-        if (response.ok || response.headers.has("Cache-Control")) {
+        if (request.method === "GET" && (response.ok || response.headers.has("Cache-Control"))) {
           ctx.waitUntil(cache.put(request, response.clone()));
         }
       } catch (error) {
