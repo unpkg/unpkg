@@ -7,6 +7,7 @@ import { Hydrate } from "./hydrate.tsx";
 export function Home(): VNode {
   let navItems = {
     overview: "Overview",
+    "buildless-apps": "Buildless Apps",
     "browsing-files": "Browsing Files",
     "metadata-api": "Metadata API",
     "cache-performance": "Cache Performance",
@@ -36,9 +37,7 @@ export function Home(): VNode {
                 <code class="text-sm hidden sm:block">https://unpkg.com/:package@:version/:file</code>
               </p>
 
-              <p class="mt-12">Where:</p>
-
-              <ul class="mt-4 ml-6 list-disc list-outside">
+              <ul class="mt-12 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
                   <span>
                     <code class="text-sm bg-slate-100 sm:hidden">:pkg</code>
@@ -58,17 +57,22 @@ export function Home(): VNode {
                 </li>
               </ul>
 
-              <p class="mt-4">Using a fixed version number:</p>
+              <p class="mt-4">For example:</p>
 
               <ul class="mt-4 ml-6 list-disc list-outside">
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/preact@10.26.4/dist/preact.min.js">
+                    unpkg.com/preact@10.26.4/dist/preact.min.js
+                  </a>
+                </li>
                 <li class="marker:pr-2">
                   <a class="text-blue-600 hover:underline" href="/react@18.3.1/umd/react.production.min.js">
                     unpkg.com/react@18.3.1/umd/react.production.min.js
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/preact@10.26.4/dist/preact.min.js">
-                    unpkg.com/preact@10.26.4/dist/preact.min.js
+                  <a class="text-blue-600 hover:underline" href="/three@0.174.0/build/three.module.min.js">
+                    unpkg.com/three@0.174.0/build/three.module.min.js
                   </a>
                 </li>
               </ul>
@@ -87,13 +91,13 @@ export function Home(): VNode {
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/react@^18/umd/react.production.min.js">
-                    unpkg.com/react@^18/umd/react.production.min.js
+                  <a class="text-blue-600 hover:underline" href="/preact@latest/dist/preact.min.js">
+                    unpkg.com/preact@latest/dist/preact.min.js
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/preact@latest/dist/preact.min.js">
-                    unpkg.com/preact@latest/dist/preact.min.js
+                  <a class="text-blue-600 hover:underline" href="/react@^18/umd/react.production.min.js">
+                    unpkg.com/react@^18/umd/react.production.min.js
                   </a>
                 </li>
               </ul>
@@ -116,16 +120,244 @@ export function Home(): VNode {
                 </li>
               </ul>
 
-              <p class="mt-4">If you don't specify a file path, </p>
+              <div class="mt-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4" role="alert">
+                <p>
+                  <span class="font-bold">Note:</span> According to{" "}
+                  <a href="https://semver.org" class="underline underline-offset-4 decoration-dashed pb-2">
+                    semver
+                  </a>
+                  , packages are allowed to publish breaking changes with a major release. This includes changes to
+                  public API, but also may include moving files around inside a package. So it's always a good idea to
+                  include a specific version number (or at least a version range) in your URLs.
+                </p>
+              </div>
+
+              <p class="mt-4">
+                If you don't specify a file path, UNPKG will resolve the file based on the package's default{" "}
+                <a
+                  class="text-blue-600 hover:underline"
+                  href="https://nodejs.org/api/packages.html#package-entry-points"
+                >
+                  entry point
+                </a>
+                . In older packages like jQuery, this will be the value of{" "}
+                <a class="text-blue-600 hover:underline" href="https://nodejs.org/api/packages.html#main">
+                  the <code class="text-sm bg-slate-100">main</code> field
+                </a>{" "}
+                in the <code class="text-sm bg-slate-100">package.json</code> file.
+              </p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li>
+                  <a class="text-blue-600 hover:underline" href="/jquery">
+                    unpkg.com/jquery
+                  </a>
+                </li>
+              </ul>
+
+              <p class="mt-4">
+                In modern packages that use{" "}
+                <a class="text-blue-600 hover:underline" href="https://nodejs.org/api/packages.html#exports">
+                  exports
+                </a>
+                , UNPKG will resolve the file using the <code class="text-sm bg-slate-100">default</code>{" "}
+                <a
+                  class="text-blue-600 hover:underline"
+                  href="https://nodejs.org/api/packages.html#conditional-exports"
+                >
+                  export condition
+                </a>
+                .
+              </p>
+
+              <p class="mt-4">
+                So, for example if you publish a package with the following{" "}
+                <code class="text-sm bg-slate-100">package.json</code>:
+              </p>
+
+              <div class="mt-8">
+                <CodeBlock>
+                  {`
+                  {
+                    "name": "my-package",
+                    "exports": {
+                      "default": "./dist/index.js"
+                    }
+                  }
+                `}
+                </CodeBlock>
+              </div>
+
+              <p class="mt-8">You would be able to load your package from UNPKG using a script tag like this:</p>
+
+              <div class="mt-8">
+                <CodeBlock>
+                  {`
+                  <script src="https://unpkg.com/my-package"></script>
+                `}
+                </CodeBlock>
+              </div>
+
+              <p class="mt-8">
+                The full <code class="text-sm bg-slate-100">exports</code> spec is supported, including subpaths. So if
+                your <code class="text-sm bg-slate-100">package.json</code> looks like this:
+              </p>
+
+              <div class="mt-8">
+                <CodeBlock>
+                  {`
+                  {
+                    "name": "my-package",
+                    "exports": {
+                      "./exp": {
+                        "default": "./dist/exp.js"
+                      }
+                    }
+                  }
+                `}
+                </CodeBlock>
+              </div>
+
+              <p class="mt-8">
+                You can load the <code class="text-sm bg-slate-100">exp</code> subpath like this:
+              </p>
+
+              <div class="mt-8">
+                <CodeBlock>
+                  {`
+                  <script src="https://unpkg.com/my-package/exp"></script>
+                `}
+                </CodeBlock>
+              </div>
+
+              <p class="mt-8">
+                Custom export conditions are supported via the <code class="text-sm bg-slate-100">?conditions</code>{" "}
+                query parameter. This allows you to load a different file based on the environment or other conditions.
+                For example, to fetch React using the <code class="text-sm bg-slate-100">react-server</code> condition:
+              </p>
+
+              <div class="mt-8">
+                <CodeBlock>
+                  {`
+                  fetch("https://unpkg.com/react?conditions=react-server")
+                `}
+                </CodeBlock>
+              </div>
+
+              <p class="mt-8">Or link to it:</p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li>
+                  <a class="text-blue-600 hover:underline" href="/react?conditions=react-server">
+                    unpkg.com/react?conditions=react-server
+                  </a>
+                </li>
+              </ul>
+
+              <p class="mt-8">
+                If you'd like to specify a custom build of your package that should be used as the default entry point
+                on UNPKG, you can use either the <code class="text-sm bg-slate-100">unpkg</code> field in your{" "}
+                <code class="text-sm bg-slate-100">package.json</code> or the{" "}
+                <code class="text-sm bg-slate-100">unpkg</code> export condition in your{" "}
+                <code class="text-sm bg-slate-100">exports</code> field.
+              </p>
+
+              <div class="mt-8">
+                <CodeBlock>
+                  {`
+                  {
+                    "name": "my-package",
+                    "unpkg": "./dist/index.unpkg.js", // This works
+                    "exports": {
+                      "unpkg": "./dist/index.unpkg.js" // This works, too
+                      "default": "./dist/index.js"
+                    }
+                  }
+                `}
+                </CodeBlock>
+              </div>
+            </section>
+
+            <section id="buildless-apps">
+              <SectionHeading id="buildless-apps">Buildless Apps</SectionHeading>
+
+              <p class="mt-4">
+                UNPKG is ideal for building apps that run entirely in the browser without a build step. You can load
+                JavaScript modules from UNPKG directly in your HTML using{" "}
+                <a
+                  class="text-blue-600 hover:underline"
+                  href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules"
+                >
+                  JavaScript modules
+                </a>{" "}
+                and an{" "}
+                <a
+                  class="text-blue-600 hover:underline"
+                  href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap"
+                >
+                  import map
+                </a>
+                .
+              </p>
+
+              <div class="mt-8">
+                <CodeBlock>
+                  {`
+                  <!doctype html>
+                  <html lang="en">
+                    <head>
+                      <meta charset="UTF-8" />
+                      <script type="importmap">
+                        {
+                          "imports": {
+                            "preact": "https://unpkg.com/preact@10.25.4/dist/preact.module.js",
+                            "preact/hooks": "https://unpkg.com/preact@10.25.4/hooks/dist/hooks.module.js",
+                            "htm": "https://unpkg.com/htm@3.1.1/dist/htm.module.js"
+                          }
+                        }
+                      </script>
+                    </head>
+                    <body>
+                      <script type="module">
+                        import { h, render } from "preact";
+                        import { useState } from "preact/hooks";
+                        import htm from "htm";
+
+                        const html = htm.bind(h);
+
+                        function App() {
+                          let [count, setCount] = useState(0);
+
+                          return html\`
+                            <div>
+                              <p>Count: $\{count\}</p>
+                              <button onClick=$\{() => setCount(count + 1)\}>Increment</button>
+                            </div>
+                          \`;
+                        }
+
+                        render(html\`<$\{App\} />\`, document.body);
+                      </script>
+                    </body>
+                  </html>
+
+                `}
+                </CodeBlock>
+              </div>
+
+              <p class="mt-8">
+                No bundler required! This is ideal for small projects, prototypes, or any situation where you'd like to
+                get something up and running quickly without setting up a build pipeline.
+              </p>
             </section>
 
             <section id="browsing-files">
               <SectionHeading id="browsing-files">Browsing Files</SectionHeading>
 
               <p class="mt-4">
-                In addition to being a global content-delivery network, UNPKG is also allows you to browse and link to
-                individual files on npm. Just append a <code class="text-sm bg-slate-100">/</code> at the end of any
-                directory URL to view a listing of all the files in a package or any of its folders.
+                In addition to loading files, UNPKG is also allows you to browse and link to individual files on npm.
+                Just append a <code class="text-sm bg-slate-100">/</code> at the end of any directory URL to view a
+                listing of all the files in a package or any of its folders.
               </p>
 
               <ul class="mt-4 ml-6 list-disc list-outside">
@@ -147,7 +379,7 @@ export function Home(): VNode {
               </ul>
 
               <p class="mt-4">
-                If you'd like to browse an older version of a package, include the version number in the URL.
+                If you'd like to browse an older version of a package, include a version number in the URL.
               </p>
 
               <ul class="mt-4 ml-6 list-disc list-outside">
@@ -231,7 +463,7 @@ export function Home(): VNode {
 
               <p class="mt-2">
                 UNPKG is a mirror of everything on npm. Every file on npm is automatically available on unpkg.com within
-                minutes of it being published.
+                minutes of being published.
               </p>
 
               <p class="mt-2">

@@ -10,7 +10,7 @@ export function HomeNav({ items }: { items: Record<string, string> }): VNode {
       let currentSectionId: string | undefined;
 
       let lastSection = sections[sections.length - 1];
-      if (lastSection != null && window.scrollY + window.innerHeight >= document.body.scrollHeight - 50) {
+      if (lastSection != null && window.scrollY + window.innerHeight >= document.body.scrollHeight - 20) {
         // Quick check to see if the window is scrolled close to the bottom. If so, just select the last section.
         currentSectionId = lastSection.id;
       } else {

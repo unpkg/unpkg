@@ -137,7 +137,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       ? url.searchParams.getAll("conditions").flatMap((condition) => condition.split(","))
       : undefined;
 
-    let exportPath = resolvePackageExport(packageJson, filename, {
+    let exportPath = resolvePackageExport(packageJson, filename ?? "/", {
       useLegacyModuleField,
       useLegacyBrowserField,
       conditions,
