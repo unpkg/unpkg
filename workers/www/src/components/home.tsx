@@ -8,7 +8,6 @@ export function Home(): VNode {
   let navItems = {
     overview: "Overview",
     "buildless-apps": "Buildless Apps",
-    "browsing-files": "Browsing Files",
     "metadata-api": "Metadata API",
     "cache-performance": "Cache Performance",
     about: "About",
@@ -120,17 +119,45 @@ export function Home(): VNode {
                 </li>
               </ul>
 
-              <div class="mt-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4" role="alert">
-                <p>
-                  <span class="font-bold">Note:</span> According to{" "}
-                  <a href="https://semver.org" class="underline underline-offset-4 decoration-dashed pb-2">
-                    semver
+              <p class="mt-4">
+                Add a trailing <code class="text-sm bg-slate-100">/</code> to a directory URL to view a listing of all
+                the files in that directory.
+              </p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/react/">
+                    unpkg.com/react/
                   </a>
-                  , packages are allowed to publish breaking changes with a major release. This includes changes to
-                  public API, but also may include moving files around inside a package. So it's always a good idea to
-                  include a specific version number (or at least a version range) in your URLs.
-                </p>
-              </div>
+                </li>
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/preact/src/">
+                    unpkg.com/preact/src/
+                  </a>
+                </li>
+                <li>
+                  <a class="text-blue-600 hover:underline" href="/react-router/">
+                    unpkg.com/react-router/
+                  </a>
+                </li>
+              </ul>
+
+              <p class="mt-4">
+                If you'd like to browse an older version of a package, include a version number in the URL.
+              </p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/react@18/">
+                    unpkg.com/react@18/
+                  </a>
+                </li>
+                <li>
+                  <a class="text-blue-600 hover:underline" href="/react-router@5/">
+                    unpkg.com/react-router@5/
+                  </a>
+                </li>
+              </ul>
 
               <p class="mt-4">
                 If you don't specify a file path, UNPKG will resolve the file based on the package's default{" "}
@@ -244,16 +271,6 @@ export function Home(): VNode {
                 </CodeBlock>
               </div>
 
-              <p class="mt-8">Or link to it:</p>
-
-              <ul class="mt-4 ml-6 list-disc list-outside">
-                <li>
-                  <a class="text-blue-600 hover:underline" href="/react?conditions=react-server">
-                    unpkg.com/react?conditions=react-server
-                  </a>
-                </li>
-              </ul>
-
               <p class="mt-8">
                 If you'd like to specify a custom build of your package that should be used as the default entry point
                 on UNPKG, you can use either the <code class="text-sm bg-slate-100">unpkg</code> field in your{" "}
@@ -282,7 +299,7 @@ export function Home(): VNode {
               <SectionHeading id="buildless-apps">Buildless Apps</SectionHeading>
 
               <p class="mt-4">
-                UNPKG is ideal for building apps that run entirely in the browser without a build step. You can load{" "}
+                UNPKG is ideal for apps that run entirely in the browser without a build step. You can load{" "}
                 <a
                   class="text-blue-600 hover:underline"
                   href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules"
@@ -298,6 +315,8 @@ export function Home(): VNode {
                 </a>
                 .
               </p>
+
+              <p class="mt-4">Below is a fully functional Preact app that does not require a build in order to run.</p>
 
               <div class="mt-8">
                 <CodeBlock>
@@ -350,51 +369,6 @@ export function Home(): VNode {
               </p>
             </section>
 
-            <section id="browsing-files">
-              <SectionHeading id="browsing-files">Browsing Files</SectionHeading>
-
-              <p class="mt-4">
-                In addition to loading files, UNPKG is also allows you to browse and link to individual files on npm.
-                Just append a <code class="text-sm bg-slate-100">/</code> at the end of any directory URL to view a
-                listing of all the files in a package or any of its folders.
-              </p>
-
-              <ul class="mt-4 ml-6 list-disc list-outside">
-                <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/react/">
-                    unpkg.com/react/
-                  </a>
-                </li>
-                <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/preact/src/">
-                    unpkg.com/preact/src/
-                  </a>
-                </li>
-                <li>
-                  <a class="text-blue-600 hover:underline" href="/react-router/">
-                    unpkg.com/react-router/
-                  </a>
-                </li>
-              </ul>
-
-              <p class="mt-4">
-                If you'd like to browse an older version of a package, include a version number in the URL.
-              </p>
-
-              <ul class="mt-4 ml-6 list-disc list-outside">
-                <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/react@18/">
-                    unpkg.com/react@18/
-                  </a>
-                </li>
-                <li>
-                  <a class="text-blue-600 hover:underline" href="/react-router@5/">
-                    unpkg.com/react-router@5/
-                  </a>
-                </li>
-              </ul>
-            </section>
-
             <section id="metadata-api">
               <SectionHeading id="metadata-api">Metadata API</SectionHeading>
 
@@ -407,13 +381,13 @@ export function Home(): VNode {
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li>
-                  <a class="text-blue-600 hover:underline" href="/react@19.0.0/?meta">
-                    unpkg.com/react@19.0.0/?meta
+                  <a class="text-blue-600 hover:underline" href="/react-router@7.3.0/?meta">
+                    unpkg.com/react-router@7.3.0/?meta
                   </a>
                 </li>
                 <li>
-                  <a class="text-blue-600 hover:underline" href="/react@19.0.0/cjs/?meta">
-                    unpkg.com/react@19.0.0/cjs/?meta
+                  <a class="text-blue-600 hover:underline" href="/react-router@7.3.0/dist/?meta">
+                    unpkg.com/react-router@7.3.0/dist/?meta
                   </a>
                 </li>
               </ul>
@@ -434,21 +408,21 @@ export function Home(): VNode {
                 <CodeBlock>
                   {`
                 {
-                  package: "react",
-                  version: "19.0.0",
-                  prefix: "/",
+                  package: "react-router",
+                  version: "7.3.0",
+                  prefix: "/dist/",
                   files: [
                     {
-                      path: "/LICENSE",
-                      size: 1088,
-                      type: "text/plain",
-                      integrity: "sha256-2m03A+0Ry+Qr0hLHJZV8mNojy/8ZmMBfpLPZdtGljpM="
+                      path: "/dist/development/dom-export.js",
+                      size: 195045,
+                      type: "text/javascript",
+                      integrity: "sha256-z5j8OHOsGkvfGAjBtW8sbj+M68LLmgLTSjDHk4A5uYA="
                     },
                     {
-                      path: "/index.js",
-                      size: 186,
+                      path: "/dist/production/dom-export.js",
+                      size: 195047,
                       type: "text/javascript",
-                      integrity: "sha256-YMr/3svcXbO8TsToPflIg0XMsnHQdTO5IQv1dQkY2X4="
+                      integrity: "sha256-Gh8wMHW9MO5IMaBq7fOc7szDMRemnO/7Qr8kTK4ebgY="
                     },
                     // ...
                   ]
