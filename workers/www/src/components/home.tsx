@@ -7,7 +7,7 @@ import { Hydrate } from "./hydrate.tsx";
 export function Home(): VNode {
   let navItems = {
     overview: "Overview",
-    "buildless-apps": "Buildless Apps",
+    "nobuild-apps": "Nobuild Apps",
     "metadata-api": "Metadata API",
     "cache-performance": "Cache Performance",
     about: "About",
@@ -299,11 +299,12 @@ export function Home(): VNode {
               </div>
             </section>
 
-            <section id="buildless-apps">
-              <SectionHeading id="buildless-apps">Buildless Apps</SectionHeading>
+            <section id="nobuild-apps">
+              <SectionHeading id="nobuild-apps">Nobuild Apps</SectionHeading>
 
               <p class="mt-4">
-                UNPKG is ideal for apps that run entirely in the browser without a build step. You can load{" "}
+                UNPKG is ideal for loading dependencies in apps that run entirely in the browser without a build step.
+                You can load{" "}
                 <a
                   class="text-blue-600 hover:underline"
                   href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules"
