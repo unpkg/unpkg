@@ -19,7 +19,7 @@ export function Home(): VNode {
         <h1 class="mt-32 text-7xl text-center font-black text-black">UNPKG</h1>
       </header>
 
-      <main class="mx-auto lg:max-w-screen-md text-slate-900 leading-relaxed max-w-full overflow-x-hidden">
+      <main class="mx-auto lg:max-w-screen-md text-slate-900 leading-relaxed max-w-full">
         <div class="relative mt-16 mb-32 px-8 lg:mt-32">
           <div>
             <section id="overview">
