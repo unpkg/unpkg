@@ -32,18 +32,23 @@ export function Document({
     <AppContext.Provider value={context}>
       <html lang="en">
         <head>
+          <script async src="https://www.googletagmanager.com/gtag/js?id=UA-140352188-1"></script>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'UA-140352188-1');`,
+            }}
+          ></script>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <meta name="description" content={description} />
-
           <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
-
           <link rel="stylesheet" href={assets.get("src/styles.css")} />
           <link rel="stylesheet" href={assets.get("src/code-light.css")} />
-
           <script type="importmap" dangerouslySetInnerHTML={{ __html: JSON.stringify(importMap) }} />
           <script type="module" src={assets.get("src/scripts.ts")} defer></script>
-
           <title>{subtitle == null ? title : `unpkg • ${subtitle}`}</title>
         </head>
         <body>{children}</body>
