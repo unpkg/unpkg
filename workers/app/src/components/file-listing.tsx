@@ -199,11 +199,9 @@ function FileListingContent({
 function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo; version: string }): VNode {
   let hrefs = getContext(HrefsContext);
 
-  let tags = packageInfo["dist-tags"];
-  let latestVersion = tags.latest;
+  let latestVersion = packageInfo["dist-tags"]!.latest;
   let latestVersionDate = new Date(packageInfo.time[latestVersion]);
-
-  let packageJson = packageInfo.versions[version];
+  let packageJson = packageInfo.versions![version];
 
   let websiteUrl: URL | null = null;
   let websiteText: string | null = null;

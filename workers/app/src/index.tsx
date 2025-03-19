@@ -20,7 +20,7 @@ export default {
     if (url.pathname === "/favicon.ico") {
       return notFound();
     }
-    if (url.pathname === "/") {
+    if (url.pathname === "/" || url.pathname === "/index.html") {
       return redirect(env.WWW_ORIGIN);
     }
 
@@ -34,9 +34,10 @@ export default {
       return notFound(`Package not found: "${parsed.package}"`);
     }
 
-    let version = resolvePackageVersion(packageInfo, parsed.version);
-    if (version == null) {
-      return notFound(`Package version not found: ${parsed.package}@${parsed.version}`);
+    let requestedVersion = parsed.version ?? "latest";
+    let version = resolvePackageVersion(packageInfo, requestedVersion);
+    if (version == null || packageInfo.versions == null || packageInfo.versions[version] == null) {
+      return notFound(`Package version not found: ${parsed.package}@${requestedVersion}`);
     }
 
     if (parsed.filename != null && parsed.filename.endsWith("/")) {

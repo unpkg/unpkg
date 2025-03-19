@@ -21,10 +21,10 @@ export function FilesHeader({
 }): VNode {
   let hrefs = getContext(HrefsContext);
 
-  let availableTags = packageInfo["dist-tags"];
-  let availableVersions = Object.keys(packageInfo.versions).sort((a, b) => compareVersions(b, a));
+  let availableTags = packageInfo["dist-tags"]!;
+  let availableVersions = Object.keys(packageInfo.versions!).sort((a, b) => compareVersions(b, a));
 
-  let packageJson = packageInfo.versions[version];
+  let packageJson = packageInfo.versions![version];
 
   let websiteUrl: URL | null = null;
   let websiteText: string | null = null;

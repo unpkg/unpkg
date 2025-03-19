@@ -3,7 +3,7 @@ import { type Env } from "./env.ts";
 
 export interface PackageInfo {
   description?: string;
-  "dist-tags": Record<string, string>;
+  "dist-tags"?: Record<string, string>;
   homepage?: string;
   keywords?: string[];
   license?: string;
@@ -15,7 +15,7 @@ export interface PackageInfo {
     directory?: string;
   };
   time: Record<string, string>; // timestamps of published versions
-  versions: Record<string, PackageJson>;
+  versions?: Record<string, PackageJson>;
 }
 
 export interface PackageJson {

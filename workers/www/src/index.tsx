@@ -60,6 +60,9 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   if (url.pathname === "/favicon.ico") {
     return notFound();
   }
+  if (url.pathname === "/index.html") {
+    return redirect("/", 301);
+  }
   if (url.pathname === "/") {
     return renderPage(<Home />, env);
   }
@@ -84,9 +87,10 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return notFound(`Package not found: ${parsed.package}`);
   }
 
-  let version = resolvePackageVersion(packageInfo, parsed.version);
-  if (version == null || packageInfo.versions[version] == null) {
-    return notFound(`Package version not found: ${parsed.package}@${parsed.version}`);
+  let requestedVersion = parsed.version ?? "latest";
+  let version = resolvePackageVersion(packageInfo, requestedVersion);
+  if (version == null || packageInfo.versions == null || packageInfo.versions[version] == null) {
+    return notFound(`Package version not found: ${parsed.package}@${requestedVersion}`);
   }
 
   let packageJson = packageInfo.versions[version];
