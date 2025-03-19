@@ -44,7 +44,11 @@ export function FileDetail({
   } else if (file.type.startsWith("image/")) {
     content = <ImageViewer alt={filename} src={rawHref} />;
   } else {
-    content = <pre>{JSON.stringify({ path: file.path, size: file.size, type: file.type }, null, 2)}</pre>;
+    content = (
+      <div class="py-4 border-b border-x border-slate-300 bg-white text-center">
+        No preview is available for this file.
+      </div>
+    );
   }
 
   return (
