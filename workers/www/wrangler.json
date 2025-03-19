@@ -3,9 +3,10 @@
   // Needed for node:zlib to decompress tarballs
   "compatibility_flags": ["nodejs_compat_v2"],
   "main": "./src/index.tsx",
+  "assets": { "directory": "./public" },
 
   "name": "unpkg-www",
-  "assets": { "directory": "./public" },
+  "observability": { "enabled": true, "head_sampling_rate": 0.001 },
   "routes": [{ "pattern": "unpkg.com", "custom_domain": true }],
   "vars": {
     "APP_HOST": "app.unpkg.com",
