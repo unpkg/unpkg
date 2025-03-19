@@ -20,7 +20,7 @@ export function Home(): VNode {
       </header>
 
       <main class="mx-auto lg:max-w-screen-md text-slate-900 leading-relaxed">
-        <div class="relative mt-16 mb-32 px-8 lg:mt-32">
+        <div class="relative mt-16 mb-32 px-8 lg:mt-32 overflow-x-scroll">
           <div>
             <section id="overview">
               <p>
@@ -103,7 +103,7 @@ export function Home(): VNode {
 
               <p class="mt-4">
                 If you don't specify a version, the <code class="text-sm bg-slate-100">latest</code> tag is used by
-                default:
+                default.
               </p>
 
               <ul class="mt-4 ml-6 list-disc list-outside">
@@ -215,7 +215,10 @@ export function Home(): VNode {
                 </CodeBlock>
               </div>
 
-              <p class="mt-8">You would be able to load your package from UNPKG using a script tag like this:</p>
+              <p class="mt-8">
+                You would be able to load your package from UNPKG using a{" "}
+                <code class="text-sm bg-slate-100">&lt;script&gt;</code> tag like:
+              </p>
 
               <div class="mt-8">
                 <CodeBlock>
@@ -227,7 +230,7 @@ export function Home(): VNode {
 
               <p class="mt-8">
                 The full <code class="text-sm bg-slate-100">exports</code> spec is supported, including subpaths. So if
-                your <code class="text-sm bg-slate-100">package.json</code> looks like this:
+                your <code class="text-sm bg-slate-100">package.json</code> looks like:
               </p>
 
               <div class="mt-8">
@@ -246,7 +249,7 @@ export function Home(): VNode {
               </div>
 
               <p class="mt-8">
-                You can load the <code class="text-sm bg-slate-100">exp</code> subpath like this:
+                You can load the <code class="text-sm bg-slate-100">exp</code> subpath with:
               </p>
 
               <div class="mt-8">
@@ -260,7 +263,8 @@ export function Home(): VNode {
               <p class="mt-8">
                 Custom export conditions are supported via the <code class="text-sm bg-slate-100">?conditions</code>{" "}
                 query parameter. This allows you to load a different file based on the environment or other conditions.
-                For example, to fetch React using the <code class="text-sm bg-slate-100">react-server</code> condition:
+                For example, to fetch React using the <code class="text-sm bg-slate-100">react-server</code> condition,
+                you could do:
               </p>
 
               <div class="mt-8">
