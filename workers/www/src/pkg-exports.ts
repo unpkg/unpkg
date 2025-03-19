@@ -8,11 +8,11 @@ interface ResolvePackageExportOptions {
 
 export function resolvePackageExport(
   packageJson: PackageJson,
-  filename?: string, // e.g. "/path/to/file"
+  filename: string, // The filename in the request URL, e.g. "/path/to/file"
   options?: ResolvePackageExportOptions,
 ): string | null {
   // entry is either "." or "./path"
-  let entry = filename == null || filename === "/" ? "." : `.${filename}`;
+  let entry = filename === "/" ? "." : `.${filename}`;
 
   if (
     entry === "." &&
@@ -32,23 +32,13 @@ export function resolvePackageExport(
 
   if (typeof packageJson.exports === "object" && packageJson.exports != null) {
     let conditions = options?.conditions ?? ["unpkg", "default"];
+    let resolved = resolveExportConditions(packageJson.exports, entry, conditions);
 
-    for (let key in packageJson.exports) {
-      if (entry === normalizeEntryPath(key)) {
-        let value = packageJson.exports[key];
-
-        if (typeof value === "string") {
-          // "exports": { ".": "./dist/index.js" }
-          return pathToFilename(value);
-        }
-
-        let resolved = resolveExportConditions(value, conditions);
-
-        if (resolved.length > 0) {
-          // "exports": { ".": { "default": "./dist/index.js" } }
-          return pathToFilename(resolved[0]);
-        }
-      }
+    if (resolved != null) {
+      // "exports": { "default": "./dist/index.js" }
+      // "exports": { ".": "./dist/index.js" }
+      // "exports": { ".": { "default": "./dist/index.js" } }
+      return pathToFilename(resolved);
     }
   }
 
@@ -97,8 +87,6 @@ function normalizeEntryPath(path: string): string {
  * This is required to resolve nested conditions in the "exports" field. It traverses nested
  * conditions recursively and returns an array of all paths that match the conditions.
  *
- * e.g.
- *
  * let packageJson = {
  *   "exports": {
  *     ".": {
@@ -111,22 +99,27 @@ function normalizeEntryPath(path: string): string {
  *   }
  * };
  *
- * resolveExportConditions(packageJson.exports['.'], ["worker", "import"]);
- *   => ["./dist/worker.mjs"]
+ * resolveExportConditions(packageJson.exports, ".", ["worker", "import"]);
+ *   => "./dist/worker.mjs"
  */
-export function resolveExportConditions(conditionsMap: ExportConditions, conditions: string[]): string[] {
-  let resolved: string[] = [];
+export function resolveExportConditions(
+  exportConditions: ExportConditions,
+  entry: string,
+  supportedConditions: string[],
+): string | null {
+  for (let key in exportConditions) {
+    let value = exportConditions[key];
 
-  for (let condition in conditionsMap) {
-    if (!conditions.includes(condition)) continue;
-
-    let value = conditionsMap[condition];
-    if (typeof value === "string") {
-      resolved.push(value);
-    } else {
-      resolved.push(...resolveExportConditions(value, conditions));
+    if (isSubpath(key) ? entry === normalizeEntryPath(key) : supportedConditions.includes(key)) {
+      return typeof value === "string"
+        ? value
+        : resolveExportConditions(value as ExportConditions, entry, supportedConditions);
     }
   }
 
-  return resolved;
+  return null;
+}
+
+function isSubpath(path: string): boolean {
+  return path.startsWith(".");
 }
