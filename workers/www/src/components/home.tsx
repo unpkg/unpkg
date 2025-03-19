@@ -19,8 +19,8 @@ export function Home(): VNode {
         <h1 class="mt-32 text-7xl text-center font-black text-black">UNPKG</h1>
       </header>
 
-      <main class="mx-auto lg:max-w-screen-md text-slate-900 leading-relaxed">
-        <div class="relative mt-16 mb-32 px-8 lg:mt-32 overflow-x-scroll">
+      <main class="mx-auto lg:max-w-screen-md text-slate-900 leading-relaxed max-w-full overflow-x-hidden">
+        <div class="relative mt-16 mb-32 px-8 lg:mt-32">
           <div>
             <section id="overview">
               <p>
@@ -60,17 +60,17 @@ export function Home(): VNode {
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/preact@10.26.4/dist/preact.min.js">
+                  <a class="text-blue-600 hover:underline break-all" href="/preact@10.26.4/dist/preact.min.js">
                     unpkg.com/preact@10.26.4/dist/preact.min.js
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/react@18.3.1/umd/react.production.min.js">
+                  <a class="text-blue-600 hover:underline break-all" href="/react@18.3.1/umd/react.production.min.js">
                     unpkg.com/react@18.3.1/umd/react.production.min.js
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/three@0.174.0/build/three.module.min.js">
+                  <a class="text-blue-600 hover:underline break-all" href="/three@0.174.0/build/three.module.min.js">
                     unpkg.com/three@0.174.0/build/three.module.min.js
                   </a>
                 </li>
@@ -90,12 +90,12 @@ export function Home(): VNode {
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/preact@latest/dist/preact.min.js">
+                  <a class="text-blue-600 hover:underline break-all" href="/preact@latest/dist/preact.min.js">
                     unpkg.com/preact@latest/dist/preact.min.js
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/react@^18/umd/react.production.min.js">
+                  <a class="text-blue-600 hover:underline break-all" href="/react@^18/umd/react.production.min.js">
                     unpkg.com/react@^18/umd/react.production.min.js
                   </a>
                 </li>
@@ -108,12 +108,12 @@ export function Home(): VNode {
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li>
-                  <a class="text-blue-600 hover:underline" href="/preact/dist/preact.min.js">
+                  <a class="text-blue-600 hover:underline break-all" href="/preact/dist/preact.min.js">
                     unpkg.com/preact/dist/preact.min.js
                   </a>
                 </li>
                 <li>
-                  <a class="text-blue-600 hover:underline" href="/vue/dist/vue.esm-browser.prod.js">
+                  <a class="text-blue-600 hover:underline break-all" href="/vue/dist/vue.esm-browser.prod.js">
                     unpkg.com/vue/dist/vue.esm-browser.prod.js
                   </a>
                 </li>
@@ -484,7 +484,7 @@ export function Home(): VNode {
                 that major, plus it needs to figure out which file to serve. So a short URL like this will always cause
                 a redirect to the permanent URL for that resource. If you need to make sure you hit the cache, use a
                 fixed version number and the full file path, like{" "}
-                <a class="text-blue-600 hover:underline" href="/preact@10.5.0/dist/preact.min.js">
+                <a class="text-blue-600 hover:underline break-all" href="/preact@10.5.0/dist/preact.min.js">
                   unpkg.com/preact@10.5.0/dist/preact.min.js
                 </a>
                 .
