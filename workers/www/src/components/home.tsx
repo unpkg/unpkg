@@ -282,15 +282,14 @@ export function Home(): VNode {
               <SectionHeading id="buildless-apps">Buildless Apps</SectionHeading>
 
               <p class="mt-4">
-                UNPKG is ideal for building apps that run entirely in the browser without a build step. You can load
-                JavaScript modules from UNPKG directly in your HTML using{" "}
+                UNPKG is ideal for building apps that run entirely in the browser without a build step. You can load{" "}
                 <a
                   class="text-blue-600 hover:underline"
                   href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules"
                 >
                   JavaScript modules
                 </a>{" "}
-                and an{" "}
+                from UNPKG directly in your HTML using an{" "}
                 <a
                   class="text-blue-600 hover:underline"
                   href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap"
