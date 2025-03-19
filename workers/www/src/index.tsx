@@ -61,11 +61,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return notFound();
   }
   if (url.pathname === "/") {
-    return renderPage(<Home />, env, {
-      headers: {
-        "Cache-Control": env.MODE === "development" ? "no-store" : "public, max-age=300",
-      },
-    });
+    return renderPage(<Home />, env);
   }
 
   // Redirect legacy /browse/* URLs to the app worker's /files view
