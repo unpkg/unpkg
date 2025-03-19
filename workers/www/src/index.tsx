@@ -185,6 +185,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       return new Response(file.body, {
         headers: {
           "Access-Control-Allow-Origin": "*",
+          "Access-Control-Expose-Headers": "*",
           "Cache-Control": "public, max-age=31536000",
           "Content-Digest": `${algorithm}=:${hash}:`,
           "Content-Type": file.type,
