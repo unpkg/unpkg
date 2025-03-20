@@ -1,8 +1,8 @@
-import zlib from "node:zlib";
 import { type TarEntry, parseTar } from "@mjackson/tar-parser";
 
 import { createCacheableResponse } from "./cache-utils.js";
 import { type Env } from "./env.ts";
+import { /* gunzipBuffer, */ GunzipStream } from "./gunzip.ts";
 import { HttpError } from "./http-error.js";
 
 export async function fetchPackageTarball(
@@ -33,9 +33,17 @@ export async function fetchPackageTarball(
     ctx.waitUntil(cache.put(request, createCacheableResponse(response)));
   }
 
-  let tarball = await gunzipBuffer(await response.arrayBuffer());
+  if (!response.body) {
+    throw new HttpError(`Failed to fetch tarball for ${req.package}@${req.version} (no body)`, 500);
+  }
 
-  await parseTar(tarball, (entry) => {
+  let tarballStream = response.body.pipeThrough(new GunzipStream());
+
+  // Buffer the entire tarball in memory
+  // This throws "RangeError: Memory limit exceeded" for large tarballs
+  // let tarball = await gunzipBuffer(await response.arrayBuffer());
+
+  await parseTar(tarballStream, (entry) => {
     // Every npm package file has a `package` prefix, strip it here
     let path = entry.name.replace(/^package\//, "/");
     return handler(entry, path);
@@ -48,16 +56,4 @@ function createTarballUrl(packageName: string, version: string): URL {
 
 function basename(packageName: string): string {
   return packageName.includes("/") ? packageName.split("/")[1] : packageName;
-}
-
-async function gunzipBuffer(buffer: ArrayBuffer): Promise<Uint8Array> {
-  return new Promise((resolve, reject) => {
-    zlib.gunzip(buffer, (error, result) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(new Uint8Array(result.buffer, result.byteOffset, result.byteLength));
-      }
-    });
-  });
 }
