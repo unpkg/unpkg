@@ -167,7 +167,8 @@ export function Home(): VNode {
                 >
                   entry point
                 </a>
-                . In older packages like jQuery, this will be the value of{" "}
+                . In many packages that are meant solely for frontend development, like jQuery and GSAP, this will be
+                the value of{" "}
                 <a class="text-blue-600 hover:underline" href="https://nodejs.org/api/packages.html#main">
                   the <code class="text-sm bg-slate-100">main</code> field
                 </a>{" "}
@@ -175,9 +176,14 @@ export function Home(): VNode {
               </p>
 
               <ul class="mt-4 ml-6 list-disc list-outside">
-                <li>
+                <li class="marker:pr-2">
                   <a class="text-blue-600 hover:underline" href="/jquery">
                     unpkg.com/jquery
+                  </a>
+                </li>
+                <li class="marker:pr-2">
+                  <a class="text-blue-600 hover:underline" href="/gsap">
+                    unpkg.com/gsap
                   </a>
                 </li>
               </ul>
