@@ -29,7 +29,7 @@
 
     "staging": {
       "name": "unpkg-www-dev",
-      "observability": { "enabled": true },
+      "observability": { "enabled": true, "head_sampling_rate": 0.001 },
       "routes": [{ "pattern": "unpkg.dev", "custom_domain": true }],
       "vars": {
         "APP_HOST": "app.unpkg.dev",

@@ -30,7 +30,7 @@
 
     "staging": {
       "name": "unpkg-app-dev",
-      "observability": { "enabled": true },
+      "observability": { "enabled": true, "head_sampling_rate": 0.001 },
       "routes": [{ "pattern": "app.unpkg.dev", "custom_domain": true }],
       "services": [{ "binding": "WWW", "service": "unpkg-www-dev" }],
       "vars": {
