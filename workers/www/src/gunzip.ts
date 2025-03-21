@@ -1,20 +1,5 @@
 import zlib from "node:zlib";
 
-// We use node:zlib instead of DecompressionStream('gzip') because the latter has issues with
-// decompressing some npm tarballs in my experiments.
-
-export async function gunzipBuffer(buffer: ArrayBuffer): Promise<Uint8Array> {
-  return new Promise((resolve, reject) => {
-    zlib.gunzip(buffer, (error, result) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(new Uint8Array(result.buffer, result.byteOffset, result.byteLength));
-      }
-    });
-  });
-}
-
 export class GunzipStream extends TransformStream<Uint8Array, Uint8Array> {
   constructor(options?: zlib.ZlibOptions) {
     super(new GunzipTransformer(options));

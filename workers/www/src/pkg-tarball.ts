@@ -2,7 +2,7 @@ import { type TarEntry, parseTar } from "@mjackson/tar-parser";
 
 import { createCacheableResponse } from "./cache-utils.js";
 import { type Env } from "./env.ts";
-import { /* gunzipBuffer, */ GunzipStream } from "./gunzip.ts";
+import { GunzipStream } from "./gunzip.ts";
 import { HttpError } from "./http-error.js";
 
 export async function fetchPackageTarball(
@@ -37,11 +37,10 @@ export async function fetchPackageTarball(
     throw new HttpError(`Failed to fetch tarball for ${req.package}@${req.version} (no body)`, 500);
   }
 
+  // We use node:zlib instead of DecompressionStream('gzip') because the latter has issues with
+  // decompressing some npm tarballs in my experiments.
+  // let tarballStream = response.body.pipeThrough(new DecompressionStream("gzip"));
   let tarballStream = response.body.pipeThrough(new GunzipStream());
-
-  // Buffer the entire tarball in memory
-  // This throws "RangeError: Memory limit exceeded" for large tarballs
-  // let tarball = await gunzipBuffer(await response.arrayBuffer());
 
   await parseTar(tarballStream, (entry) => {
     // Every npm package file has a `package` prefix, strip it here
