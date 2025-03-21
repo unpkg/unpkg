@@ -191,7 +191,7 @@ export function Home(): VNode {
               <p class="mt-4">
                 In modern packages that use{" "}
                 <a class="text-blue-600 hover:underline" href="https://nodejs.org/api/packages.html#exports">
-                  exports
+                  the <code class="text-sm bg-slate-100">exports</code> field
                 </a>
                 , UNPKG will resolve the file using the <code class="text-sm bg-slate-100">default</code>{" "}
                 <a
