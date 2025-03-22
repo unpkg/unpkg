@@ -42,8 +42,11 @@ export async function fetchPackageTarball(
   let stream = response.body.pipeThrough(new GunzipStream());
 
   for await (let entry of parseTarStream(stream)) {
-    // Every npm package file has a `package` prefix, strip it here
-    let path = entry.name.replace(/^package\//, "/");
+    // Most packages have header names that look like `package/index.js`
+    // so we shorten that to just `/index.js` here. A few packages use a
+    // prefix other than `package/`. e.g. the firebase package uses the
+    // `firebase_npm/` prefix. So we just strip the first dir name.
+    let path = entry.name.replace(/^[^/]+\/?/, "/");
     handler(entry, path);
   }
 }
