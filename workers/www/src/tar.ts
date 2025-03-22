@@ -40,24 +40,6 @@ export interface TarEntry {
   content: Uint8Array;
 }
 
-interface TarHeader {
-  name: string;
-  mode: number;
-  uid: number;
-  gid: number;
-  size: number;
-  mtime: number;
-  typeFlag: number | string;
-  linkname: string;
-  magic: string;
-  version: string;
-  uname: string;
-  gname: string;
-  devmajor: number;
-  devminor: number;
-  prefix: string;
-}
-
 function extractString(buffer: Uint8Array, offset: number, size: number): string {
   let end = offset;
   while (end < offset + size && buffer[end] !== 0) {
@@ -110,8 +92,8 @@ function verifyChecksum(header: Uint8Array): boolean {
 
 function isEmptyBlock(block: Uint8Array): boolean {
   // Optimized empty block check
-  const dv = new DataView(block.buffer, block.byteOffset, block.byteLength);
-  const len = block.length >> 2; // Divide by 4 to get number of 32-bit integers
+  let dv = new DataView(block.buffer, block.byteOffset, block.byteLength);
+  let len = block.length >> 2; // Divide by 4 to get number of 32-bit integers
 
   for (let i = 0; i < len; i++) {
     if (dv.getUint32(i * 4) !== 0) {
@@ -129,8 +111,25 @@ function isEmptyBlock(block: Uint8Array): boolean {
   return true;
 }
 
+interface TarHeader {
+  name: string;
+  mode: number;
+  uid: number;
+  gid: number;
+  size: number;
+  mtime: number;
+  typeFlag: number | string;
+  linkname: string;
+  magic: string;
+  version: string;
+  uname: string;
+  gname: string;
+  devmajor: number;
+  devminor: number;
+  prefix: string;
+}
+
 function parseHeader(headerBuffer: Uint8Array, strict: boolean): TarHeader | null {
-  // Check if it's an empty (all zeros) block
   if (isEmptyBlock(headerBuffer)) {
     return null; // End of archive marker
   }
