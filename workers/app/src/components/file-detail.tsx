@@ -15,6 +15,9 @@ import { FilesNav } from "./files-nav.tsx";
 import { Hydrate } from "./hydrate.tsx";
 import { ImageViewer } from "./image-viewer.tsx";
 
+// The maximum number of characters we are willing to show and apply highlighting.
+const maxTextSize = 1024 * 1024;
+
 export function FileDetail({
   packageInfo,
   version,
@@ -34,7 +37,15 @@ export function FileDetail({
   let content: VNode;
   if (file.type.startsWith("text/") || file.type === "application/json") {
     let text = new TextDecoder().decode(file.body);
-    let html = highlightCode(text);
+
+    let html: string;
+    if (text.length <= maxTextSize) {
+      html = highlightCode(text);
+    } else {
+      text = text.slice(0, maxTextSize);
+      html = escapeHtml(text);
+    }
+
     lines = text.split("\n");
     content = (
       <Hydrate>
@@ -89,4 +100,16 @@ function LineCount({ lines }: { lines: string[] }): VNode {
 
 function formatNumber(num: number): string {
   return new Intl.NumberFormat("en").format(num);
+}
+
+const htmlEntities: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&apos;",
+};
+
+function escapeHtml(unsafe: string) {
+  return unsafe.replace(/[&<>"']/g, (match) => htmlEntities[match]);
 }
