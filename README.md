@@ -43,8 +43,8 @@ To deploy the workers, you'll need to have a [Cloudflare](https://cloudflare.com
 Once you've done that, you can deploy each worker with:
 
 ```sh
-cd workers/www && pnpm deploy
-cd workers/app && pnpm deploy
+cd workers/www && pnpm run deploy
+cd workers/app && pnpm run deploy
 ```
 
 ## License
