@@ -30,12 +30,7 @@ export function resolvePackageExport(
     return pathToFilename(packageJson.exports);
   }
 
-  // "exports": { "default": "./dist/index.js" }
-  // "exports": { "default": { ... } }
-  // "exports": { ".": "./dist/index.js" }
-  // "exports": { ".": { ... } }
-  // "exports": { ".": { "default": "./dist/index.js" } }
-  // "exports": { ".": { "default": { ... } } }
+  // "exports": { ... }
   if (typeof packageJson.exports === "object" && packageJson.exports != null) {
     let conditions = options?.conditions ?? ["unpkg", "default"];
     let resolved = resolveExportConditions(packageJson.exports, entry, conditions);
@@ -86,8 +81,8 @@ function normalizeEntryPath(path: string): string {
 }
 
 /**
- * This is required to resolve nested conditions in the "exports" field. It traverses nested
- * conditions recursively and returns an array of all paths that match the conditions.
+ * Resolves nested conditions in the "exports" field. It traverses nested conditions recursively
+ * and returns the first path that matches the entry and/or conditions.
  *
  * let packageJson = {
  *   "exports": {
@@ -109,38 +104,38 @@ export function resolveExportConditions(
   entry: string,
   supportedConditions: string[],
 ): string | null {
-  return _resolveExportConditions(exports, entry, supportedConditions);
+  return _resolveExportConditions(exports, entry, supportedConditions, entry === ".");
 }
 
 function _resolveExportConditions(
   exports: ExportConditions,
   entry: string,
   supportedConditions: string[],
-  entryWasFound = entry === ".",
+  entryWasFound: boolean,
 ): string | null {
   for (let key in exports) {
     let value = exports[key];
 
     if (isSubpath(key)) {
       if (entry === normalizeEntryPath(key)) {
-        // "exports": { ".": "./dist/index.js" }
-        if (typeof value === "string") return value;
-
-        // "exports": { ".": { ... } }
-        return _resolveExportConditions(value as ExportConditions, entry, supportedConditions, true);
+        if (typeof value === "string") {
+          // "exports": { ".": "./dist/index.js" }
+          return value;
+        } else {
+          // "exports": { ".": { ... } }
+          return _resolveExportConditions(value, entry, supportedConditions, true);
+        }
       }
     } else if (supportedConditions.includes(key)) {
-      // "exports": { "import": "./dist/index.mjs" }
-      // "exports": { ".": { "import": "./dist/index.mjs" } }
-      if (typeof value === "string" && entryWasFound) {
-        return value;
-      }
-
-      // "exports": { "import": { ... } }
-      // "exports": { ".": { "import": { ... } } }
-      let resolved = _resolveExportConditions(value as ExportConditions, entry, supportedConditions, entryWasFound);
-      if (resolved != null) {
-        return resolved;
+      if (typeof value === "string") {
+        // "exports": { "import": "./dist/index.mjs" }
+        if (entryWasFound) return value;
+      } else {
+        // "exports": { "import": { ... } }
+        let resolved = _resolveExportConditions(value, entry, supportedConditions, entryWasFound);
+        if (resolved != null) {
+          return resolved;
+        }
       }
     }
   }
