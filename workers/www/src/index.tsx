@@ -145,7 +145,8 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
     if (exportPath != null && exportPath !== filename) {
       return redirect(`${url.origin}/${parsed.package}@${version}${exportPath}`, {
-        status: version === parsed.version ? 301 : 302,
+        // status: version === parsed.version ? 301 : 302,
+        status: 302,
         headers: {
           "Access-Control-Allow-Origin": "*",
         },

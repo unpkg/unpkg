@@ -5,95 +5,221 @@ import type { PackageJson } from "./pkg-info.ts";
 import { resolvePackageExport } from "./pkg-exports.ts";
 
 describe("resolvePackageExport", () => {
-  it("resolves when package.exports is a string", () => {
+  describe("when package.exports is a string", () => {
     let packageJson = {
       exports: "./dist/index.js",
     } as PackageJson;
-    assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
-  });
 
-  it("resolves when package.exports is an object with export conditions", () => {
-    let packageJson = {
-      exports: { import: "./dist/index.js", require: "./dist/index.cjs", default: "./dist/index.js" },
-    } as unknown as PackageJson;
-    assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
-  });
+    it("resolves /", () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
+    });
 
-  it('resolves when package.exports is an object with "." key', () => {
-    let packageJson = {
-      exports: { ".": "./dist/index.js" },
-    } as unknown as PackageJson;
-    assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
-  });
-
-  it('resolves when package.exports is an object with "." key and conditions', () => {
-    let packageJson = {
-      exports: { ".": { default: "./dist/index.js" } },
-    } as unknown as PackageJson;
-    assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["default"] }), "/dist/index.js");
-  });
-
-  it("resolves to the first matching export when package.exports is an object with multiple matching conditions", () => {
-    let packageJson = {
-      exports: { ".": { default: "./dist/default.js", require: "./dist/common.js" } },
-    } as unknown as PackageJson;
-    assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["default", "require"] }), "/dist/default.js");
-  });
-
-  describe("when supported conditions are explicitly provided", () => {
-    it("resolves to the first matching condition", () => {
-      let packageJson = {
-        exports: { ".": { default: "./dist/default.js", require: "./dist/common.js" } },
-      } as unknown as PackageJson;
-      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["default", "require"] }), "/dist/default.js");
+    it("does not resolve a custom filename", () => {
+      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
     });
   });
 
-  describe("when no supported conditions are explicitly provided", () => {
-    it("resolves first to the default condition", () => {
-      let packageJson = {
-        exports: { ".": { default: "./dist/default.js", unpkg: "./dist/unpkg.js" } },
-      } as unknown as PackageJson;
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/default.js");
+  describe("when package.exports is an object with export conditions", () => {
+    let packageJson = {
+      exports: {
+        import: "./dist/index.mjs",
+        require: "./dist/index.cjs",
+        default: "./dist/index.js",
+      },
+    } as unknown as PackageJson;
+
+    it("resolves /", () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
     });
 
-    it("resolves to the unpkg condition when it is listed first in package.exports", () => {
-      let packageJson = {
-        exports: { ".": { unpkg: "./dist/unpkg.js", default: "./dist/default.js" } },
-      } as unknown as PackageJson;
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/unpkg.js");
+    it('resolves "/" with matching conditions', () => {
+      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["import"] }), "/dist/index.mjs");
+    });
+
+    it('resolves "/" to the first matching export with multiple matching conditions', () => {
+      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["import", "require"] }), "/dist/index.mjs");
+    });
+
+    it("does not resolve a custom filename", () => {
+      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
     });
   });
 
-  describe("when using the legacy browser field", () => {
-    it('resolves to the browser field when the entry is "."', () => {
-      let packageJson = {
-        browser: "./dist/browser.js",
-      } as unknown as PackageJson;
+  describe("when package.exports is an object with subpaths", () => {
+    let packageJson = {
+      exports: {
+        ".": "./dist/index.js",
+        "./subpath": "./dist/subpath.js",
+      },
+    } as unknown as PackageJson;
+
+    it("resolves /", () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
+    });
+
+    it('resolves "/subpath"', () => {
+      assert.equal(resolvePackageExport(packageJson, "/subpath"), "/dist/subpath.js");
+    });
+
+    it("does not resolve a custom filename", () => {
+      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+    });
+  });
+
+  describe("when package.exports is a nested object with subpaths and export conditions", () => {
+    let packageJson = {
+      exports: {
+        ".": {
+          import: "./dist/index.mjs",
+          require: "./dist/index.cjs",
+          default: "./dist/index.js",
+        },
+        "./subpath": {
+          import: "./dist/subpath.mjs",
+          require: "./dist/subpath.cjs",
+          default: "./dist/subpath.js",
+        },
+      },
+    } as unknown as PackageJson;
+
+    it("resolves /", () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
+    });
+
+    it("resolves / with matching conditions", () => {
+      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["import"] }), "/dist/index.mjs");
+    });
+
+    it("resolves / to the first matching export with multiple matching conditions", () => {
+      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["import", "require"] }), "/dist/index.mjs");
+    });
+
+    it("does not resolve / with non-matching conditions", () => {
+      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["worker"] }), null);
+    });
+
+    it('resolves "/subpath"', () => {
+      assert.equal(resolvePackageExport(packageJson, "/subpath"), "/dist/subpath.js");
+    });
+
+    it('resolves "/subpath" with matching conditions', () => {
+      assert.equal(resolvePackageExport(packageJson, "/subpath", { conditions: ["import"] }), "/dist/subpath.mjs");
+    });
+
+    it('resolves "/subpath" to the first matching export with multiple matching conditions', () => {
+      assert.equal(
+        resolvePackageExport(packageJson, "/subpath", { conditions: ["import", "require"] }),
+        "/dist/subpath.mjs",
+      );
+    });
+
+    it('does not resolve "/subpath" with non-matching conditions', () => {
+      assert.equal(resolvePackageExport(packageJson, "/subpath", { conditions: ["worker"] }), null);
+    });
+
+    it("does not resolve a custom filename", () => {
+      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+    });
+  });
+
+  describe("when package.browser is a string", () => {
+    let packageJson = {
+      browser: "./dist/browser.js",
+    } as unknown as PackageJson;
+
+    it("does not resolve /", () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), null);
+    });
+
+    it("resolves / when useLegacyBrowserField is true", () => {
       assert.equal(resolvePackageExport(packageJson, "/", { useLegacyBrowserField: true }), "/dist/browser.js");
     });
   });
 
-  describe("when using the legacy module field", () => {
-    it('resolves to the module field when the entry is "."', () => {
-      let packageJson = {
-        module: "./dist/module.mjs",
-      } as unknown as PackageJson;
+  describe("when package.browser is an object with subpaths", () => {
+    let packageJson = {
+      browser: {
+        ".": "./dist/browser.js",
+        "./subpath": "./dist/subpath.js",
+      },
+    } as unknown as PackageJson;
+
+    it("does not resolve /", () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), null);
+    });
+
+    it('does not resolve "/subpath"', () => {
+      assert.equal(resolvePackageExport(packageJson, "/subpath"), null);
+    });
+
+    it("does not resolve a custom filename", () => {
+      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+    });
+
+    describe("when useLegacyBrowserField is true", () => {
+      it("resolves /", () => {
+        assert.equal(resolvePackageExport(packageJson, "/", { useLegacyBrowserField: true }), "/dist/browser.js");
+      });
+
+      it('resolves "/subpath"', () => {
+        assert.equal(
+          resolvePackageExport(packageJson, "/subpath", { useLegacyBrowserField: true }),
+          "/dist/subpath.js",
+        );
+      });
+
+      it("does not resolve a custom filename", () => {
+        assert.equal(resolvePackageExport(packageJson, "/path/to/file", { useLegacyBrowserField: true }), null);
+      });
+    });
+  });
+
+  describe("when package.main is a string", () => {
+    let packageJson = {
+      main: "./dist/main.js",
+    } as unknown as PackageJson;
+
+    it("resolves /", () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/main.js");
+    });
+
+    it("does not resolve a custom filename", () => {
+      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+    });
+  });
+
+  describe("when package.module is a string", () => {
+    let packageJson = {
+      module: "./dist/module.mjs",
+    } as unknown as PackageJson;
+
+    it("does not resolve /", () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), null);
+    });
+
+    it("resolves / when useLegacyModuleField is true", () => {
       assert.equal(resolvePackageExport(packageJson, "/", { useLegacyModuleField: true }), "/dist/module.mjs");
     });
   });
 
-  it('resolves to the unpkg field when the entry is "."', () => {
+  describe("when package.unpkg is a string", () => {
     let packageJson = {
       unpkg: "./dist/unpkg.js",
-    } as PackageJson;
-    assert.equal(resolvePackageExport(packageJson, "/"), "/dist/unpkg.js");
-  });
+      exports: "./dist/index.js",
+    } as unknown as PackageJson;
 
-  it('resolves to the main field when the entry is "."', () => {
-    let packageJson = {
-      main: "./dist/main.js",
-    } as PackageJson;
-    assert.equal(resolvePackageExport(packageJson, "/"), "/dist/main.js");
+    it("resolves /", () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/unpkg.js");
+    });
+
+    it("does not resolve a custom filename", () => {
+      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+    });
+
+    describe("when export conditions are provided", () => {
+      it("resolves / using the exports field", () => {
+        assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["default"] }), "/dist/index.js");
+      });
+    });
   });
 });

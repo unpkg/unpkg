@@ -14,52 +14,54 @@ export function resolvePackageExport(
   // entry is either "." or "./path"
   let entry = filename === "/" ? "." : `.${filename}`;
 
+  // "unpkg": "./dist/index.js"
   if (
-    entry === "." &&
     typeof packageJson.unpkg === "string" &&
     // If the request contains conditions, assume it wants to use
     // the "exports" field, not the "unpkg" field.
-    options?.conditions == null
+    options?.conditions == null &&
+    entry === "."
   ) {
-    // "unpkg": "./dist/index.js"
     return pathToFilename(packageJson.unpkg);
   }
 
-  if (entry === "." && typeof packageJson.exports === "string") {
-    // "exports": "./dist/index.js"
+  // "exports": "./dist/index.js"
+  if (typeof packageJson.exports === "string" && entry === ".") {
     return pathToFilename(packageJson.exports);
   }
 
+  // "exports": { "default": "./dist/index.js" }
+  // "exports": { "default": { ... } }
+  // "exports": { ".": "./dist/index.js" }
+  // "exports": { ".": { ... } }
+  // "exports": { ".": { "default": "./dist/index.js" } }
+  // "exports": { ".": { "default": { ... } } }
   if (typeof packageJson.exports === "object" && packageJson.exports != null) {
     let conditions = options?.conditions ?? ["unpkg", "default"];
     let resolved = resolveExportConditions(packageJson.exports, entry, conditions);
+    return resolved == null ? null : pathToFilename(resolved);
+  }
 
-    if (resolved != null) {
-      // "exports": { "default": "./dist/index.js" }
-      // "exports": { ".": "./dist/index.js" }
-      // "exports": { ".": { "default": "./dist/index.js" } }
-      return pathToFilename(resolved);
+  if (options?.useLegacyModuleField) {
+    // "module": "./dist/index.mjs"
+    if (typeof packageJson.module === "string" && entry === ".") {
+      return pathToFilename(packageJson.module);
     }
   }
 
-  if (entry === "." && options?.useLegacyModuleField && typeof packageJson.module === "string") {
-    // "module": "./dist/index.mjs"
-    return pathToFilename(packageJson.module);
-  }
-
-  if (entry === "." && options?.useLegacyBrowserField) {
-    if (typeof packageJson.browser === "string") {
-      // "browser": "./dist/index.js"
+  if (options?.useLegacyBrowserField) {
+    // "browser": "./dist/index.js"
+    if (typeof packageJson.browser === "string" && entry === ".") {
       return pathToFilename(packageJson.browser);
     }
 
+    // "browser": { "./server/only.js": "./client/only.js" }
     if (typeof packageJson.browser === "object" && packageJson.browser != null) {
       for (let key in packageJson.browser) {
         if (entry === normalizeEntryPath(key)) {
           let value = packageJson.browser[key];
 
           if (typeof value === "string") {
-            // "browser": { "./server/only.js": "./client/only.js" }
             return pathToFilename(value);
           }
         }
@@ -67,8 +69,8 @@ export function resolvePackageExport(
     }
   }
 
-  if (entry === "." && typeof packageJson.main === "string") {
-    // "main": "./dist/index.js"
+  // "main": "./dist/index.js"
+  if (typeof packageJson.main === "string" && entry === ".") {
     return pathToFilename(packageJson.main);
   }
 
@@ -103,17 +105,43 @@ function normalizeEntryPath(path: string): string {
  *   => "./dist/worker.mjs"
  */
 export function resolveExportConditions(
-  exportConditions: ExportConditions,
+  exports: ExportConditions,
   entry: string,
   supportedConditions: string[],
 ): string | null {
-  for (let key in exportConditions) {
-    let value = exportConditions[key];
+  return _resolveExportConditions(exports, entry, supportedConditions);
+}
 
-    if (isSubpath(key) ? entry === normalizeEntryPath(key) : supportedConditions.includes(key)) {
-      return typeof value === "string"
-        ? value
-        : resolveExportConditions(value as ExportConditions, entry, supportedConditions);
+function _resolveExportConditions(
+  exports: ExportConditions,
+  entry: string,
+  supportedConditions: string[],
+  entryWasFound = entry === ".",
+): string | null {
+  for (let key in exports) {
+    let value = exports[key];
+
+    if (isSubpath(key)) {
+      if (entry === normalizeEntryPath(key)) {
+        // "exports": { ".": "./dist/index.js" }
+        if (typeof value === "string") return value;
+
+        // "exports": { ".": { ... } }
+        return _resolveExportConditions(value as ExportConditions, entry, supportedConditions, true);
+      }
+    } else if (supportedConditions.includes(key)) {
+      // "exports": { "import": "./dist/index.mjs" }
+      // "exports": { ".": { "import": "./dist/index.mjs" } }
+      if (typeof value === "string" && entryWasFound) {
+        return value;
+      }
+
+      // "exports": { "import": { ... } }
+      // "exports": { ".": { "import": { ... } } }
+      let resolved = _resolveExportConditions(value as ExportConditions, entry, supportedConditions, entryWasFound);
+      if (resolved != null) {
+        return resolved;
+      }
     }
   }
 
