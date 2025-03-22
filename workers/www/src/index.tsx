@@ -64,7 +64,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return redirect("/", 301);
   }
   if (url.pathname === "/") {
-    return renderPage(<Home />, env);
+    return renderPage(<Home />, env, {
+      headers: {
+        "Cache-Control": "no-store",
+      },
+    });
   }
 
   // Redirect legacy /browse/* URLs to the app worker's /files view
