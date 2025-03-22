@@ -145,6 +145,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
     if (exportPath != null && exportPath !== filename) {
       return redirect(`${url.origin}/${parsed.package}@${version}${exportPath}`, {
+        // TODO: Make this a permanent redirect once we're sure it's working correctly.
         // status: version === parsed.version ? 301 : 302,
         status: 302,
         headers: {
