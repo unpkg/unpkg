@@ -14,29 +14,6 @@ export function resolvePackageExport(
   // entry is either "." or "./path"
   let entry = filename === "/" ? "." : `.${filename}`;
 
-  // "unpkg": "./dist/index.js"
-  if (
-    typeof packageJson.unpkg === "string" &&
-    // If the request contains conditions, assume it wants to use
-    // the "exports" field, not the "unpkg" field.
-    options?.conditions == null &&
-    entry === "."
-  ) {
-    return pathToFilename(packageJson.unpkg);
-  }
-
-  // "exports": "./dist/index.js"
-  if (typeof packageJson.exports === "string" && entry === ".") {
-    return pathToFilename(packageJson.exports);
-  }
-
-  // "exports": { ... }
-  if (typeof packageJson.exports === "object" && packageJson.exports != null) {
-    let conditions = options?.conditions ?? ["unpkg", "default"];
-    let resolved = resolveExportConditions(packageJson.exports, entry, conditions);
-    return resolved == null ? null : pathToFilename(resolved);
-  }
-
   if (options?.useLegacyModuleField) {
     // "module": "./dist/index.mjs"
     if (typeof packageJson.module === "string" && entry === ".") {
@@ -62,6 +39,29 @@ export function resolvePackageExport(
         }
       }
     }
+  }
+
+  // "unpkg": "./dist/index.js"
+  if (
+    typeof packageJson.unpkg === "string" &&
+    // If the request contains conditions, assume it wants to use
+    // the "exports" field, not the "unpkg" field.
+    options?.conditions == null &&
+    entry === "."
+  ) {
+    return pathToFilename(packageJson.unpkg);
+  }
+
+  // "exports": "./dist/index.js"
+  if (typeof packageJson.exports === "string" && entry === ".") {
+    return pathToFilename(packageJson.exports);
+  }
+
+  // "exports": { ... }
+  if (typeof packageJson.exports === "object" && packageJson.exports != null) {
+    let conditions = options?.conditions ?? ["unpkg", "default"];
+    let resolved = resolveExportConditions(packageJson.exports, entry, conditions);
+    return resolved == null ? null : pathToFilename(resolved);
   }
 
   // "main": "./dist/index.js"
