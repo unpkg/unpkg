@@ -72,9 +72,6 @@ importers:
 
   workers/www:
     dependencies:
-      '@mjackson/tar-parser':
-        specifier: ^0.2.0
-        version: 0.2.0
       es-module-lexer:
         specifier: ^1.6.0
         version: 1.6.0
@@ -467,9 +464,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
-
-  '@mjackson/tar-parser@0.2.0':
-    resolution: {integrity: sha512-MOcXKpw7zZCcmNCEkj5X6kW2KtVCxLclqFlXP3oSJv2NrYypCGFTaJ602L5x3QPrVf4bLOM2iRHphQDX+RnZdg==}
 
   '@ryanto/esbuild-plugin-tailwind@0.0.1':
     resolution: {integrity: sha512-j+j4gRcA2ok4i35ScYAWu0HIGnSJOQlrpHEFULbQzAWYoS3MZSTaJM1AQUPtr+9DxPITqk/wck41GelsHZzbCw==}
@@ -1103,8 +1097,6 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
-
-  '@mjackson/tar-parser@0.2.0': {}
 
   '@ryanto/esbuild-plugin-tailwind@0.0.1(esbuild@0.24.2)(tailwindcss@4.0.0-beta.9)':
     dependencies:

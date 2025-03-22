@@ -321,14 +321,12 @@ async function getFile(
       return;
     }
 
-    let bytes = await entry.bytes();
-
     file = {
       path,
-      body: bytes,
+      body: entry.content,
       size: entry.size,
       type: getContentType(path),
-      integrity: await getSubresourceIngtegrity(bytes),
+      integrity: await getSubresourceIngtegrity(entry.content),
     };
   });
 
@@ -347,13 +345,11 @@ async function listFiles(
       return;
     }
 
-    let bytes = await entry.bytes();
-
     files.push({
       path,
       size: entry.size,
       type: getContentType(path),
-      integrity: await getSubresourceIngtegrity(bytes),
+      integrity: await getSubresourceIngtegrity(entry.content),
     });
   });
 

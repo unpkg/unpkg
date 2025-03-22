@@ -1,9 +1,8 @@
-import { type TarEntry, parseTar } from "@mjackson/tar-parser";
-
 import { createCacheableResponse } from "./cache-utils.js";
 import { type Env } from "./env.ts";
 import { GunzipStream } from "./gunzip.ts";
 import { HttpError } from "./http-error.js";
+import { type TarEntry, parseTarStream } from "./tar.ts";
 
 export async function fetchPackageTarball(
   req: { package: string; version: string },
@@ -39,14 +38,14 @@ export async function fetchPackageTarball(
 
   // We use node:zlib instead of DecompressionStream('gzip') because the latter has issues with
   // decompressing some npm tarballs in my experiments.
-  // let tarballStream = response.body.pipeThrough(new DecompressionStream("gzip"));
-  let tarballStream = response.body.pipeThrough(new GunzipStream());
+  // let stream = response.body.pipeThrough(new DecompressionStream("gzip"));
+  let stream = response.body.pipeThrough(new GunzipStream());
 
-  await parseTar(tarballStream, (entry) => {
+  for await (let entry of parseTarStream(stream)) {
     // Every npm package file has a `package` prefix, strip it here
     let path = entry.name.replace(/^package\//, "/");
-    return handler(entry, path);
-  });
+    handler(entry, path);
+  }
 }
 
 function createTarballUrl(packageName: string, version: string): URL {

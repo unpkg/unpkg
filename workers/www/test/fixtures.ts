@@ -17,6 +17,15 @@ export const packageTarballs = {
   lodash: {
     "4.17.21": await readPackageTarball("lodash-4.17.21"),
   },
+  material: {
+    "5.16.7": await readPackageTarball("material-5.16.7"),
+  },
+  moment: {
+    "2.29.0": await readPackageTarball("moment-2.29.0"),
+  },
+  plex: {
+    "1.0.2": await readPackageTarball("plex-1.0.2"),
+  },
   preact: {
     "10.26.4": await readPackageTarball("preact-10.26.4"),
   },
