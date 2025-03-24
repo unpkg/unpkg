@@ -91,10 +91,10 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return notFound(`Package not found: ${parsed.package}`);
   }
 
-  let requestedVersion = parsed.version ?? "latest";
-  let version = resolvePackageVersion(packageInfo, requestedVersion);
+  let packageName = parsed.package;
+  let version = resolvePackageVersion(packageInfo, parsed.version ?? "latest");
   if (version == null || packageInfo.versions == null || packageInfo.versions[version] == null) {
-    return notFound(`Package version not found: ${parsed.package}@${requestedVersion}`);
+    return notFound(`Package version not found: ${packageName}@${parsed.version}`);
   }
 
   let packageJson = packageInfo.versions[version];
@@ -105,15 +105,12 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     let prefix = filename == null ? "/" : filename.replace(/\/*$/, "/");
 
     if (version !== parsed.version || prefix !== parsed.filename) {
-      return redirect(
-        `${url.origin}/${parsed.package}@${version}${prefix}${url.search}`,
-        version === parsed.version ? 301 : 302,
-      );
+      return redirect(`${url.origin}/${packageName}@${version}${prefix}${url.search}`);
     }
 
     let files = await listFiles({ ...parsed, version, filename: prefix }, env, ctx);
     let fileListing: PackageFileListing = {
-      package: parsed.package,
+      package: packageName,
       version,
       prefix,
       files,
@@ -130,8 +127,8 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   // Support "append a /" behavior for viewing file listings that are now handled by the app worker
   if (filename != null && filename.endsWith("/")) {
     url.host = env.APP_HOST;
-    url.pathname = createFilesPathname(parsed.package, version, filename);
-    return redirect(url /*, 301*/);
+    url.pathname = createFilesPathname(packageName, version, filename);
+    return redirect(url);
   }
 
   try {
@@ -207,17 +204,14 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   let basename = filename == null || filename === "/" ? "" : filename.replace(/\/+$/, "");
   let indexFile = files.find((file) => file.path === `${basename}/index.js`);
   if (indexFile != null) {
-    return redirect(`${url.origin}/${parsed.package}@${version}${indexFile.path}`, {
-      status: 301,
+    return redirect(`${url.origin}/${packageName}@${version}${indexFile.path}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
       },
     });
   }
 
-  return notFound(`Not found: ${parsed.package}@${version}${filename ?? ""}${url.search}`, {
-    headers: { "Cache-Control": "public, max-age=31536000" },
-  });
+  return notFound(`Not found: ${url.pathname}${url.search}`);
 }
 
 function parsePackagePathname(pathname: string): {

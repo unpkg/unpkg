@@ -157,7 +157,7 @@ describe("www worker", () => {
   describe("?meta requests", () => {
     it("redirects to a trailing / on the root package request", async () => {
       let response = await mf.dispatchFetch("https://unpkg.com/react@18.2.0?meta", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      assert.equal(response.status, 302);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/react@18.2.0/?meta");

@@ -2,8 +2,8 @@ import type { PackageJson, ExportConditions } from "./pkg-info.ts";
 
 interface ResolvePackageExportOptions {
   conditions?: string[];
-  useLegacyModuleField?: boolean;
   useLegacyBrowserField?: boolean;
+  useLegacyModuleField?: boolean;
 }
 
 export function resolvePackageExport(

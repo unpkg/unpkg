@@ -85,7 +85,7 @@ export default {
       );
     }
 
-    return renderPage(<NotFound message={`Not Found: ${filename}`} />, env, {
+    return renderPage(<NotFound message={`Not Found: ${url.pathname}`} />, env, {
       status: 404,
     });
   },
