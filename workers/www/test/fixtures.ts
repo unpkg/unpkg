@@ -7,6 +7,7 @@ export const packageInfo = {
   lodash: await readPackageInfo("lodash"),
   preact: await readPackageInfo("preact"),
   react: await readPackageInfo("react"),
+  vitessce: await readPackageInfo("vitessce"),
 };
 
 async function readPackageInfo(packageName: string): Promise<any> {
@@ -31,6 +32,9 @@ export const packageTarballs = {
   },
   react: {
     "18.2.0": await readPackageTarball("react-18.2.0"),
+  },
+  vitessce: {
+    "3.5.9": await readPackageTarball("vitessce-3.5.9"),
   },
 };
 

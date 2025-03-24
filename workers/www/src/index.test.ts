@@ -152,6 +152,16 @@ describe("www worker", () => {
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/preact@10.25.4/hooks/dist/hooks.mjs");
     });
+
+    it('resolves to "main" when "exports" field has no "default" condition', async () => {
+      let response = await mf.dispatchFetch("https://unpkg.com/vitessce@3.5.9", {
+        redirect: "manual",
+      });
+      assert.equal(response.status, 302);
+      let location = response.headers.get("Location");
+      assert.ok(location);
+      assert.equal(location, "https://unpkg.com/vitessce@3.5.9/dist/index.min.js");
+    });
   });
 
   describe("?meta requests", () => {

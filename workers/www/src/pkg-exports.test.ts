@@ -14,9 +14,9 @@ describe("resolvePackageExport", () => {
       assert.equal(resolvePackageExport(packageJson, "/"), null);
     });
 
-    describe("when useLegacyModuleField is used", () => {
+    describe("when useModuleField is used", () => {
       it("resolves /", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useLegacyModuleField: true }), "/dist/module.mjs");
+        assert.equal(resolvePackageExport(packageJson, "/", { useModuleField: true }), "/dist/module.mjs");
       });
     });
   });
@@ -31,9 +31,9 @@ describe("resolvePackageExport", () => {
       assert.equal(resolvePackageExport(packageJson, "/"), "/dist/unpkg.js");
     });
 
-    describe("when useLegacyModuleField is used", () => {
+    describe("when useModuleField is used", () => {
       it("resolves / using the module field", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useLegacyModuleField: true }), "/dist/module.mjs");
+        assert.equal(resolvePackageExport(packageJson, "/", { useModuleField: true }), "/dist/module.mjs");
       });
     });
   });
@@ -47,9 +47,9 @@ describe("resolvePackageExport", () => {
       assert.equal(resolvePackageExport(packageJson, "/"), null);
     });
 
-    describe("when useLegacyBrowserField is used", () => {
+    describe("when useBrowserField is used", () => {
       it("resolves /", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useLegacyBrowserField: true }), "/dist/browser.js");
+        assert.equal(resolvePackageExport(packageJson, "/", { useBrowserField: true }), "/dist/browser.js");
       });
     });
   });
@@ -64,9 +64,9 @@ describe("resolvePackageExport", () => {
       assert.equal(resolvePackageExport(packageJson, "/"), "/dist/unpkg.js");
     });
 
-    describe("when useLegacyBrowserField is used", () => {
+    describe("when useBrowserField is used", () => {
       it("resolves / using the browser field", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useLegacyBrowserField: true }), "/dist/browser.js");
+        assert.equal(resolvePackageExport(packageJson, "/", { useBrowserField: true }), "/dist/browser.js");
       });
     });
   });
@@ -91,20 +91,17 @@ describe("resolvePackageExport", () => {
       assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
     });
 
-    describe("when useLegacyBrowserField is used", () => {
+    describe("when useBrowserField is used", () => {
       it("resolves /", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useLegacyBrowserField: true }), "/dist/browser.js");
+        assert.equal(resolvePackageExport(packageJson, "/", { useBrowserField: true }), "/dist/browser.js");
       });
 
       it('resolves "/subpath"', () => {
-        assert.equal(
-          resolvePackageExport(packageJson, "/subpath", { useLegacyBrowserField: true }),
-          "/dist/subpath.js",
-        );
+        assert.equal(resolvePackageExport(packageJson, "/subpath", { useBrowserField: true }), "/dist/subpath.js");
       });
 
       it("does not resolve a custom filename", () => {
-        assert.equal(resolvePackageExport(packageJson, "/path/to/file", { useLegacyBrowserField: true }), null);
+        assert.equal(resolvePackageExport(packageJson, "/path/to/file", { useBrowserField: true }), null);
       });
     });
   });
@@ -240,6 +237,24 @@ describe("resolvePackageExport", () => {
 
     it('does not resolve "/subpath" with non-matching conditions', () => {
       assert.equal(resolvePackageExport(packageJson, "/subpath", { conditions: ["worker"] }), null);
+    });
+
+    it("does not resolve a custom filename", () => {
+      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+    });
+  });
+
+  describe("when package.exports is an object with export conditions that do not match", () => {
+    let packageJson = {
+      exports: {
+        import: "./dist/index.mjs",
+        require: "./dist/index.cjs",
+      },
+      main: "./dist/index.js",
+    } as unknown as PackageJson;
+
+    it('resolves / to the "main" field', () => {
+      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
     });
 
     it("does not resolve a custom filename", () => {

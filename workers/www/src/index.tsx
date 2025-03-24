@@ -124,40 +124,31 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     });
   }
 
-  // Support "append a /" behavior for viewing file listings that are now handled by the app worker
+  // Support "append a /" behavior for viewing file listings that are handled the app worker
   if (filename != null && filename.endsWith("/")) {
     url.host = env.APP_HOST;
     url.pathname = createFilesPathname(packageName, version, filename);
     return redirect(url);
   }
 
-  try {
-    let useLegacyModuleField = url.searchParams.has("module");
-    let useLegacyBrowserField = url.searchParams.has("browser");
-    let conditions = url.searchParams.has("conditions")
-      ? url.searchParams.getAll("conditions").flatMap((condition) => condition.split(","))
-      : undefined;
+  let conditions = url.searchParams.has("conditions")
+    ? url.searchParams.getAll("conditions").flatMap((condition) => condition.split(","))
+    : undefined;
+  let wantsBrowser = url.searchParams.has("browser");
+  let wantsModule = url.searchParams.has("module");
 
-    let exportPath = resolvePackageExport(packageJson, filename ?? "/", {
-      useLegacyModuleField,
-      useLegacyBrowserField,
-      conditions,
+  let resolvedFilename = resolvePackageExport(packageJson, filename ?? "/", {
+    useBrowserField: wantsBrowser,
+    useModuleField: wantsModule,
+    conditions,
+  });
+
+  if (resolvedFilename != null && resolvedFilename !== filename) {
+    return redirect(`${url.origin}/${parsed.package}@${version}${resolvedFilename}`, {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
     });
-
-    if (exportPath != null && exportPath !== filename) {
-      return redirect(`${url.origin}/${parsed.package}@${version}${exportPath}`, {
-        // TODO: Make this a permanent redirect once we're sure it's working correctly.
-        // status: version === parsed.version ? 301 : 302,
-        status: 302,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        },
-      });
-    }
-  } catch (error) {
-    // resolvePackageExport() may throw if the entry is not present in
-    // package.json exports. This may mean the request is for a specific
-    // file in the package (which is common) so ignore the error.
   }
 
   // Maximize cache hits by redirecting to the correct version if the resolved version

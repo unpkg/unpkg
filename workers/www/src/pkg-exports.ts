@@ -2,8 +2,8 @@ import type { PackageJson, ExportConditions } from "./pkg-info.ts";
 
 interface ResolvePackageExportOptions {
   conditions?: string[];
-  useLegacyBrowserField?: boolean;
-  useLegacyModuleField?: boolean;
+  useBrowserField?: boolean;
+  useModuleField?: boolean;
 }
 
 export function resolvePackageExport(
@@ -14,14 +14,14 @@ export function resolvePackageExport(
   // entry is either "." or "./path"
   let entry = filename === "/" ? "." : `.${filename}`;
 
-  if (options?.useLegacyModuleField) {
+  if (options?.useModuleField) {
     // "module": "./dist/index.mjs"
     if (typeof packageJson.module === "string" && entry === ".") {
       return pathToFilename(packageJson.module);
     }
   }
 
-  if (options?.useLegacyBrowserField) {
+  if (options?.useBrowserField) {
     // "browser": "./dist/index.js"
     if (typeof packageJson.browser === "string" && entry === ".") {
       return pathToFilename(packageJson.browser);
@@ -61,7 +61,9 @@ export function resolvePackageExport(
   if (typeof packageJson.exports === "object" && packageJson.exports != null) {
     let conditions = options?.conditions ?? ["unpkg", "default"];
     let resolved = resolveExportConditions(packageJson.exports, entry, conditions);
-    return resolved == null ? null : pathToFilename(resolved);
+    if (resolved != null) {
+      return pathToFilename(resolved);
+    }
   }
 
   // "main": "./dist/index.js"

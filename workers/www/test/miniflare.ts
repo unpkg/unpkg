@@ -25,12 +25,16 @@ export const miniflare = new Miniflare({
         return Response.json(fixtures.packageInfo.preact);
       case "https://registry.npmjs.org/react":
         return Response.json(fixtures.packageInfo.react);
+      case "https://registry.npmjs.org/vitessce":
+        return Response.json(fixtures.packageInfo.vitessce);
       case "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz":
         return binaryResponse(fixtures.packageTarballs.lodash["4.17.21"]);
       case "https://registry.npmjs.org/preact/-/preact-10.26.4.tgz":
         return binaryResponse(fixtures.packageTarballs.preact["10.26.4"]);
       case "https://registry.npmjs.org/react/-/react-18.2.0.tgz":
         return binaryResponse(fixtures.packageTarballs.react["18.2.0"]);
+      case "https://registry.npmjs.org/vitessce/-/vitessce-3.5.9.tgz":
+        return binaryResponse(fixtures.packageTarballs.vitessce["3.5.9"]);
       default:
         throw new Error(`Unexpected outbound request: ${request.url}`);
     }
