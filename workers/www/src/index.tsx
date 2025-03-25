@@ -169,15 +169,23 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     let file = await getFile({ ...parsed, version, filename }, env, ctx);
 
     if (file != null) {
-      let [algorithm, hash] = file.integrity.split("-", 2);
-
       // Rewrite imports for JavaScript modules when ?module is used
       if (file.type === "text/javascript" && url.searchParams.has("module")) {
         let code = new TextDecoder().decode(file.body);
         let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies);
         let newCode = rewriteImports(code, url.origin, deps);
-        file.body = new TextEncoder().encode(newCode);
+
+        return new Response(newCode, {
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Expose-Headers": "*",
+            "Content-Type": file.type,
+            "Cross-Origin-Resource-Policy": "cross-origin",
+          },
+        });
       }
+
+      let [algorithm, hash] = file.integrity.split("-", 2);
 
       return new Response(file.body, {
         headers: {
