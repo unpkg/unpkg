@@ -1,5 +1,6 @@
 import { createCacheableResponse } from "./cache-utils.ts";
 import { type Env } from "./env.ts";
+import { npmRegistry } from "./npm-registry.ts";
 
 export interface PackageInfo {
   description?: string;
@@ -72,5 +73,5 @@ export async function fetchPackageInfo(
 }
 
 function createPackageInfoUrl(packageName: string): URL {
-  return new URL(`/${packageName}`, "https://registry.npmjs.org");
+  return new URL(`/${packageName}`, npmRegistry);
 }

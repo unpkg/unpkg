@@ -3,6 +3,7 @@ import { type Env } from "./env.ts";
 import { GunzipStream } from "./gunzip.ts";
 import { HttpError } from "./http-error.js";
 import { type TarEntry, parseTarStream } from "./tar.ts";
+import { npmRegistry } from "./npm-registry.ts";
 
 export async function fetchPackageTarball(
   req: { package: string; version: string },
@@ -52,7 +53,7 @@ export async function fetchPackageTarball(
 }
 
 function createTarballUrl(packageName: string, version: string): URL {
-  return new URL(`/${packageName}/-/${basename(packageName)}-${version}.tgz`, "https://registry.npmjs.org");
+  return new URL(`/${packageName}/-/${basename(packageName)}-${version}.tgz`, npmRegistry);
 }
 
 function basename(packageName: string): string {
