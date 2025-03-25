@@ -118,8 +118,10 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
 
     return new Response(JSON.stringify(fileListing), {
       headers: {
+        "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=31536000",
         "Content-Type": "application/json",
+        "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
   }
@@ -147,6 +149,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return redirect(`${url.origin}/${packageName}@${version}${resolvedFilename}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
+        "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
   }
@@ -157,6 +160,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return redirect(`${url.origin}/${packageName}@${version}${filename ?? ""}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
+        "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
   }
@@ -182,6 +186,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
           "Cache-Control": "public, max-age=31536000",
           "Content-Digest": `${algorithm}=:${hash}:`,
           "Content-Type": file.type,
+          "Cross-Origin-Resource-Policy": "cross-origin",
         },
       });
     }
@@ -206,6 +211,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return redirect(`${url.origin}/${packageName}@${version}${matchingFile.path}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
+        "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
   }
