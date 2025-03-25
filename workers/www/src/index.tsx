@@ -108,7 +108,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       return redirect(`${url.origin}/${packageName}@${version}${prefix}${url.search}`);
     }
 
-    let files = await listFiles({ ...parsed, version, filename: prefix }, env, ctx);
+    let files = await listFiles({ ...parsed, version, prefix }, env, ctx);
     let fileListing: PackageFileListing = {
       package: packageName,
       version,
@@ -144,7 +144,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   });
 
   if (resolvedFilename != null && resolvedFilename !== filename) {
-    return redirect(`${url.origin}/${parsed.package}@${version}${resolvedFilename}`, {
+    return redirect(`${url.origin}/${packageName}@${version}${resolvedFilename}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
       },
@@ -154,8 +154,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   // Maximize cache hits by redirecting to the correct version if the resolved version
   // is different from the one that was requested in the URL
   if (version !== parsed.version) {
-    let location = `${url.origin}/${parsed.package}@${version}${filename ?? ""}${url.search}`;
-    return redirect(location, {
+    return redirect(`${url.origin}/${packageName}@${version}${filename ?? ""}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
       },
@@ -188,14 +187,23 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     }
   }
 
-  // Try to redirect to an "index" file if one exists. This is to support node's
-  // legacy "folders as modules" behavior where a request for a directory will resolve
-  // to the index file. See https://nodejs.org/api/modules.html#folders-as-modules
-  let files = await listFiles({ ...parsed, version, filename: "/" }, env, ctx);
+  // We were unable to find a file based on either the original filename in the URL,
+  // or the resolved filename from package.json (exports, main, etc.). Try to find a
+  // matching file based on some legacy Node.js heuristics.
+  // Redirect
+  // - /path/to/file => /path/to/file.js
+  // - /path/to/file => /path/to/file/index.js
+  // if either of those files exist. This is to support legacy Node.js behavior where a
+  // request for files without an extension will resolve to a .js file or a directory with
+  // an index.js file.
+  // See https://nodejs.org/api/modules.html#file-modules and
+  // https://nodejs.org/api/modules.html#folders-as-modules
+  let files = await listFiles({ ...parsed, version, prefix: "/" }, env, ctx);
   let basename = filename == null || filename === "/" ? "" : filename.replace(/\/+$/, "");
-  let indexFile = files.find((file) => file.path === `${basename}/index.js`);
-  if (indexFile != null) {
-    return redirect(`${url.origin}/${packageName}@${version}${indexFile.path}`, {
+  let matchingFile =
+    files.find((file) => file.path === `${basename}.js`) || files.find((file) => file.path === `${basename}/index.js`);
+  if (matchingFile != null) {
+    return redirect(`${url.origin}/${packageName}@${version}${matchingFile.path}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
       },
@@ -323,14 +331,14 @@ async function getFile(
 }
 
 async function listFiles(
-  req: { package: string; version: string; filename: string },
+  req: { package: string; version: string; prefix: string },
   env: Env,
   ctx: ExecutionContext,
 ): Promise<PackageFileMetadata[]> {
   let files: PackageFileMetadata[] = [];
 
   await fetchPackageTarball(req, env, ctx, async (entry, path) => {
-    if (path.endsWith("/") || !path.startsWith(req.filename)) {
+    if (path.endsWith("/") || !path.startsWith(req.prefix)) {
       return;
     }
 

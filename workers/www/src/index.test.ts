@@ -81,7 +81,6 @@ describe("www worker", () => {
     describe("the unpkg field in package.json", () => {
       it("resolves files correctly", async () => {
         let response = await mf.dispatchFetch("https://unpkg.com/preact@10.25.4", { redirect: "manual" });
-        // assert.equal(response.status, 301);
         assert.equal(response.status, 302);
         let location = response.headers.get("Location");
         assert.ok(location);
@@ -92,11 +91,10 @@ describe("www worker", () => {
         let response = await mf.dispatchFetch("https://unpkg.com/preact@10.25.4?conditions=browser", {
           redirect: "manual",
         });
-        // assert.equal(response.status, 301);
         assert.equal(response.status, 302);
         let location = response.headers.get("Location");
         assert.ok(location);
-        assert.equal(location, "https://unpkg.com/preact@10.25.4/dist/preact.module.js");
+        assert.equal(location, "https://unpkg.com/preact@10.25.4/dist/preact.module.js?conditions=browser");
       });
     });
 
@@ -104,7 +102,6 @@ describe("www worker", () => {
       let response = await mf.dispatchFetch("https://unpkg.com/react@19.0.0", {
         redirect: "manual",
       });
-      // assert.equal(response.status, 301);
       assert.equal(response.status, 302);
       let location = response.headers.get("Location");
       assert.ok(location);
@@ -115,27 +112,24 @@ describe("www worker", () => {
       let response = await mf.dispatchFetch("https://unpkg.com/react@19.0.0?conditions=default", {
         redirect: "manual",
       });
-      // assert.equal(response.status, 301);
       assert.equal(response.status, 302);
       let location = response.headers.get("Location");
       assert.ok(location);
-      assert.equal(location, "https://unpkg.com/react@19.0.0/index.js");
+      assert.equal(location, "https://unpkg.com/react@19.0.0/index.js?conditions=default");
     });
 
     it('resolves using "exports" field and a custom condition in package.json', async () => {
       let response = await mf.dispatchFetch("https://unpkg.com/react@19.0.0?conditions=react-server", {
         redirect: "manual",
       });
-      // assert.equal(response.status, 301);
       assert.equal(response.status, 302);
       let location = response.headers.get("Location");
       assert.ok(location);
-      assert.equal(location, "https://unpkg.com/react@19.0.0/react.react-server.js");
+      assert.equal(location, "https://unpkg.com/react@19.0.0/react.react-server.js?conditions=react-server");
     });
 
     it('resolves using a custom filename with "exports" field in package.json', async () => {
       let response = await mf.dispatchFetch("https://unpkg.com/react@19.0.0/compiler-runtime", { redirect: "manual" });
-      // assert.equal(response.status, 301);
       assert.equal(response.status, 302);
       let location = response.headers.get("Location");
       assert.ok(location);
@@ -146,11 +140,10 @@ describe("www worker", () => {
       let response = await mf.dispatchFetch("https://unpkg.com/preact@10.25.4/hooks?conditions=import", {
         redirect: "manual",
       });
-      // assert.equal(response.status, 301);
       assert.equal(response.status, 302);
       let location = response.headers.get("Location");
       assert.ok(location);
-      assert.equal(location, "https://unpkg.com/preact@10.25.4/hooks/dist/hooks.mjs");
+      assert.equal(location, "https://unpkg.com/preact@10.25.4/hooks/dist/hooks.mjs?conditions=import");
     });
 
     it('resolves to "main" when "exports" field has no "default" condition', async () => {
@@ -161,6 +154,26 @@ describe("www worker", () => {
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/vitessce@3.5.9/dist/index.min.js");
+    });
+
+    it("resolves to a matching .js file when the extension is missing", async () => {
+      let response = await mf.dispatchFetch("https://unpkg.com/preact@10.26.4/src/component", {
+        redirect: "manual",
+      });
+      assert.equal(response.status, 302);
+      let location = response.headers.get("Location");
+      assert.ok(location);
+      assert.equal(location, "https://unpkg.com/preact@10.26.4/src/component.js");
+    });
+
+    it("resolves to an index.js file when a directory is requested", async () => {
+      let response = await mf.dispatchFetch("https://unpkg.com/preact@10.26.4/src", {
+        redirect: "manual",
+      });
+      assert.equal(response.status, 302);
+      let location = response.headers.get("Location");
+      assert.ok(location);
+      assert.equal(location, "https://unpkg.com/preact@10.26.4/src/index.js");
     });
   });
 
