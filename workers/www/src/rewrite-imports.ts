@@ -56,6 +56,13 @@ function rewriteSpecifier(specifier: string, origin: string, dependencies: Recor
     if (version === undefined) {
       console.warn(`No dependency version found for ${packageName}, defaulting to latest`);
       version = "latest";
+    } else if (/ \|\| /.test(version)) {
+      let versions = version.split(" || ");
+      version = versions[versions.length - 1];
+    }
+    if (/ - /.test(version)) {
+      let versions = version.split(" - ");
+      version = versions[versions.length - 1];
     }
 
     return `${origin}/${packageName}@${version}${stripTrailingSlash(path)}?module`;

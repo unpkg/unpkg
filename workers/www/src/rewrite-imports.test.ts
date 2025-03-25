@@ -87,4 +87,14 @@ describe("rewriteImports", () => {
     });
     assert.equal(result, 'import { Component } from "https://unpkg.com/@angular/core@1.2.3?module";');
   });
+
+  it('rewrites `import { state } from "lit";` when version is a join', () => {
+    let result = rewriteImports('import { state } from "lit";', "https://unpkg.com", { lit: "^2.0.0 || ^3.0.0" });
+    assert.equal(result, 'import { state } from "https://unpkg.com/lit@^3.0.0?module";');
+  });
+
+  it('rewrites `import { state } from "lit";` when version is a range', () => {
+    let result = rewriteImports('import { state } from "lit";', "https://unpkg.com", { lit: "2.0.0 - 3.0.0" });
+    assert.equal(result, 'import { state } from "https://unpkg.com/lit@3.0.0?module";');
+  });
 });
