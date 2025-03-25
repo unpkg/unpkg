@@ -78,6 +78,12 @@ describe("www worker", () => {
       assert.equal(response.status, 404);
     });
 
+    it('serves JavaScript files with "charset=utf-8"', async () => {
+      let response = await mf.dispatchFetch("https://unpkg.com/react@18.2.0");
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("Content-Type")!, /^text\/javascript; charset=utf-8/);
+    });
+
     describe("the unpkg field in package.json", () => {
       it("resolves files correctly", async () => {
         let response = await mf.dispatchFetch("https://unpkg.com/preact@10.25.4", { redirect: "manual" });

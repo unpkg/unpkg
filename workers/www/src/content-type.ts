@@ -20,7 +20,8 @@ const textFiles = /\/?(\.[a-z]*rc|\.git[a-z]*|\.[a-z]*ignore|\.lock)$/i;
 
 export function getContentType(filename: string): string {
   let name = basename(filename);
-  return textFiles.test(name) ? "text/plain" : lookup(name) || "text/plain";
+  let type = textFiles.test(name) ? "text/plain" : lookup(name);
+  return type ?? "text/plain";
 }
 
 function basename(path: string): string {

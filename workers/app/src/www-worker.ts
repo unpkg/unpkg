@@ -42,11 +42,15 @@ export class WwwWorkerProxy {
     let file: PackageFile = {
       path: filename,
       body: new Uint8Array(buffer),
-      type: response.headers.get("Content-Type")!,
+      type: cleanContentType(response.headers.get("Content-Type")!),
       size: buffer.byteLength,
       integrity: `${algorithm}-${hash}`,
     };
 
     return file;
   }
+}
+
+function cleanContentType(type: string): string {
+  return type.split(";")[0].trim();
 }

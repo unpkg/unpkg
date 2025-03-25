@@ -186,6 +186,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       }
 
       let [algorithm, hash] = file.integrity.split("-", 2);
+      let contentType = file.type === "text/javascript" ? "text/javascript; charset=utf-8" : file.type;
 
       return new Response(file.body, {
         headers: {
@@ -193,7 +194,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
           "Access-Control-Expose-Headers": "*",
           "Cache-Control": "public, max-age=31536000",
           "Content-Digest": `${algorithm}=:${hash}:`,
-          "Content-Type": file.type,
+          "Content-Type": contentType,
           "Cross-Origin-Resource-Policy": "cross-origin",
         },
       });
