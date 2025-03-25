@@ -80,4 +80,11 @@ describe("rewriteImports", () => {
     let result = rewriteImports('import("react");', "https://unpkg.com", { react: "15.6.1" });
     assert.equal(result, 'import("https://unpkg.com/react@15.6.1?module");');
   });
+
+  it('rewrites `import { Component } from "https://unpkg.com/@angular/core/";`', () => {
+    let result = rewriteImports('import { Component } from "@angular/core/";', "https://unpkg.com", {
+      "@angular/core": "1.2.3",
+    });
+    assert.equal(result, 'import { Component } from "https://unpkg.com/@angular/core@1.2.3?module";');
+  });
 });

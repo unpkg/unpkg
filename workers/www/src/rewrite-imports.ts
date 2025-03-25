@@ -58,11 +58,15 @@ function rewriteSpecifier(specifier: string, origin: string, dependencies: Recor
       version = "latest";
     }
 
-    return `${origin}/${packageName}@${version}${path}?module`;
-  } else {
-    // local path
-    return `${specifier}?module`;
+    return `${origin}/${packageName}@${version}${stripTrailingSlash(path)}?module`;
   }
+
+  // local path
+  return `${stripTrailingSlash(specifier)}?module`;
+}
+
+function stripTrailingSlash(path: string): string {
+  return path.replace(/\/+$/, "");
 }
 
 function isValidUrl(url: string): boolean {
