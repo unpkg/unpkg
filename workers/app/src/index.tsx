@@ -19,7 +19,17 @@ export default {
     }
 
     try {
-      let response = await handleRequest(request, env, ctx);
+      // @ts-expect-error - `caches.default` is missing in @cloudflare/workers-types
+      let cache = caches.default;
+      let response = await cache.match(request);
+
+      if (!response) {
+        response = await handleRequest(request, env, ctx);
+
+        if (response.status === 200 && response.headers.has("Cache-Control")) {
+          ctx.waitUntil(cache.put(request, response.clone()));
+        }
+      }
 
       if (request.method === "HEAD") {
         return new Response(null, response);
@@ -77,7 +87,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   let filename = parsed.filename ?? "/";
 
   if (filename === "/") {
-    return renderPage(<FileListing packageInfo={packageInfo} version={version} dirname="/" files={files} />, env);
+    return renderPage(<FileListing packageInfo={packageInfo} version={version} dirname="/" files={files} />, env, {
+      headers: {
+        "Cache-Control": "public, max-age=180",
+      },
+    });
   }
 
   if (filename.startsWith("/files/")) {
@@ -90,6 +104,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       return renderPage(
         <FileDetail packageInfo={packageInfo} version={version} filename={remainingFilename} file={file!} />,
         env,
+        {
+          headers: {
+            "Cache-Control": "public, max-age=180",
+          },
+        },
       );
     }
 
@@ -99,6 +118,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return renderPage(
       <FileListing packageInfo={packageInfo} version={version} dirname={dirname} files={matchingFiles} />,
       env,
+      {
+        headers: {
+          "Cache-Control": "public, max-age=180",
+        },
+      },
     );
   }
 

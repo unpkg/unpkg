@@ -22,7 +22,17 @@ export default {
     }
 
     try {
-      let response = await handleRequest(request, env, ctx);
+      // @ts-expect-error - `caches.default` is missing in @cloudflare/workers-types
+      let cache = caches.default;
+      let response = await cache.match(request);
+
+      if (!response) {
+        response = await handleRequest(request, env, ctx);
+
+        if (response.status === 200 && response.headers.has("Cache-Control")) {
+          ctx.waitUntil(cache.put(request, response.clone()));
+        }
+      }
 
       if (request.method === "HEAD") {
         return new Response(null, response);
