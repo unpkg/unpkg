@@ -1,7 +1,7 @@
 import { type VNode } from "preact";
+import { type PackageInfo } from "unpkg-core";
 
 import { HrefsContext } from "../hrefs.ts";
-import { type PackageInfo } from "../pkg-info.ts";
 
 import { getContext } from "./app-context.ts";
 

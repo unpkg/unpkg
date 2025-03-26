@@ -1,4 +1,4 @@
-import { type PackageFile } from "./www-worker.ts";
+import type { PackageFile } from "unpkg-core";
 
 const contentTypeLanguageNames: Record<string, string> = {
   "application/json": "JSON",

@@ -7,7 +7,6 @@
   "name": "unpkg-app",
   "observability": { "enabled": true, "head_sampling_rate": 0.001 },
   "routes": [{ "pattern": "app.unpkg.com", "custom_domain": true }],
-  "services": [{ "binding": "WWW", "service": "unpkg-www" }],
   "vars": {
     "ASSETS_ORIGIN": "https://app.unpkg.com",
     "HOST": "app.unpkg.com",
@@ -19,7 +18,6 @@
     "dev": {
       "name": "unpkg-app-local",
       "routes": [],
-      "services": [{ "binding": "WWW", "service": "unpkg-www-local" }],
       "vars": {
         "ASSETS_ORIGIN": "http://localhost:8001",
         "HOST": "localhost:3001",
@@ -32,7 +30,6 @@
       "name": "unpkg-app-dev",
       "observability": { "enabled": true, "head_sampling_rate": 0.001 },
       "routes": [{ "pattern": "app.unpkg.dev", "custom_domain": true }],
-      "services": [{ "binding": "WWW", "service": "unpkg-www-dev" }],
       "vars": {
         "ASSETS_ORIGIN": "https://app.unpkg.dev",
         "HOST": "app.unpkg.dev",

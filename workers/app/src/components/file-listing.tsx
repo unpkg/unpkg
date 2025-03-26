@@ -1,10 +1,9 @@
 import { type VNode, Fragment } from "preact";
 import prettyBytes from "pretty-bytes";
+import { type PackageInfo, type PackageFileMetadata } from "unpkg-core";
 
 import { parseGitHubRepo, createGitHubUrl } from "../github.ts";
 import { HrefsContext } from "../hrefs.ts";
-import { type PackageInfo } from "../pkg-info.js";
-import { type PackageFileMetadata } from "../www-worker.ts";
 
 import { getContext } from "./app-context.ts";
 import { FilesHeader } from "./files-header.tsx";

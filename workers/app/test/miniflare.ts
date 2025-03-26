@@ -11,7 +11,6 @@ export let miniflare = new Miniflare({
     ASSETS_ORIGIN: "https://app.unpkg.com",
     HOST: "app.unpkg.com",
     MODE: "test",
-    // WWW: TODO
     WWW_ORIGIN: "https://unpkg.com",
   },
   compatibilityDate: "2024-12-05",

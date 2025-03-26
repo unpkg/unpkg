@@ -1,11 +1,10 @@
 import { type VNode } from "preact";
 import prettyBytes from "pretty-bytes";
+import { type PackageInfo, type PackageFile } from "unpkg-core";
 
-import { type PackageInfo } from "../pkg-info.js";
 import { highlightCode } from "../highlight.ts";
 import { HrefsContext } from "../hrefs.ts";
 import { getLanguageName } from "../language-names.ts";
-import { type PackageFile } from "../www-worker.ts";
 
 import { getContext } from "./app-context.ts";
 import { CodeViewer } from "./code-viewer.tsx";

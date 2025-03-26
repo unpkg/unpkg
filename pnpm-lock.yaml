@@ -27,6 +27,25 @@ importers:
         specifier: ^5.7.2
         version: 5.7.2
 
+  packages/unpkg-core:
+    dependencies:
+      es-module-lexer:
+        specifier: ^1.6.0
+        version: 1.6.0
+      mrmime:
+        specifier: ^2.0.0
+        version: 2.0.0
+      semver:
+        specifier: ^7.6.3
+        version: 7.6.3
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20250320.0
+        version: 4.20250320.0
+      '@types/semver':
+        specifier: ^7.5.8
+        version: 7.5.8
+
   workers/app:
     dependencies:
       highlight.js:
@@ -44,6 +63,9 @@ importers:
       semver:
         specifier: ^7.6.3
         version: 7.6.3
+      unpkg-core:
+        specifier: workspace:^
+        version: link:../../packages/unpkg-core
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250320.0
@@ -72,24 +94,18 @@ importers:
 
   workers/www:
     dependencies:
-      es-module-lexer:
-        specifier: ^1.6.0
-        version: 1.6.0
       highlight.js:
         specifier: ^11.11.1
         version: 11.11.1
-      mrmime:
-        specifier: ^2.0.0
-        version: 2.0.0
       preact:
         specifier: ^10.25.2
         version: 10.25.2
       preact-render-to-string:
         specifier: ^6.5.12
         version: 6.5.12(preact@10.25.2)
-      semver:
-        specifier: ^7.6.3
-        version: 7.6.3
+      unpkg-core:
+        specifier: workspace:^
+        version: link:../../packages/unpkg-core
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250320.0
@@ -100,9 +116,6 @@ importers:
       '@types/node':
         specifier: ^22.10.2
         version: 22.10.2
-      '@types/semver':
-        specifier: ^7.5.8
-        version: 7.5.8
       esbuild:
         specifier: ^0.24.2
         version: 0.24.2

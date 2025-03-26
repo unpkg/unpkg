@@ -1,9 +1,9 @@
 import { type VNode } from "preact";
 import { compare as compareVersions } from "semver";
+import { type PackageInfo } from "unpkg-core";
 
 import { parseGitHubRepo, createGitHubUrl } from "../github.ts";
 import { HrefsContext } from "../hrefs.ts";
-import { type PackageInfo } from "../pkg-info.ts";
 
 import { getContext } from "./app-context.ts";
 import { Hydrate } from "./hydrate.tsx";

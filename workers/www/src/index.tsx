@@ -1,18 +1,18 @@
 import { type VNode } from "preact";
 import { render } from "preact-render-to-string";
+import {
+  UnpkgClient,
+  parsePackagePathname,
+  resolvePackageExport,
+  resolvePackageVersion,
+  rewriteImports,
+} from "unpkg-core";
 
 import { AssetsContext, loadAssetsManifest } from "./assets.ts";
 import { Document } from "./components/document.tsx";
 import { Home } from "./components/home.tsx";
-import { getContentType } from "./content-type.ts";
 import { ContextProvider } from "./context.ts";
 import { type Env } from "./env.ts";
-import { HttpError } from "./http-error.ts";
-import { resolvePackageExport } from "./pkg-exports.ts";
-import { fetchPackageInfo } from "./pkg-info.ts";
-import { fetchPackageTarball } from "./pkg-tarball.ts";
-import { resolvePackageVersion } from "./pkg-version.ts";
-import { rewriteImports } from "./rewrite-imports.ts";
 
 export default {
   async fetch(request, env, ctx) {
@@ -22,39 +22,26 @@ export default {
       });
     }
 
-    // This worker caches its own successful responses so it can avoid parsing the
-    // same package tarball again and again
-    // @ts-ignore - Looks like @cloudflare/workers-types is missing this?
-    let cache = caches.default as Cache;
-    let response = await cache.match(request);
+    try {
+      let response = await handleRequest(request, env, ctx);
 
-    if (response == null) {
-      try {
-        response = await handleRequest(request, env, ctx);
-
-        if (request.method === "GET" && (response.ok || response.headers.has("Cache-Control"))) {
-          ctx.waitUntil(cache.put(request, response.clone()));
-        }
-      } catch (error) {
-        if (error instanceof HttpError) {
-          return new Response(error.message, { status: error.status });
-        }
-
-        console.error(error);
-
-        return new Response("Internal Server Error", { status: 500 });
+      if (request.method === "HEAD") {
+        return new Response(null, response);
       }
-    }
 
-    if (request.method === "HEAD") {
-      return new Response(null, response);
-    }
+      return response;
+    } catch (error) {
+      console.error(error);
 
-    return response;
+      return new Response("Internal Server Error", { status: 500 });
+    }
   },
 } satisfies ExportedHandler<Env>;
 
+const publicNpmRegistry = "https://registry.npmjs.org";
+
 async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  let unpkg = new UnpkgClient({ executionContext: ctx, mode: env.MODE, npmRegistry: publicNpmRegistry });
   let url = new URL(request.url);
 
   if (url.pathname === "/favicon.ico") {
@@ -86,12 +73,12 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
     return notFound(`Invalid URL pathname: ${url.pathname}`);
   }
 
-  let packageInfo = await fetchPackageInfo(parsed, env, ctx);
+  let packageName = parsed.package;
+  let packageInfo = await unpkg.getPackageInfo(packageName);
   if (packageInfo == null) {
     return notFound(`Package not found: ${parsed.package}`);
   }
 
-  let packageName = parsed.package;
   let version = resolvePackageVersion(packageInfo, parsed.version ?? "latest");
   if (version == null || packageInfo.versions == null || packageInfo.versions[version] == null) {
     return notFound(`Package version not found: ${packageName}@${parsed.version}`);
@@ -108,8 +95,8 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
       return redirect(`${url.origin}/${packageName}@${version}${prefix}${url.search}`);
     }
 
-    let files = await listFiles({ ...parsed, version, prefix }, env, ctx);
-    let fileListing: PackageFileListing = {
+    let files = await unpkg.listFiles(packageName, version, prefix);
+    let fileListing = {
       package: packageName,
       version,
       prefix,
@@ -166,7 +153,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   }
 
   if (filename != null) {
-    let file = await getFile({ ...parsed, version, filename }, env, ctx);
+    let file = await unpkg.getFile(packageName, version, filename);
 
     if (file != null) {
       // Rewrite imports for JavaScript modules when ?module is used
@@ -212,7 +199,7 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   // an index.js file.
   // See https://nodejs.org/api/modules.html#file-modules and
   // https://nodejs.org/api/modules.html#folders-as-modules
-  let files = await listFiles({ ...parsed, version, prefix: "/" }, env, ctx);
+  let files = await unpkg.listFiles(packageName, version, "/");
   let basename = filename == null || filename === "/" ? "" : filename.replace(/\/+$/, "");
   let matchingFile =
     files.find((file) => file.path === `${basename}.js`) || files.find((file) => file.path === `${basename}/index.js`);
@@ -226,30 +213,6 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   }
 
   return notFound(`Not found: ${url.pathname}${url.search}`);
-}
-
-function parsePackagePathname(pathname: string): {
-  package: string;
-  scope?: string;
-  version?: string;
-  filename?: string;
-} | null {
-  try {
-    pathname = decodeURIComponent(pathname);
-  } catch (e) {
-    console.error(`Failed to decode pathname: ${pathname}`);
-  }
-
-  let match = /^\/((?:(@[^/@]+)\/)?[^/@]+)(?:@([^/]+))?(\/.*)?$/.exec(pathname);
-
-  if (match == null) return null;
-
-  return {
-    package: match[1],
-    scope: match[2],
-    version: match[3],
-    filename: match[4],
-  };
 }
 
 function notFound(message?: string, init?: ResponseInit): Response {
@@ -302,75 +265,4 @@ function createFilesPathname(packageName: string, version?: string, filename?: s
   // The /files prefix is not needed for the root of the file browser.
   let path = filename == null || filename === "/" ? "" : `/files${filename.replace(/\/+$/, "")}`;
   return `/${packageName}${version ? `@${version}` : ""}${path}`;
-}
-
-export interface PackageFile {
-  path: string;
-  body: Uint8Array;
-  size: number;
-  type: string;
-  integrity: string;
-}
-
-export type PackageFileMetadata = Omit<PackageFile, "body">;
-
-export interface PackageFileListing {
-  package: string;
-  version: string;
-  prefix: string;
-  files: PackageFileMetadata[];
-}
-
-async function getFile(
-  req: { package: string; version: string; filename: string },
-  env: Env,
-  ctx: ExecutionContext,
-): Promise<PackageFile | null> {
-  let file: PackageFile | null = null;
-
-  await fetchPackageTarball(req, env, ctx, async (entry, path) => {
-    if (path.toLowerCase() !== req.filename.toLowerCase()) {
-      return;
-    }
-
-    file = {
-      path,
-      body: entry.content,
-      size: entry.size,
-      type: getContentType(path),
-      integrity: await getSubresourceIngtegrity(entry.content),
-    };
-  });
-
-  return file;
-}
-
-async function listFiles(
-  req: { package: string; version: string; prefix: string },
-  env: Env,
-  ctx: ExecutionContext,
-): Promise<PackageFileMetadata[]> {
-  let files: PackageFileMetadata[] = [];
-
-  await fetchPackageTarball(req, env, ctx, async (entry, path) => {
-    if (path.endsWith("/") || !path.startsWith(req.prefix)) {
-      return;
-    }
-
-    files.push({
-      path,
-      size: entry.size,
-      type: getContentType(path),
-      integrity: await getSubresourceIngtegrity(entry.content),
-    });
-  });
-
-  return files;
-}
-
-async function getSubresourceIngtegrity(buffer: Uint8Array): Promise<string> {
-  // Use SHA-256 so we can reuse the same hash for the Content-Digest header
-  let digest = await crypto.subtle.digest("SHA-256", buffer);
-  let base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(digest) as any));
-  return `sha256-${base64}`;
 }
