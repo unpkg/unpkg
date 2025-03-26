@@ -47,7 +47,9 @@ export interface TarHeader {
  * Represents a complete entry from a tar file, including content.
  * Extends TarHeader with the actual file content.
  */
-export interface TarEntry extends TarHeader {
+export interface TarEntry {
+  /** The metadata from the tar header */
+  header: TarHeader;
   /** The binary content of the entry */
   content: Uint8Array;
 }
@@ -112,7 +114,7 @@ function parseString(buffer: Uint8Array, offset: number, length: number): string
 }
 
 function parseOctal(buffer: Uint8Array, offset: number, length: number): number {
-  let str = parseString(buffer, offset, length).replace(/[\0\s]+$/, "");
+  let str = parseString(buffer, offset, length);
   return str === "" ? 0 : parseInt(str, 8);
 }
 
@@ -166,9 +168,9 @@ function parsePaxHeader(buffer: Uint8Array): Record<string, string> {
   return result;
 }
 
-function parseHeader(headerBuffer: Uint8Array, offset: number): TarHeader {
-  let checksum = calculateChecksum(headerBuffer);
-  let expectedChecksum = parseOctal(headerBuffer, 148, 8);
+function parseHeader(buffer: Uint8Array, offset: number): TarHeader {
+  let checksum = calculateChecksum(buffer);
+  let expectedChecksum = parseOctal(buffer, 148, 8);
 
   if (checksum !== expectedChecksum) {
     throw new TarParserError(
@@ -178,13 +180,13 @@ function parseHeader(headerBuffer: Uint8Array, offset: number): TarHeader {
     );
   }
 
-  let name = parseString(headerBuffer, 0, 100);
-  let typeFlag = headerBuffer[156];
+  let name = parseString(buffer, 0, 100);
+  let typeFlag = buffer[156];
 
   // Handle UStar format
-  let magic = parseString(headerBuffer, 257, 6);
+  let magic = parseString(buffer, 257, 6);
   if (magic === "ustar" || magic === "ustar\0") {
-    let prefix = parseString(headerBuffer, 345, 155);
+    let prefix = parseString(buffer, 345, 155);
     if (prefix) {
       name = `${prefix}/${name}`;
     }
@@ -193,14 +195,14 @@ function parseHeader(headerBuffer: Uint8Array, offset: number): TarHeader {
   return {
     name,
     type: getEntryType(typeFlag) as TarEntryType,
-    mode: parseOctal(headerBuffer, 100, 8),
-    uid: parseOctal(headerBuffer, 108, 8),
-    gid: parseOctal(headerBuffer, 116, 8),
-    size: parseOctal(headerBuffer, 124, 12),
-    mtime: parseOctal(headerBuffer, 136, 12),
-    linkname: parseString(headerBuffer, 157, 100) || undefined,
-    uname: parseString(headerBuffer, 265, 32) || undefined,
-    gname: parseString(headerBuffer, 297, 32) || undefined,
+    mode: parseOctal(buffer, 100, 8),
+    uid: parseOctal(buffer, 108, 8),
+    gid: parseOctal(buffer, 116, 8),
+    size: parseOctal(buffer, 124, 12),
+    mtime: parseOctal(buffer, 136, 12),
+    linkname: parseString(buffer, 157, 100) || undefined,
+    uname: parseString(buffer, 265, 32) || undefined,
+    gname: parseString(buffer, 297, 32) || undefined,
     checksum: expectedChecksum,
   };
 }
@@ -336,7 +338,7 @@ export class TarParser {
             } else if (type === "pax-local") {
               this.#localExtendedHeaders = parsePaxHeader(content);
             } else if (isPublicEntryType(header.type)) {
-              yield { ...header, content };
+              yield { header, content };
             }
 
             // Reset state after processing any entry type
@@ -369,7 +371,6 @@ export class TarParser {
         this.#errorOffset += TarBlockSize;
 
         applyPaxHeaders(header, this.#localExtendedHeaders, this.#globalExtendedHeaders);
-
         this.#localExtendedHeaders = {};
 
         // GNU format overrides pax headers
@@ -387,7 +388,7 @@ export class TarParser {
           this.#pendingHeader = header;
           this.#contentRemaining = header.size;
         } else if (isPublicEntryType(header.type)) {
-          yield { ...header, content: new Uint8Array(0) };
+          yield { header, content: new Uint8Array(0) };
         }
       } else {
         break;

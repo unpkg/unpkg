@@ -209,12 +209,11 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   // an index.js file.
   // See https://nodejs.org/api/modules.html#file-modules and
   // https://nodejs.org/api/modules.html#folders-as-modules
-  let files = await unpkg.listFiles(packageName, version, "/");
+  let files = await unpkg.listFilenames(packageName, version, "/");
   let basename = filename == null || filename === "/" ? "" : filename.replace(/\/+$/, "");
-  let matchingFile =
-    files.find((file) => file.path === `${basename}.js`) || files.find((file) => file.path === `${basename}/index.js`);
-  if (matchingFile != null) {
-    return redirect(`${url.origin}/${packageName}@${version}${matchingFile.path}${url.search}`, {
+  let match = files.find((path) => path === `${basename}.js`) || files.find((path) => path === `${basename}/index.js`);
+  if (match != null) {
+    return redirect(`${url.origin}/${packageName}@${version}${match}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Cross-Origin-Resource-Policy": "cross-origin",

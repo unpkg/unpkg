@@ -18,8 +18,8 @@ export class GunzipTransformer implements Transformer<Uint8Array, Uint8Array> {
   }
 
   start(controller: TransformStreamDefaultController<Uint8Array>): void {
-    this.#dataHandler = (decompressedData: Buffer): void => {
-      controller.enqueue(new Uint8Array(decompressedData));
+    this.#dataHandler = (chunk: Buffer): void => {
+      controller.enqueue(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength));
       if (this.#pendingResolve) {
         this.#pendingResolve();
         this.#pendingResolve = null;
@@ -43,8 +43,7 @@ export class GunzipTransformer implements Transformer<Uint8Array, Uint8Array> {
 
   transform(chunk: Uint8Array, controller: TransformStreamDefaultController<Uint8Array>): Promise<void> | void {
     try {
-      let buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-      let canContinue = this.#gunzip.write(buffer);
+      let canContinue = this.#gunzip.write(Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength));
 
       // Handle backpressure if necessary
       if (!canContinue) {

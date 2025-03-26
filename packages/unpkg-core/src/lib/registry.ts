@@ -2,7 +2,7 @@ import type { ExecutionContext } from "@cloudflare/workers-types";
 
 import { getContentType } from "./content-type.ts";
 import { GunzipStream } from "./gunzip.ts";
-import { getSubresourceIngtegrity } from "./subresource-integrity.ts";
+import { getSubresourceIntegrity } from "./subresource-integrity.ts";
 import { type TarEntry, parseTarStream } from "./tar.ts";
 
 export interface PackageInfo {
@@ -122,9 +122,9 @@ export class RegistryClient {
       file = {
         path,
         body: entry.content,
-        size: entry.size,
+        size: entry.header.size,
         type: getContentType(path),
-        integrity: await getSubresourceIngtegrity(entry.content),
+        integrity: await getSubresourceIntegrity(entry.content),
       };
     });
 
@@ -141,19 +141,33 @@ export class RegistryClient {
 
       files.push({
         path,
-        size: entry.size,
+        size: entry.header.size,
         type: getContentType(path),
-        integrity: await getSubresourceIngtegrity(entry.content),
+        integrity: await getSubresourceIntegrity(entry.content),
       });
     });
 
     return files;
   }
 
+  async listFilenames(packageName: string, version: string, prefix: string): Promise<string[]> {
+    let filenames: string[] = [];
+
+    await this.#fetchPackageTarball(packageName, version, async (entry, path) => {
+      if (path.endsWith("/") || !path.startsWith(prefix)) {
+        return;
+      }
+
+      filenames.push(path);
+    });
+
+    return filenames;
+  }
+
   async #fetchPackageTarball(
     packageName: string,
     version: string,
-    handler: (entry: TarEntry, filename: string) => void,
+    handler: (entry: TarEntry, filename: string) => Promise<void>,
   ): Promise<void> {
     let request = new Request(createTarballUrl(this.#npmRegistry, packageName, version));
 
@@ -193,8 +207,8 @@ export class RegistryClient {
       // so we shorten that to just `/index.js` here. A few packages use a
       // prefix other than `package/`. e.g. the firebase package uses the
       // `firebase_npm/` prefix. So we just strip the first dir name.
-      let path = entry.name.replace(/^[^/]+\/?/, "/");
-      handler(entry, path);
+      let path = entry.header.name.replace(/^[^/]+\/?/, "/");
+      await handler(entry, path);
     }
   }
 }

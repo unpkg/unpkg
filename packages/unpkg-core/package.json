@@ -19,6 +19,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "watch": "tsc -w",
     "test": "node --disable-warning=ExperimentalWarning --test ./src/**/*.test.ts"
   }
 }
