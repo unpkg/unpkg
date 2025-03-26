@@ -1,460 +1,495 @@
-const BLOCK_SIZE = 512;
+const TarBlockSize = 512;
 
-const MAGIC = {
-  USTAR: "ustar\0",
-  GNU: "ustar ",
-};
+export type TarEntryType =
+  | "file" // Regular file
+  | "directory" // Directory entry
+  | "symlink" // Symbolic link
+  | "hardlink" // Hard link
+  | "character" // Character special device
+  | "block" // Block special device
+  | "fifo" // FIFO special file
+  | "contiguous" // Contiguous file
+  | "unknown"; // Unknown type
 
-export const EntryType = {
-  FILE: 0,
-  LINK: 1,
-  SYMLINK: 2,
-  CHAR: 3,
-  BLOCK: 4,
-  DIRECTORY: 5,
-  FIFO: 6,
-  CONTIGUOUS: 7,
-  EXTENDED_HEADER: "x",
-  GLOBAL_EXTENDED_HEADER: "g",
-  LONG_NAME: "L",
-  LONG_LINK: "K",
-} as const;
+type TarEntryTypeInternal = TarEntryType | "gnu-longname" | "gnu-longlink" | "pax-global" | "pax-local";
 
-export type EntryType = (typeof EntryType)[keyof typeof EntryType];
-
-export interface TarEntry {
-  type: EntryType;
+/**
+ * The metadata from a tar file header.
+ */
+export interface TarHeader {
+  /** The filename/path of the entry */
   name: string;
+  /** The type of the tar entry */
+  type: TarEntryType;
+  /** The file mode/permissions in octal format */
   mode: number;
+  /** The user ID of the owner */
   uid: number;
+  /** The group ID of the owner */
   gid: number;
+  /** The size of the entry content in bytes */
   size: number;
+  /** Modification time (seconds since epoch) */
   mtime: number;
+  /** The target path if this is a link */
   linkname?: string;
+  /** The username of the owner */
   uname?: string;
+  /** The group name */
   gname?: string;
-  devmajor?: number;
-  devminor?: number;
-  atime?: number;
-  ctime?: number;
+  /** The header checksum */
+  checksum: number;
+  /** Extended headers */
+  pax?: Record<string, string>;
+}
+
+/**
+ * Represents a complete entry from a tar file, including content.
+ * Extends TarHeader with the actual file content.
+ */
+export interface TarEntry extends TarHeader {
+  /** The binary content of the entry */
   content: Uint8Array;
 }
 
-function extractString(buffer: Uint8Array, offset: number, size: number): string {
-  let end = offset;
-  while (end < offset + size && buffer[end] !== 0) {
-    end++;
-  }
-
-  return new TextDecoder().decode(buffer.slice(offset, end));
+/**
+ * Configuration options for the TarParser.
+ */
+export interface TarParserOptions {
+  /**
+   * Maximum size of file content to process before throwing an error.
+   * Default is Infinity.
+   */
+  maxFileSize?: number;
 }
 
-function parseOctal(str: string): number {
-  let trimmed = str.trim();
-  if (!trimmed) {
-    return 0;
-  }
+/**
+ * Error class for tar parsing errors with additional context.
+ */
+export class TarParserError extends Error {
+  /** Error code identifying the type of error */
+  code: string;
+  /** Byte offset in the tar stream where the error occurred */
+  offset: number;
 
-  // Handle GNU tar base-256 encoding
-  if (trimmed[0] === "\x80" || trimmed[0] === "\x00") {
-    let value = 0;
-    for (let i = 1; i < trimmed.length; i++) {
-      value = (value << 8) + (trimmed.charCodeAt(i) & 0xff);
-    }
-    return value;
+  /**
+   * Creates a new TarParserError.
+   *
+   * @param code Error code
+   * @param message Detailed error message
+   * @param offset Byte offset in the tar stream where the error occurred
+   */
+  constructor(code: string, message: string, offset: number) {
+    super(message);
+    this.name = "TarParserError";
+    this.code = code;
+    this.offset = offset;
   }
-
-  return parseInt(trimmed, 8);
 }
 
-function calculateChecksum(header: Uint8Array): number {
-  let sum = 0;
-
-  for (let i = 0; i < BLOCK_SIZE; i++) {
-    // Checksum field is treated as if it were filled with spaces
-    if (i >= 148 && i < 156) {
-      sum += 32; // ASCII for space
-    } else {
-      sum += header[i];
-    }
-  }
-
-  return sum;
-}
-
-function verifyChecksum(header: Uint8Array): boolean {
-  let checksumStr = extractString(header, 148, 8);
-  let expectedSum = parseOctal(checksumStr);
-  let actualSum = calculateChecksum(header);
-
-  return expectedSum === actualSum;
-}
-
-function isEmptyBlock(block: Uint8Array): boolean {
-  // Optimized empty block check
-  let dv = new DataView(block.buffer, block.byteOffset, block.byteLength);
-  let len = block.length >> 2; // Divide by 4 to get number of 32-bit integers
-
-  for (let i = 0; i < len; i++) {
-    if (dv.getUint32(i * 4) !== 0) {
-      return false;
-    }
-  }
-
-  // Check remaining bytes
-  for (let i = len * 4; i < block.length; i++) {
-    if (block[i] !== 0) {
-      return false;
-    }
+function isZeroBlock(buffer: Uint8Array, offset: number): boolean {
+  for (let i = 0; i < TarBlockSize; i++) {
+    if (buffer[offset + i] !== 0) return false;
   }
 
   return true;
 }
 
-interface TarHeader {
-  name: string;
-  mode: number;
-  uid: number;
-  gid: number;
-  size: number;
-  mtime: number;
-  typeFlag: number | string;
-  linkname: string;
-  magic: string;
-  version: string;
-  uname: string;
-  gname: string;
-  devmajor: number;
-  devminor: number;
-  prefix: string;
+function calculateChecksum(header: Uint8Array): number {
+  let sum = 0;
+
+  for (let i = 0; i < TarBlockSize; i++) {
+    sum += i >= 148 && i < 156 ? 32 : header[i];
+  }
+
+  return sum;
 }
 
-function parseHeader(headerBuffer: Uint8Array, strict: boolean): TarHeader | null {
-  if (isEmptyBlock(headerBuffer)) {
-    return null; // End of archive marker
+function parseString(buffer: Uint8Array, offset: number, length: number): string {
+  let end = offset;
+  while (end < offset + length && buffer[end] !== 0) end++;
+  return new TextDecoder().decode(buffer.subarray(offset, end));
+}
+
+function parseOctal(buffer: Uint8Array, offset: number, length: number): number {
+  let str = parseString(buffer, offset, length).replace(/[\0\s]+$/, "");
+  return str === "" ? 0 : parseInt(str, 8);
+}
+
+function getEntryType(typeFlag: number): TarEntryTypeInternal {
+  let flag = String.fromCharCode(typeFlag);
+
+  if (flag === "0" || flag === "\0") return "file";
+  if (flag === "1") return "hardlink";
+  if (flag === "2") return "symlink";
+  if (flag === "3") return "character";
+  if (flag === "4") return "block";
+  if (flag === "5") return "directory";
+  if (flag === "6") return "fifo";
+  if (flag === "7") return "contiguous";
+  if (flag === "L") return "gnu-longname";
+  if (flag === "K") return "gnu-longlink";
+  if (flag === "g") return "pax-global";
+  if (flag === "x") return "pax-local";
+
+  return "unknown";
+}
+
+function isPublicEntryType(type: TarEntryType | TarEntryTypeInternal): type is TarEntryType {
+  return type !== "gnu-longname" && type !== "gnu-longlink" && type !== "pax-global" && type !== "pax-local";
+}
+
+function parsePaxHeader(buffer: Uint8Array): Record<string, string> {
+  let result: Record<string, string> = {};
+  let str = new TextDecoder().decode(buffer);
+  let position = 0;
+
+  while (position < str.length) {
+    let spaceIndex = str.indexOf(" ", position);
+    if (spaceIndex === -1) break;
+
+    let length = parseInt(str.substring(position, spaceIndex), 10);
+    if (isNaN(length) || length <= 0) break;
+
+    let record = str.substring(spaceIndex + 1, position + length - 1);
+    let equalsIndex = record.indexOf("=");
+
+    if (equalsIndex !== -1) {
+      let key = record.substring(0, equalsIndex);
+      let value = record.substring(equalsIndex + 1);
+      result[key] = value;
+    }
+
+    position += length;
   }
 
-  // First verify checksum before further processing
-  if (strict && !verifyChecksum(headerBuffer)) {
-    throw new Error("Invalid checksum in tar header");
+  return result;
+}
+
+function parseHeader(headerBuffer: Uint8Array, offset: number): TarHeader {
+  let checksum = calculateChecksum(headerBuffer);
+  let expectedChecksum = parseOctal(headerBuffer, 148, 8);
+
+  if (checksum !== expectedChecksum) {
+    throw new TarParserError(
+      "ECHECKSUM",
+      `Header checksum mismatch: expected ${expectedChecksum}, got ${checksum}`,
+      offset,
+    );
   }
 
-  let name = extractString(headerBuffer, 0, 100);
-  let mode = parseOctal(extractString(headerBuffer, 100, 8));
-  let uid = parseOctal(extractString(headerBuffer, 108, 8));
-  let gid = parseOctal(extractString(headerBuffer, 116, 8));
-  let size = parseOctal(extractString(headerBuffer, 124, 12));
-  let mtime = parseOctal(extractString(headerBuffer, 136, 12));
-  let typeFlag = extractString(headerBuffer, 156, 1);
-  let linkname = extractString(headerBuffer, 157, 100);
-  let magic = extractString(headerBuffer, 257, 6);
-  let version = extractString(headerBuffer, 263, 2);
-  let uname = extractString(headerBuffer, 265, 32);
-  let gname = extractString(headerBuffer, 297, 32);
-  let devmajor = parseOctal(extractString(headerBuffer, 329, 8));
-  let devminor = parseOctal(extractString(headerBuffer, 337, 8));
-  let prefix = extractString(headerBuffer, 345, 155);
+  let name = parseString(headerBuffer, 0, 100);
+  let typeFlag = headerBuffer[156];
 
-  // Validate magic number
-  if (strict && magic !== MAGIC.USTAR && magic !== MAGIC.GNU) {
-    throw new Error(`Invalid tar format: incorrect magic number "${magic}"`);
-  }
-
-  // Directory detection fallback (common in some tar implementations)
-  if (typeFlag === "" || typeFlag === "0") {
-    if (name.endsWith("/")) {
-      typeFlag = "5"; // Directory
-    } else {
-      typeFlag = "0"; // Regular file
+  // Handle UStar format
+  let magic = parseString(headerBuffer, 257, 6);
+  if (magic === "ustar" || magic === "ustar\0") {
+    let prefix = parseString(headerBuffer, 345, 155);
+    if (prefix) {
+      name = `${prefix}/${name}`;
     }
   }
 
   return {
     name,
-    mode,
-    uid,
-    gid,
-    size,
-    mtime,
-    typeFlag: typeFlag === "" ? "0" : typeFlag,
-    linkname,
-    magic,
-    version,
-    uname,
-    gname,
-    devmajor,
-    devminor,
-    prefix,
+    type: getEntryType(typeFlag) as TarEntryType,
+    mode: parseOctal(headerBuffer, 100, 8),
+    uid: parseOctal(headerBuffer, 108, 8),
+    gid: parseOctal(headerBuffer, 116, 8),
+    size: parseOctal(headerBuffer, 124, 12),
+    mtime: parseOctal(headerBuffer, 136, 12),
+    linkname: parseString(headerBuffer, 157, 100) || undefined,
+    uname: parseString(headerBuffer, 265, 32) || undefined,
+    gname: parseString(headerBuffer, 297, 32) || undefined,
+    checksum: expectedChecksum,
   };
 }
 
-function normalizeFilename(header: TarHeader): string {
-  let name = header.name;
-
-  if (header.prefix && (header.magic === MAGIC.USTAR || header.magic === MAGIC.GNU)) {
-    name = header.prefix + "/" + name;
-  }
-
-  name = name.replace(/\\/g, "/");
-  name = name.replace(/\/+/g, "/");
-  name = name.replace(/^[A-Z]:[\/\\]+/i, "");
-  name = name.replace(/^\/+/, "");
-
-  return name;
-}
-
-export interface TarParserOptions {
-  strict?: boolean;
-  maxHeaderSize?: number;
-  ignoreExtended?: boolean;
-}
-
+/**
+ * A streaming parser for tar archives.
+ */
 export class TarParser {
+  #maxFileSize: number;
   #buffer: Uint8Array;
-  #options: Required<TarParserOptions>;
+  #offset: number;
+  #errorOffset: number;
+  #pendingHeader: TarHeader | null;
+  #contentRemaining: number;
+  #contentChunks: Uint8Array[];
   #longName: string | null;
   #longLink: string | null;
   #globalExtendedHeaders: Record<string, string>;
-  #extendedHeaders: Record<string, string>;
+  #localExtendedHeaders: Record<string, string>;
   #endOfArchive: boolean;
 
+  /**
+   * Creates a new TarParser instance.
+   *
+   * @param options Configuration options for the parser
+   */
   constructor(options?: TarParserOptions) {
+    this.#maxFileSize = options?.maxFileSize ?? Infinity;
+
     this.#buffer = new Uint8Array(0);
-    this.#options = {
-      strict: options?.strict ?? false,
-      maxHeaderSize: options?.maxHeaderSize ?? 1024 * 1024,
-      ignoreExtended: options?.ignoreExtended ?? false,
-    };
+    this.#offset = 0;
+    this.#errorOffset = 0;
+    this.#pendingHeader = null;
+    this.#contentRemaining = 0;
+    this.#contentChunks = [];
     this.#longName = null;
     this.#longLink = null;
     this.#globalExtendedHeaders = {};
-    this.#extendedHeaders = {};
+    this.#localExtendedHeaders = {};
     this.#endOfArchive = false;
   }
 
-  write(chunk: Uint8Array): TarEntry[] {
-    // If we've already seen the end of archive marker, don't process any more data
+  /**
+   * Resets the parser state to begin parsing a new archive.
+   */
+  reset(): void {
+    this.#buffer = new Uint8Array(0);
+    this.#offset = 0;
+    this.#errorOffset = 0;
+    this.#pendingHeader = null;
+    this.#contentRemaining = 0;
+    this.#contentChunks = [];
+    this.#longName = null;
+    this.#longLink = null;
+    this.#globalExtendedHeaders = {};
+    this.#localExtendedHeaders = {};
+    this.#endOfArchive = false;
+  }
+
+  /**
+   * Processes a chunk of tar archive data and yields entries as they become available.
+   *
+   * @param chunk A chunk of tar archive data
+   * @returns A generator that yields complete tar entries
+   * @throws {TarParserError} When strict mode is enabled and an error is encountered,
+   *         or when a file exceeds the `maxFileSize` limit
+   */
+  *write(chunk: Uint8Array): Generator<TarEntry, void, undefined> {
     if (this.#endOfArchive) {
-      return [];
+      return; // Ignore any additional data after the end of the archive
     }
 
-    let newBuffer = new Uint8Array(this.#buffer.length + chunk.length);
-    newBuffer.set(this.#buffer);
-    newBuffer.set(chunk, this.#buffer.length);
-    this.#buffer = newBuffer;
+    if (this.#buffer.length > 0) {
+      let newBuffer = new Uint8Array(this.#buffer.length + chunk.length);
+      newBuffer.set(this.#buffer);
+      newBuffer.set(chunk, this.#buffer.length);
+      this.#buffer = newBuffer;
+    } else {
+      this.#buffer = chunk;
+    }
 
-    let entries: TarEntry[] = [];
+    while (true) {
+      if (this.#pendingHeader) {
+        let bytesToConsume = Math.min(this.#contentRemaining, this.#buffer.length - this.#offset);
 
-    while (this.#buffer.length >= BLOCK_SIZE) {
-      let headerBuf = this.#buffer.slice(0, BLOCK_SIZE);
+        if (bytesToConsume === 0) break;
 
-      // Handle empty blocks - potential end of archive markers
-      if (isEmptyBlock(headerBuf)) {
-        this.#buffer = this.#buffer.slice(BLOCK_SIZE);
+        let totalContentSize = this.#pendingHeader.size - this.#contentRemaining + bytesToConsume;
+        if (totalContentSize > this.#maxFileSize) {
+          throw new TarParserError(
+            "ETOOBIG",
+            `File size exceeds maximum allowed size of ${this.#maxFileSize} bytes`,
+            this.#errorOffset,
+          );
+        }
 
-        // Check for a second empty block (official end of archive)
-        if (this.#buffer.length >= BLOCK_SIZE) {
-          let nextBlock = this.#buffer.slice(0, BLOCK_SIZE);
+        this.#contentChunks.push(this.#buffer.subarray(this.#offset, this.#offset + bytesToConsume));
+        this.#offset += bytesToConsume;
+        this.#errorOffset += bytesToConsume;
+        this.#contentRemaining -= bytesToConsume;
 
-          if (isEmptyBlock(nextBlock)) {
-            // Found two consecutive empty blocks - end of archive
-            this.#buffer = this.#buffer.slice(BLOCK_SIZE);
-            this.#endOfArchive = true;
+        if (this.#contentRemaining === 0) {
+          let paddingBytes = (TarBlockSize - (this.#pendingHeader.size % TarBlockSize)) % TarBlockSize;
+
+          if (this.#buffer.length - this.#offset >= paddingBytes) {
+            this.#offset += paddingBytes;
+            this.#errorOffset += paddingBytes;
+
+            let content: Uint8Array;
+            if (this.#contentChunks.length === 1) {
+              content = this.#contentChunks[0];
+            } else {
+              content = new Uint8Array(this.#pendingHeader.size);
+              let position = 0;
+              for (let chunk of this.#contentChunks) {
+                content.set(chunk, position);
+                position += chunk.length;
+              }
+            }
+
+            let header = this.#pendingHeader;
+            let type = header.type as TarEntryTypeInternal;
+
+            if (type === "gnu-longname") {
+              this.#longName = new TextDecoder().decode(content).replace(/\0+$/, "");
+            } else if (type === "gnu-longlink") {
+              this.#longLink = new TextDecoder().decode(content).replace(/\0+$/, "");
+            } else if (type === "pax-global") {
+              this.#globalExtendedHeaders = {
+                ...this.#globalExtendedHeaders,
+                ...parsePaxHeader(content),
+              };
+            } else if (type === "pax-local") {
+              this.#localExtendedHeaders = parsePaxHeader(content);
+            } else if (isPublicEntryType(header.type)) {
+              yield { ...header, content };
+            }
+
+            // Reset state after processing any entry type
+            this.#pendingHeader = null;
+            this.#contentChunks = [];
+          } else {
             break;
           }
         }
+      } else if (this.#buffer.length - this.#offset >= TarBlockSize) {
+        if (isZeroBlock(this.#buffer, this.#offset)) {
+          this.#offset += TarBlockSize;
+          this.#errorOffset += TarBlockSize;
 
-        continue;
-      }
+          if (this.#buffer.length - this.#offset >= TarBlockSize && isZeroBlock(this.#buffer, this.#offset)) {
+            this.#offset += TarBlockSize;
+            this.#errorOffset += TarBlockSize;
+            this.#endOfArchive = true;
+          } else {
+            // We found only one zero block, not two. This is technically invalid, but
+            // just ignore it and assume the archive ends here.
+            this.#endOfArchive = true;
+          }
 
-      let header;
-      try {
-        header = parseHeader(headerBuf, this.#options.strict);
-      } catch (err) {
-        if (this.#options.strict) {
-          throw err;
-        } else {
-          console.warn(`Tar parsing error: ${(err as Error).message}`);
-          // Skip this block and try to continue
-          this.#buffer = this.#buffer.slice(BLOCK_SIZE);
-          continue;
+          break;
         }
-      }
 
-      // If header is null, it was an empty block
-      if (header === null) {
-        continue;
-      }
+        let header = parseHeader(this.#buffer.subarray(this.#offset, this.#offset + TarBlockSize), this.#errorOffset);
+        this.#offset += TarBlockSize;
+        this.#errorOffset += TarBlockSize;
 
-      let contentSize = header.size;
-      let paddedSize = Math.ceil(contentSize / BLOCK_SIZE) * BLOCK_SIZE;
-      let totalSize = BLOCK_SIZE + paddedSize;
+        applyPaxHeaders(header, this.#localExtendedHeaders, this.#globalExtendedHeaders);
 
-      // Don't have enough data yet
-      if (this.#buffer.length < totalSize) {
+        this.#localExtendedHeaders = {};
+
+        // GNU format overrides pax headers
+        if (this.#longName) {
+          header.name = this.#longName;
+          this.#longName = null;
+        }
+
+        if (this.#longLink) {
+          header.linkname = this.#longLink;
+          this.#longLink = null;
+        }
+
+        if (header.size > 0) {
+          this.#pendingHeader = header;
+          this.#contentRemaining = header.size;
+        } else if (isPublicEntryType(header.type)) {
+          yield { ...header, content: new Uint8Array(0) };
+        }
+      } else {
         break;
       }
-
-      let contentBuf = this.#buffer.slice(BLOCK_SIZE, BLOCK_SIZE + contentSize);
-      let typeFlag = header.typeFlag.toString();
-
-      if (typeFlag === EntryType.LONG_NAME) {
-        this.#longName = new TextDecoder().decode(contentBuf).replace(/\0+$/, "");
-        this.#buffer = this.#buffer.slice(totalSize);
-        continue;
-      } else if (typeFlag === EntryType.LONG_LINK) {
-        this.#longLink = new TextDecoder().decode(contentBuf).replace(/\0+$/, "");
-        this.#buffer = this.#buffer.slice(totalSize);
-        continue;
-      } else if (typeFlag === EntryType.GLOBAL_EXTENDED_HEADER && !this.#options.ignoreExtended) {
-        this.#processExtendedHeader(contentBuf, this.#globalExtendedHeaders);
-        this.#buffer = this.#buffer.slice(totalSize);
-        continue;
-      } else if (typeFlag === EntryType.EXTENDED_HEADER && !this.#options.ignoreExtended) {
-        this.#extendedHeaders = {};
-        this.#processExtendedHeader(contentBuf, this.#extendedHeaders);
-        this.#buffer = this.#buffer.slice(totalSize);
-        continue;
-      }
-
-      let entry = this.#createEntry(header, contentBuf);
-      entries.push(entry);
-
-      this.#extendedHeaders = {};
-      this.#buffer = this.#buffer.slice(totalSize);
     }
 
-    return entries;
+    this.#compactBuffer();
   }
 
+  /**
+   * Finalizes parsing and signals no more data will be provided.
+   * Should be called after all data has been processed with write().
+   *
+   * @throws {TarParserError} If the tar archive ends unexpectedly while processing an entry
+   */
   end(): void {
-    if (this.#buffer.length > 0 && !this.#endOfArchive) {
-      throw new Error("Incomplete tar data");
+    if (this.#pendingHeader) {
+      throw new TarParserError("ETRUNC", "Unexpected end of tar data while processing an entry", this.#errorOffset);
     }
   }
 
-  #processExtendedHeader(buffer: Uint8Array, target: Record<string, string>): void {
-    let content = new TextDecoder().decode(buffer);
-    let pos = 0;
-
-    while (pos < content.length) {
-      let spacePos = content.indexOf(" ", pos);
-      if (spacePos === -1) break;
-
-      let length: number;
-      try {
-        length = parseInt(content.substring(pos, spacePos), 10);
-      } catch (e) {
-        break;
-      }
-
-      if (isNaN(length) || length <= 0) break;
-
-      let data = content.substring(spacePos + 1, pos + length - 1);
-      let equalsPos = data.indexOf("=");
-
-      if (equalsPos !== -1) {
-        let key = data.substring(0, equalsPos);
-        let value = data.substring(equalsPos + 1);
-        target[key] = value;
-      }
-
-      pos += length;
+  #compactBuffer() {
+    if (this.#offset > 0) {
+      this.#buffer = this.#buffer.subarray(this.#offset);
+      this.#offset = 0;
     }
-  }
-
-  #createEntry(header: TarHeader, content: Uint8Array): TarEntry {
-    let name = this.#longName !== null ? this.#longName : normalizeFilename(header);
-    this.#longName = null;
-
-    let linkname = this.#longLink !== null ? this.#longLink : header.linkname;
-    this.#longLink = null;
-
-    let typeNum = parseInt(header.typeFlag.toString(), 10);
-    let type: EntryType;
-
-    if (!isNaN(typeNum) && typeNum >= 0 && typeNum <= 7) {
-      type = typeNum as EntryType;
-    } else {
-      switch (header.typeFlag.toString()) {
-        case "x":
-          type = EntryType.EXTENDED_HEADER;
-          break;
-        case "g":
-          type = EntryType.GLOBAL_EXTENDED_HEADER;
-          break;
-        case "L":
-          type = EntryType.LONG_NAME;
-          break;
-        case "K":
-          type = EntryType.LONG_LINK;
-          break;
-        default:
-          type = EntryType.FILE;
-      }
-    }
-
-    let mtime = header.mtime;
-    let atime: number | undefined;
-    let ctime: number | undefined;
-
-    if (this.#extendedHeaders["mtime"]) {
-      mtime = parseFloat(this.#extendedHeaders["mtime"]);
-    } else if (this.#globalExtendedHeaders["mtime"]) {
-      mtime = parseFloat(this.#globalExtendedHeaders["mtime"]);
-    }
-
-    if (this.#extendedHeaders["atime"]) {
-      atime = parseFloat(this.#extendedHeaders["atime"]);
-    } else if (this.#globalExtendedHeaders["atime"]) {
-      atime = parseFloat(this.#globalExtendedHeaders["atime"]);
-    }
-
-    if (this.#extendedHeaders["ctime"]) {
-      ctime = parseFloat(this.#extendedHeaders["ctime"]);
-    } else if (this.#globalExtendedHeaders["ctime"]) {
-      ctime = parseFloat(this.#globalExtendedHeaders["ctime"]);
-    }
-
-    if (this.#extendedHeaders["path"]) {
-      name = this.#extendedHeaders["path"];
-    } else if (this.#globalExtendedHeaders["path"]) {
-      name = this.#globalExtendedHeaders["path"];
-    }
-
-    if (this.#extendedHeaders["linkpath"]) {
-      linkname = this.#extendedHeaders["linkpath"];
-    } else if (this.#globalExtendedHeaders["linkpath"]) {
-      linkname = this.#globalExtendedHeaders["linkpath"];
-    }
-
-    let entry: TarEntry = {
-      type,
-      name,
-      mode: header.mode,
-      uid: header.uid,
-      gid: header.gid,
-      size: header.size,
-      mtime: mtime,
-      content,
-    };
-
-    if (linkname) entry.linkname = linkname;
-    if (header.uname) entry.uname = header.uname;
-    if (header.gname) entry.gname = header.gname;
-    if (header.devmajor !== undefined) entry.devmajor = header.devmajor;
-    if (header.devminor !== undefined) entry.devminor = header.devminor;
-    if (atime !== undefined) entry.atime = atime;
-    if (ctime !== undefined) entry.ctime = ctime;
-
-    return entry;
   }
 }
 
+// Apply extended headers (local override global)
+function applyPaxHeaders(
+  header: TarHeader,
+  localHeaders: Record<string, string>,
+  globalHeaders: Record<string, string>,
+): void {
+  if (localHeaders["path"]) {
+    header.name = localHeaders["path"];
+  } else if (globalHeaders["path"]) {
+    header.name = globalHeaders["path"];
+  }
+
+  if (localHeaders["size"]) {
+    header.size = Number(localHeaders["size"]);
+  } else if (globalHeaders["size"]) {
+    header.size = Number(globalHeaders["size"]);
+  }
+
+  if (localHeaders["mtime"]) {
+    header.mtime = Number(localHeaders["mtime"]);
+  } else if (globalHeaders["mtime"]) {
+    header.mtime = Number(globalHeaders["mtime"]);
+  }
+
+  if (localHeaders["linkpath"]) {
+    header.linkname = localHeaders["linkpath"];
+  } else if (globalHeaders["linkpath"]) {
+    header.linkname = globalHeaders["linkpath"];
+  }
+
+  if (localHeaders["uname"]) {
+    header.uname = localHeaders["uname"];
+  } else if (globalHeaders["uname"]) {
+    header.uname = globalHeaders["uname"];
+  }
+
+  if (localHeaders["gname"]) {
+    header.gname = localHeaders["gname"];
+  } else if (globalHeaders["gname"]) {
+    header.gname = globalHeaders["gname"];
+  }
+
+  if (Object.keys(globalHeaders).length > 0 || Object.keys(localHeaders).length > 0) {
+    header.pax = Object.assign({}, globalHeaders, localHeaders);
+  }
+}
+
+/**
+ * Parses a tar archive from a Uint8Array, yielding entries as they become available.
+ *
+ * @param buffer A Uint8Array containing tar archive data
+ * @param options Configuration options for the parser
+ * @returns A Generator that yields tar entries
+ * @throws {TarParserError} If the tar archive is invalid or incomplete
+ */
+export function* parseTar(buffer: Uint8Array, options?: TarParserOptions): Generator<TarEntry, void, undefined> {
+  let parser = new TarParser(options);
+  yield* parser.write(buffer);
+  parser.end();
+}
+
+/**
+ * Parses a tar archive from a ReadableStream, yielding entries as they become available.
+ *
+ * @param stream A ReadableStream containing tar archive data
+ * @param options Configuration options for the parser
+ * @returns An AsyncGenerator that yields tar entries
+ * @throws {TarParserError} If the tar archive is invalid or incomplete
+ */
 export async function* parseTarStream(
   stream: ReadableStream<Uint8Array>,
   options?: TarParserOptions,
-): AsyncGenerator<TarEntry, void, unknown> {
+): AsyncGenerator<TarEntry, void, undefined> {
   let parser = new TarParser(options);
   let reader = stream.getReader();
 
@@ -467,10 +502,7 @@ export async function* parseTarStream(
         break;
       }
 
-      let entries = parser.write(result.value);
-      for (let entry of entries) {
-        yield entry;
-      }
+      yield* parser.write(result.value);
     }
   } finally {
     reader.releaseLock();

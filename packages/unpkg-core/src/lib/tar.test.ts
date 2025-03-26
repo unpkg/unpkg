@@ -6,6 +6,17 @@ import { readFixture } from "../../test/fixtures.ts";
 import { type TarEntry, parseTarStream } from "./tar.ts";
 
 describe("TarParser", () => {
+  it("parses @ffmpeg/core-0.12.6.tgz", async () => {
+    let stream = readFixture("core-0.12.6");
+
+    let entries: TarEntry[] = [];
+    for await (let entry of parseTarStream(stream)) {
+      entries.push(entry);
+    }
+
+    assert.equal(entries.length, 5);
+  });
+
   it("parses lodash-4.17.21.tgz", async () => {
     let stream = readFixture("lodash-4.17.21");
 
@@ -50,7 +61,7 @@ describe("TarParser", () => {
     assert.equal(entries.length, 134);
   });
 
-  it("parses plex-1.0.2.tgz", async () => {
+  it("parses @ibm/plex-1.0.2.tgz", async () => {
     let stream = readFixture("plex-1.0.2");
 
     let entries: TarEntry[] = [];
