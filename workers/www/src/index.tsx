@@ -98,7 +98,10 @@ async function handleRequest(request: Request, env: Env, ctx: ExecutionContext):
   if (url.searchParams.has("meta")) {
     let prefix = filename == null ? "/" : filename.replace(/\/*$/, "/");
 
-    if (version !== parsed.version || prefix !== parsed.filename) {
+    if (prefix !== parsed.filename) {
+      return redirect(`${url.origin}/${packageName}@${version}${prefix}${url.search}`, 301);
+    }
+    if (version !== parsed.version) {
       return redirect(`${url.origin}/${packageName}@${version}${prefix}${url.search}`);
     }
 
