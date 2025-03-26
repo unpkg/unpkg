@@ -1,9 +1,8 @@
 import { type VNode } from "preact";
+import { useContext } from "preact/hooks";
 import { type PackageInfo } from "unpkg-core";
 
 import { HrefsContext } from "../hrefs.ts";
-
-import { getContext } from "./app-context.ts";
 
 export function FilesNav({
   packageInfo,
@@ -14,7 +13,7 @@ export function FilesNav({
   version: string;
   filename: string;
 }): VNode {
-  let hrefs = getContext(HrefsContext);
+  let hrefs = useContext(HrefsContext);
 
   let breadcrumbs = [
     filename === "/" ? (

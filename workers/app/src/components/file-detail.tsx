@@ -1,4 +1,5 @@
 import { type VNode } from "preact";
+import { useContext } from "preact/hooks";
 import prettyBytes from "pretty-bytes";
 import { type PackageInfo, type PackageFile } from "unpkg-core";
 
@@ -6,7 +7,6 @@ import { highlightCode } from "../highlight.ts";
 import { HrefsContext } from "../hrefs.ts";
 import { getLanguageName } from "../language-names.ts";
 
-import { getContext } from "./app-context.ts";
 import { CodeViewer } from "./code-viewer.tsx";
 import { FilesHeader } from "./files-header.tsx";
 import { FilesLayout } from "./files-layout.tsx";
@@ -28,7 +28,7 @@ export function FileDetail({
   filename: string;
   file: PackageFile;
 }): VNode {
-  let hrefs = getContext(HrefsContext);
+  let hrefs = useContext(HrefsContext);
   let rawHref = hrefs.raw(packageInfo.name, version, filename);
 
   let lines: string[] | undefined;

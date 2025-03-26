@@ -1,4 +1,4 @@
-import type { PackageJson, ExportConditions } from "./unpkg-client.ts";
+import type { PackageJson, ExportConditions } from "./registry.ts";
 
 interface ResolvePackageExportOptions {
   conditions?: string[];

@@ -1,6 +1,6 @@
 import { valid, maxSatisfying } from "semver";
 
-import type { PackageInfo } from "./unpkg-client.ts";
+import type { PackageInfo } from "./registry.ts";
 
 export function resolvePackageVersion(packageInfo: PackageInfo, versionRangeOrTag: string): string | null {
   let tags = packageInfo["dist-tags"];

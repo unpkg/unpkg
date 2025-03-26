@@ -1,8 +1,8 @@
 import * as assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import type { PackageJson } from "./unpkg-client.ts";
 import { resolvePackageExport } from "./pkg-exports.ts";
+import type { PackageJson } from "./registry.ts";
 
 describe("resolvePackageExport", () => {
   describe("when package.module is a string", () => {

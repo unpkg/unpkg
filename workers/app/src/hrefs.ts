@@ -1,7 +1,6 @@
-import { createContext } from "./context.ts";
-import { type Env } from "./env.ts";
+import { createContext } from "preact";
 
-export const HrefsContext = createContext<HrefBuilder>();
+import { type Env } from "./env.ts";
 
 export class HrefBuilder {
   #env: Env;
@@ -22,3 +21,5 @@ export class HrefBuilder {
     return `${this.#env.WWW_ORIGIN}/${packageName}@${version}${filename}`;
   }
 }
+
+export const HrefsContext = createContext(new HrefBuilder({} as Env));

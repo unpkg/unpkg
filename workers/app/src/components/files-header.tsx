@@ -1,11 +1,11 @@
 import { type VNode } from "preact";
+import { useContext } from "preact/hooks";
 import { compare as compareVersions } from "semver";
 import { type PackageInfo } from "unpkg-core";
 
 import { parseGitHubRepo, createGitHubUrl } from "../github.ts";
 import { HrefsContext } from "../hrefs.ts";
 
-import { getContext } from "./app-context.ts";
 import { Hydrate } from "./hydrate.tsx";
 import { VersionSelector } from "./version-selector.tsx";
 import { GitHubIcon, LinkIcon } from "./icons.tsx";
@@ -19,7 +19,7 @@ export function FilesHeader({
   version: string;
   filename: string;
 }): VNode {
-  let hrefs = getContext(HrefsContext);
+  let hrefs = useContext(HrefsContext);
 
   let availableTags = packageInfo["dist-tags"]!;
   let availableVersions = Object.keys(packageInfo.versions!).sort((a, b) => compareVersions(b, a));

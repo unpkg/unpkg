@@ -1,6 +1,6 @@
-import { createContext } from "./context.ts";
+import { createContext } from "preact";
 
-export const AssetsContext = createContext<AssetsManifest>();
+export const AssetsContext = createContext(new Map() as AssetsManifest);
 
 /**
  * A map of entry points to their URLs.

@@ -1,7 +1,7 @@
 import { type VNode } from "preact";
+import { useContext } from "preact/hooks";
 
 import { AssetsContext } from "../assets.ts";
-import { type ContextProvider } from "../context.ts";
 import { type ImportMap } from "../import-map.ts";
 
 const importMap: ImportMap = {
@@ -14,16 +14,14 @@ const importMap: ImportMap = {
 
 export function Document({
   children,
-  context,
   description = "The CDN for everything on npm",
   title = "unpkg",
 }: {
   children: VNode;
-  context: ContextProvider;
   description?: string;
   title?: string;
 }): VNode {
-  let assets = context.get(AssetsContext);
+  let assets = useContext(AssetsContext);
 
   return (
     <html lang="en">

@@ -1,11 +1,11 @@
 import { type VNode, Fragment } from "preact";
+import { useContext } from "preact/hooks";
 import prettyBytes from "pretty-bytes";
 import { type PackageInfo, type PackageFileMetadata } from "unpkg-core";
 
 import { parseGitHubRepo, createGitHubUrl } from "../github.ts";
 import { HrefsContext } from "../hrefs.ts";
 
-import { getContext } from "./app-context.ts";
 import { FilesHeader } from "./files-header.tsx";
 import { FilesLayout } from "./files-layout.tsx";
 import { FilesNav } from "./files-nav.tsx";
@@ -56,7 +56,7 @@ function FileListingContent({
   dirname: string;
   files: PackageFileMetadata[];
 }): VNode {
-  let hrefs = getContext(HrefsContext);
+  let hrefs = useContext(HrefsContext);
 
   let parentHref: string | null = null;
   if (dirname !== "/") {
@@ -196,7 +196,7 @@ function FileListingContent({
 }
 
 function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo; version: string }): VNode {
-  let hrefs = getContext(HrefsContext);
+  let hrefs = useContext(HrefsContext);
 
   let latestVersion = packageInfo["dist-tags"]!.latest;
   let latestVersionDate = new Date(packageInfo.time[latestVersion]);

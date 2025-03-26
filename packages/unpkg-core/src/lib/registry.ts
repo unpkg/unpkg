@@ -64,18 +64,18 @@ export interface PackageFileListing {
 
 const publicNpmRegistry = "https://registry.npmjs.org";
 
-export interface UnpkgClientOptions {
+export interface RegistryClientOptions {
   executionContext?: ExecutionContext;
   mode?: string;
   npmRegistry?: string;
 }
 
-export class UnpkgClient {
+export class RegistryClient {
   #executionContext: ExecutionContext | null;
   #mode: string;
   #npmRegistry: string;
 
-  constructor(options?: UnpkgClientOptions) {
+  constructor(options?: RegistryClientOptions) {
     this.#executionContext = options?.executionContext ?? null;
     this.#mode = options?.mode ?? "production";
     this.#npmRegistry = options?.npmRegistry ?? publicNpmRegistry;

@@ -1,12 +1,11 @@
 import { type VNode, Fragment } from "preact";
+import { useContext } from "preact/hooks";
 
 import { HrefsContext } from "../hrefs.ts";
-
-import { getContext } from "./app-context.ts";
 import { GitHubIcon } from "./icons.tsx";
 
 export function FilesLayout({ children }: { children: VNode | VNode[] }): VNode {
-  let hrefs = getContext(HrefsContext);
+  let hrefs = useContext(HrefsContext);
 
   return (
     <Fragment>

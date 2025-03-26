@@ -1,13 +1,12 @@
 import { type VNode } from "preact";
 import { render } from "preact-render-to-string";
-import { UnpkgClient, parsePackagePathname, resolvePackageVersion } from "unpkg-core";
+import { parsePackagePathname, resolvePackageVersion, RegistryClient } from "unpkg-core";
 
 import { AssetsContext, loadAssetsManifest } from "./assets.ts";
 import { Document } from "./components/document.tsx";
 import { FileDetail } from "./components/file-detail.tsx";
 import { FileListing } from "./components/file-listing.tsx";
 import { NotFound } from "./components/not-found.tsx";
-import { ContextProvider } from "./context.ts";
 import { type Env } from "./env.ts";
 import { HrefsContext, HrefBuilder } from "./hrefs.ts";
 
@@ -35,10 +34,8 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-const publicNpmRegistry = "https://registry.npmjs.org";
-
 async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-  let unpkg = new UnpkgClient({ executionContext: ctx, mode: env.MODE, npmRegistry: publicNpmRegistry });
+  let unpkg = new RegistryClient({ executionContext: ctx, mode: env.MODE });
   let url = new URL(request.url);
 
   if (url.pathname === "/favicon.ico") {
@@ -122,18 +119,19 @@ function redirect(location: string | URL, status = 302): Response {
 }
 
 async function renderPage(node: VNode, env: Env, init?: ResponseInit): Promise<Response> {
-  let context = new ContextProvider([
-    [
-      AssetsContext,
-      await loadAssetsManifest({
-        origin: env.ASSETS_ORIGIN,
-        dev: env.MODE === "development",
-      }),
-    ],
-    [HrefsContext, new HrefBuilder(env)],
-  ]);
+  let assetsManifest = await loadAssetsManifest({
+    origin: env.ASSETS_ORIGIN,
+    dev: env.MODE === "development",
+  });
+  let hrefs = new HrefBuilder(env);
 
-  let html = render(<Document context={context}>{node}</Document>);
+  let html = render(
+    <AssetsContext.Provider value={assetsManifest}>
+      <HrefsContext.Provider value={hrefs}>
+        <Document>{node}</Document>
+      </HrefsContext.Provider>
+    </AssetsContext.Provider>,
+  );
 
   return new Response("<!DOCTYPE html>" + html, {
     ...init,

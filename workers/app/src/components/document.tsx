@@ -1,8 +1,7 @@
 import { type VNode } from "preact";
+import { useContext } from "preact/hooks";
 
-import { AppContext } from "./app-context.ts";
 import { AssetsContext } from "../assets.ts";
-import { type ContextProvider } from "../context.ts";
 import { type ImportMap } from "../import-map.ts";
 
 const importMap: ImportMap = {
@@ -15,44 +14,40 @@ const importMap: ImportMap = {
 
 export function Document({
   children,
-  context,
   description = "The CDN for everything on npm",
   title = "unpkg",
   subtitle,
 }: {
   children?: VNode | VNode[];
-  context: ContextProvider;
   description?: string;
   title?: string;
   subtitle?: string;
 }): VNode {
-  let assets = context.get(AssetsContext);
+  let assets = useContext(AssetsContext);
 
   return (
-    <AppContext.Provider value={context}>
-      <html lang="en">
-        <head>
-          <script async src="https://www.googletagmanager.com/gtag/js?id=UA-140352188-1"></script>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `window.dataLayer = window.dataLayer || [];
+    <html lang="en">
+      <head>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-140352188-1"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'UA-140352188-1');`,
-            }}
-          ></script>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <meta name="description" content={description} />
-          <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
-          <link rel="stylesheet" href={assets.get("src/styles.css")} />
-          <link rel="stylesheet" href={assets.get("src/code-light.css")} />
-          <script type="importmap" dangerouslySetInnerHTML={{ __html: JSON.stringify(importMap) }} />
-          <script type="module" src={assets.get("src/scripts.ts")} defer></script>
-          <title>{subtitle == null ? title : `unpkg • ${subtitle}`}</title>
-        </head>
-        <body>{children}</body>
-      </html>
-    </AppContext.Provider>
+          }}
+        ></script>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content={description} />
+        <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
+        <link rel="stylesheet" href={assets.get("src/styles.css")} />
+        <link rel="stylesheet" href={assets.get("src/code-light.css")} />
+        <script type="importmap" dangerouslySetInnerHTML={{ __html: JSON.stringify(importMap) }} />
+        <script type="module" src={assets.get("src/scripts.ts")} defer></script>
+        <title>{subtitle == null ? title : `unpkg • ${subtitle}`}</title>
+      </head>
+      <body>{children}</body>
+    </html>
   );
 }

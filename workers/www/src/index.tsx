@@ -1,17 +1,16 @@
 import { type VNode } from "preact";
 import { render } from "preact-render-to-string";
 import {
-  UnpkgClient,
   parsePackagePathname,
   resolvePackageExport,
   resolvePackageVersion,
   rewriteImports,
+  RegistryClient,
 } from "unpkg-core";
 
 import { AssetsContext, loadAssetsManifest } from "./assets.ts";
 import { Document } from "./components/document.tsx";
 import { Home } from "./components/home.tsx";
-import { ContextProvider } from "./context.ts";
 import { type Env } from "./env.ts";
 
 export default {
@@ -38,10 +37,8 @@ export default {
   },
 } satisfies ExportedHandler<Env>;
 
-const publicNpmRegistry = "https://registry.npmjs.org";
-
 async function handleRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-  let unpkg = new UnpkgClient({ executionContext: ctx, mode: env.MODE, npmRegistry: publicNpmRegistry });
+  let unpkg = new RegistryClient({ executionContext: ctx, mode: env.MODE });
   let url = new URL(request.url);
 
   if (url.pathname === "/favicon.ico") {
@@ -240,17 +237,16 @@ function redirect(location: string | URL, init?: ResponseInit | number): Respons
 }
 
 async function renderPage(node: VNode, env: Env, init?: ResponseInit): Promise<Response> {
-  let context = new ContextProvider([
-    [
-      AssetsContext,
-      await loadAssetsManifest({
-        origin: env.ASSETS_ORIGIN,
-        dev: env.MODE === "development",
-      }),
-    ],
-  ]);
+  let assetsManifest = await loadAssetsManifest({
+    origin: env.ASSETS_ORIGIN,
+    dev: env.MODE === "development",
+  });
 
-  let html = render(<Document context={context}>{node}</Document>);
+  let html = render(
+    <AssetsContext.Provider value={assetsManifest}>
+      <Document>{node}</Document>
+    </AssetsContext.Provider>,
+  );
 
   return new Response("<!DOCTYPE html>" + html, {
     ...init,
