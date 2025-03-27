@@ -186,7 +186,7 @@ describe("www worker", () => {
   describe("?meta requests", () => {
     it("redirects to a trailing / on the root package request", async () => {
       let response = await mf.dispatchFetch("https://unpkg.com/react@18.2.0?meta", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/react@18.2.0/?meta");
@@ -202,7 +202,7 @@ describe("www worker", () => {
 
     it("resolves both semver and trailing / in a single redirect", async () => {
       let response = await mf.dispatchFetch("https://unpkg.com/react@^18?meta", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.match(location, /^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/\?meta$/);

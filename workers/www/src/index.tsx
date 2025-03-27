@@ -6,7 +6,7 @@ import {
   resolvePackageVersion,
   rewriteImports,
   RegistryClient,
-} from "unpkg-core";
+} from "unpkg-worker";
 
 import { AssetsContext, loadAssetsManifest } from "./assets.ts";
 import { Document } from "./components/document.tsx";

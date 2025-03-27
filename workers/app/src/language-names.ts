@@ -1,4 +1,4 @@
-import type { PackageFile } from "unpkg-core";
+import type { PackageFile } from "unpkg-worker";
 
 const contentTypeLanguageNames: Record<string, string> = {
   "application/json": "JSON",

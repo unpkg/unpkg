@@ -1,6 +1,6 @@
 import { type VNode } from "preact";
 import { useContext } from "preact/hooks";
-import { type PackageInfo } from "unpkg-core";
+import { type PackageInfo } from "unpkg-worker";
 
 import { HrefsContext } from "../hrefs.ts";
 

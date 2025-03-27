@@ -1,5 +1,5 @@
 {
-  "name": "unpkg-app-worker",
+  "name": "unpkg-app",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -8,7 +8,7 @@
     "preact-render-to-string": "^6.5.12",
     "pretty-bytes": "^6.1.1",
     "semver": "^7.6.3",
-    "unpkg-core": "workspace:^"
+    "unpkg-worker": "workspace:^"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250320.0",

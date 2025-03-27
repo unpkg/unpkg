@@ -1,7 +1,7 @@
 import { type VNode } from "preact";
 import { useContext } from "preact/hooks";
 import prettyBytes from "pretty-bytes";
-import { type PackageInfo, type PackageFile } from "unpkg-core";
+import { type PackageInfo, type PackageFile } from "unpkg-worker";
 
 import { highlightCode } from "../highlight.ts";
 import { HrefsContext } from "../hrefs.ts";

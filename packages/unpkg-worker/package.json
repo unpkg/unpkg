@@ -1,5 +1,6 @@
 {
-  "name": "unpkg-core",
+  "name": "unpkg-worker",
+  "description": "Common utilities for unpkg workers",
   "private": true,
   "type": "module",
   "exports": {

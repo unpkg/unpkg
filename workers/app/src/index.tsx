@@ -1,6 +1,6 @@
 import { type VNode } from "preact";
 import { render } from "preact-render-to-string";
-import { parsePackagePathname, resolvePackageVersion, RegistryClient } from "unpkg-core";
+import { parsePackagePathname, resolvePackageVersion, RegistryClient } from "unpkg-worker";
 
 import { AssetsContext, loadAssetsManifest } from "./assets.ts";
 import { Document } from "./components/document.tsx";

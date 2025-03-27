@@ -27,7 +27,7 @@ importers:
         specifier: ^5.7.2
         version: 5.7.2
 
-  packages/unpkg-core:
+  packages/unpkg-worker:
     dependencies:
       es-module-lexer:
         specifier: ^1.6.0
@@ -63,9 +63,9 @@ importers:
       semver:
         specifier: ^7.6.3
         version: 7.6.3
-      unpkg-core:
+      unpkg-worker:
         specifier: workspace:^
-        version: link:../../packages/unpkg-core
+        version: link:../../packages/unpkg-worker
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250320.0
@@ -103,9 +103,9 @@ importers:
       preact-render-to-string:
         specifier: ^6.5.12
         version: 6.5.12(preact@10.25.2)
-      unpkg-core:
+      unpkg-worker:
         specifier: workspace:^
-        version: link:../../packages/unpkg-core
+        version: link:../../packages/unpkg-worker
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250320.0

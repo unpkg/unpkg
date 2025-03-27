@@ -1,7 +1,7 @@
 import { type VNode } from "preact";
 import { useContext } from "preact/hooks";
 import { compare as compareVersions } from "semver";
-import { type PackageInfo } from "unpkg-core";
+import { type PackageInfo } from "unpkg-worker";
 
 import { parseGitHubRepo, createGitHubUrl } from "../github.ts";
 import { HrefsContext } from "../hrefs.ts";
