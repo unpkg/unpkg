@@ -2,9 +2,9 @@ import chalk from "chalk";
 import * as esbuild from "esbuild";
 import { STATUS_CODES } from "node:http";
 
-import { loadProjectConfig } from "./utils/project-config.ts";
+import { loadAssetsConfig } from "./utils/assets-config.ts";
 
-let config = await loadProjectConfig();
+let config = await loadAssetsConfig();
 let buildOptions = config.getBuildOptions({ dev: true });
 
 let ctx = await esbuild.context(buildOptions);
@@ -20,7 +20,7 @@ let { host, port } = await ctx.serve({
     let statusText = STATUS_CODES[status];
 
     console.log(
-      `${chalk.gray(`[${new Date().toLocaleTimeString("en-US")}]`)} ${method} ${path} ${statusColor(status)} ${statusTextColor(statusText)} ${chalk.gray(`(${ms}ms)`)}`
+      `${chalk.gray(`[${new Date().toLocaleTimeString("en-US")}]`)} ${method} ${path} ${statusColor(status)} ${statusTextColor(statusText)} ${chalk.gray(`(${ms}ms)`)}`,
     );
   },
   ...config.getServeOptions(),

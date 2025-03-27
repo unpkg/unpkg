@@ -3,9 +3,9 @@ import * as esbuild from "esbuild";
 import * as fsp from "node:fs/promises";
 import prettyBytes from "pretty-bytes";
 
-import { loadProjectConfig } from "./utils/project-config.ts";
+import { loadAssetsConfig } from "./utils/assets-config.ts";
 
-let config = await loadProjectConfig();
+let config = await loadAssetsConfig();
 let buildOptions = config.getBuildOptions();
 
 // Clear out any previous builds
@@ -25,9 +25,7 @@ for (let file in metafile.outputs) {
   let { bytes, entryPoint } = metafile.outputs[file];
 
   if (entryPoint) {
-    console.log(
-      `${entryPoint} => ${file} ${chalk.gray(`(${prettyBytes(bytes)})`)}`
-    );
+    console.log(`${entryPoint} => ${file} ${chalk.gray(`(${prettyBytes(bytes)})`)}`);
 
     manifest[entryPoint] = file.replace(/^public\//, "/");
   }

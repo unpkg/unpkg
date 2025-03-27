@@ -1,16 +1,14 @@
 import * as esbuild from "esbuild";
 import * as path from "node:path";
 
-export interface ProjectConfig {
+export interface AssetsConfig {
   projectDir: string;
   getBuildOptions(options?: { dev?: boolean }): esbuild.BuildOptions;
   getServeOptions(): esbuild.ServeOptions;
 }
 
-export async function loadProjectConfig(
-  projectDir = process.cwd()
-): Promise<ProjectConfig> {
-  let configFile = path.resolve(projectDir, "config.ts");
+export async function loadAssetsConfig(projectDir = process.cwd()): Promise<AssetsConfig> {
+  let configFile = path.resolve(projectDir, "assets-config.ts");
 
   try {
     let config = await import(configFile);
