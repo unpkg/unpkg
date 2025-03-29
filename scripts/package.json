@@ -1,0 +1,12 @@
+{
+  "name": "unpkg-scripts",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@types/node": "^22.10.2",
+    "chalk": "^5.4.1",
+    "esbuild": "^0.24.2",
+    "pretty-bytes": "^6.1.1",
+    "typescript": "^5.7.2"
+  }
+}

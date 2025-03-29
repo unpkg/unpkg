@@ -1,7 +1,5 @@
 packages:
   - packages/*
-  - workers/*
+  - scripts
 onlyBuiltDependencies:
   - esbuild
-  - sharp
-  - workerd

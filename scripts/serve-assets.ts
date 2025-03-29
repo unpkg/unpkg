@@ -1,6 +1,7 @@
+import { STATUS_CODES } from "node:http";
+
 import chalk from "chalk";
 import * as esbuild from "esbuild";
-import { STATUS_CODES } from "node:http";
 
 import { loadAssetsConfig } from "./utils/assets-config.ts";
 
@@ -27,3 +28,4 @@ let { host, port } = await ctx.serve({
 });
 
 console.log(`Assets server listening on http://${host}:${port} ...`);
+console.log();

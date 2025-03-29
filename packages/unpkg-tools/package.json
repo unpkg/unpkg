@@ -1,0 +1,28 @@
+{
+  "name": "unpkg-tools",
+  "description": "Common functions and interfaces for UNPKG",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "types": "./dist/unpkg-tools.d.ts",
+    "default": "./dist/unpkg-tools.js"
+  },
+  "dependencies": {
+    "es-module-lexer": "^1.6.0",
+    "gunzip-maybe": "^1.4.2",
+    "mrmime": "^2.0.0",
+    "semver": "^7.6.3",
+    "tar-stream": "^3.1.7"
+  },
+  "devDependencies": {
+    "@types/gunzip-maybe": "^1.4.2",
+    "@types/semver": "^7.5.8",
+    "@types/tar-stream": "^3.1.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.2"
+  },
+  "scripts": {
+    "build": "tsc --project ./tsconfig.build.json",
+    "test": "tsx --test ./src/**/*.test.ts"
+  }
+}

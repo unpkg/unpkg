@@ -1,6 +1,7 @@
+import * as fsp from "node:fs/promises";
+
 import chalk from "chalk";
 import * as esbuild from "esbuild";
-import * as fsp from "node:fs/promises";
 import prettyBytes from "pretty-bytes";
 
 import { loadAssetsConfig } from "./utils/assets-config.ts";

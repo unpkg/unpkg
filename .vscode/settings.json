@@ -1,12 +1,8 @@
 {
-	"nodejs-testing.extensions": [
-		{
-			"extensions": ["ts"],
-			"parameters": [
-				"--experimental-strip-types",
-				"--disable-warning=ExperimentalWarning"
-			]
-		}
-	],
-	"typescript.tsdk": "node_modules/typescript/lib"
+  "nodejs-testing.extensions": [
+    {
+      "extensions": ["ts", "tsx"],
+      "parameters": ["--import", "tsx"]
+    }
+  ]
 }
