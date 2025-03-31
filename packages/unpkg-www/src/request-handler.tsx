@@ -69,7 +69,9 @@ async function handleRequest_(request: Request): Promise<Response> {
   }
   if (url.pathname === "/") {
     return renderPage(<Home />, {
-      headers: { "Cache-Control": "no-store" },
+      headers: {
+        "Cache-Control": env.DEV ? "no-store" : "public, max-age=600",
+      },
     });
   }
 
@@ -256,7 +258,7 @@ async function renderPage(node: VNode, init?: ResponseInit): Promise<Response> {
   let html = render(
     <AssetsContext.Provider value={assetsManifest}>
       <Document>{node}</Document>
-    </AssetsContext.Provider>,
+    </AssetsContext.Provider>
   );
 
   return new Response("<!DOCTYPE html>" + html, {
