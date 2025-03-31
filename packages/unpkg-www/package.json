@@ -1,6 +1,6 @@
 {
   "name": "unpkg-www",
-  "description": "The UNPKG web app",
+  "description": "The UNPKG home page and file server",
   "private": true,
   "type": "module",
   "dependencies": {

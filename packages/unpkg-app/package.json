@@ -1,5 +1,6 @@
 {
   "name": "unpkg-app",
+  "description": "The UNPKG web app",
   "private": true,
   "type": "module",
   "dependencies": {

@@ -1,6 +1,6 @@
 {
   "name": "unpkg-tools",
-  "description": "Common functions and interfaces for UNPKG",
+  "description": "Common functions and tools for UNPKG",
   "private": true,
   "type": "module",
   "exports": {
