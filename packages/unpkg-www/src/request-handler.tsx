@@ -61,6 +61,9 @@ async function handleRequest_(request: Request): Promise<Response> {
 
   let url = new URL(request.url);
 
+  if (url.pathname === "/_health") {
+    return new Response("OK");
+  }
   if (url.pathname === "/favicon.ico") {
     return notFound();
   }

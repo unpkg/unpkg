@@ -54,6 +54,9 @@ async function handleRequest_(request: Request): Promise<Response> {
 
   let url = new URL(request.url);
 
+  if (url.pathname === "/_health") {
+    return new Response("OK");
+  }
   if (url.pathname === "/favicon.ico") {
     return notFound();
   }
@@ -109,7 +112,7 @@ async function handleRequest_(request: Request): Promise<Response> {
         <FileDetail packageInfo={packageInfo} version={version} filename={remainingFilename} file={file!} />,
         {
           headers: { "Cache-Control": "public, max-age=180" },
-        },
+        }
       );
     }
 
@@ -120,7 +123,7 @@ async function handleRequest_(request: Request): Promise<Response> {
       <FileListing packageInfo={packageInfo} version={version} dirname={dirname} files={matchingFiles} />,
       {
         headers: { "Cache-Control": "public, max-age=180" },
-      },
+      }
     );
   }
 
@@ -146,7 +149,7 @@ async function renderPage(node: VNode, init?: ResponseInit): Promise<Response> {
   let html = render(
     <AssetsContext.Provider value={assetsManifest}>
       <Document>{node}</Document>
-    </AssetsContext.Provider>,
+    </AssetsContext.Provider>
   );
 
   return new Response("<!DOCTYPE html>" + html, {
