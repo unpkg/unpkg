@@ -10,7 +10,7 @@ function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Re
   return handleRequest(request);
 }
 
-describe("app worker", () => {
+describe("app request handler", () => {
   let globalFetch: typeof fetch | undefined;
 
   function infoResponse(infoPath: string): Response {
@@ -42,7 +42,7 @@ describe("app worker", () => {
 
   it("redirects / to unpkg.com", async () => {
     let response = await dispatchFetch("https://app.unpkg.com/", { redirect: "manual" });
-    assert.equal(response.status, 302);
+    assert.equal(response.status, 301);
     let location = response.headers.get("Location");
     assert.ok(location);
     assert.equal(location, "https://unpkg.com");
@@ -58,13 +58,21 @@ describe("app worker", () => {
 
   it('redirects "/package/files" to "/package@version"', async () => {
     let response = await dispatchFetch("https://app.unpkg.com/react/files", { redirect: "manual" });
-    assert.equal(response.status, 302);
+    assert.equal(response.status, 301);
     let location = response.headers.get("Location");
     assert.ok(location);
     assert.match(location, /^https:\/\/app\.unpkg\.com\/react@\d+\.\d+\.\d+$/);
   });
 
-  it("resolves semver ranges", async () => {
+  it("resolves semver range on package root", async () => {
+    let response = await dispatchFetch("https://app.unpkg.com/react@18", { redirect: "manual" });
+    assert.equal(response.status, 302);
+    let location = response.headers.get("Location");
+    assert.ok(location);
+    assert.match(location, /^https:\/\/app\.unpkg\.com\/react@18\.\d+\.\d+$/);
+  });
+
+  it("resolves semver range on specific filename", async () => {
     let response = await dispatchFetch("https://app.unpkg.com/react@18/files/index.js", { redirect: "manual" });
     assert.equal(response.status, 302);
     let location = response.headers.get("Location");

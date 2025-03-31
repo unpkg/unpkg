@@ -12,7 +12,7 @@ function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Re
   return handleRequest(request);
 }
 
-describe("www worker", () => {
+describe("www request handler", () => {
   let globalFetch: typeof fetch | undefined;
 
   function infoResponse(infoPath: string): Response {
@@ -214,7 +214,7 @@ describe("www worker", () => {
 
     it("resolves to a matching .js file when the extension is missing", async () => {
       let response = await dispatchFetch("https://unpkg.com/preact@10.26.4/src/component", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/preact@10.26.4/src/component.js");
@@ -222,7 +222,7 @@ describe("www worker", () => {
 
     it("resolves to an index.js file when a directory is requested", async () => {
       let response = await dispatchFetch("https://unpkg.com/preact@10.26.4/src", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/preact@10.26.4/src/index.js");
@@ -278,7 +278,7 @@ describe("www worker", () => {
   describe("/browse/* requests", () => {
     it("redirects to the package root", async () => {
       let response = await dispatchFetch("https://unpkg.com/browse/react@18.2.0/", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://app.unpkg.com/react@18.2.0");
@@ -286,7 +286,7 @@ describe("www worker", () => {
 
     it("redirects to a specific file in the package root", async () => {
       let response = await dispatchFetch("https://unpkg.com/browse/react@18.2.0/package.json", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://app.unpkg.com/react@18.2.0/files/package.json");
@@ -294,7 +294,7 @@ describe("www worker", () => {
 
     it("redirects to a subdirectory", async () => {
       let response = await dispatchFetch("https://unpkg.com/browse/react@18.2.0/cjs/", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://app.unpkg.com/react@18.2.0/files/cjs");
@@ -304,7 +304,7 @@ describe("www worker", () => {
       let response = await dispatchFetch("https://unpkg.com/browse/react@18.2.0/cjs/react.development.js", {
         redirect: "manual",
       });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://app.unpkg.com/react@18.2.0/files/cjs/react.development.js");
@@ -314,7 +314,7 @@ describe("www worker", () => {
   describe("/pkg/ index requests", () => {
     it("redirects the package root", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://app.unpkg.com/react@18.2.0");
@@ -322,7 +322,7 @@ describe("www worker", () => {
 
     it("redirects a subdirectory", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/cjs/", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://app.unpkg.com/react@18.2.0/files/cjs");

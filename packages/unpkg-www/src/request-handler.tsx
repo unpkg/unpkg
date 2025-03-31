@@ -73,7 +73,7 @@ async function handleRequest_(request: Request): Promise<Response> {
   if (url.pathname === "/") {
     return renderPage(<Home />, {
       headers: {
-        "Cache-Control": env.DEV ? "no-store" : "public, max-age=600",
+        "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
       },
     });
   }
@@ -82,7 +82,7 @@ async function handleRequest_(request: Request): Promise<Response> {
   if (url.pathname.startsWith("/browse/")) {
     let parsed = parsePackagePathname(url.pathname.slice(7));
     if (parsed) {
-      return redirect(hrefs.files(parsed.package, parsed.version, parsed.filename) /*, 301 */);
+      return redirect(hrefs.files(parsed.package, parsed.version, parsed.filename), 301);
     }
   }
 
@@ -110,7 +110,11 @@ async function handleRequest_(request: Request): Promise<Response> {
     let prefix = filename == null ? "/" : filename.replace(/\/*$/, "/");
 
     if (version !== parsed.version) {
-      return redirect(`${url.origin}/${packageName}@${version}${prefix}${url.search}`);
+      return redirect(`${url.origin}/${packageName}@${version}${prefix}${url.search}`, {
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=300",
+        },
+      });
     }
 
     let files = await listFiles(publicNpmRegistry, packageName, version, prefix);
@@ -133,7 +137,7 @@ async function handleRequest_(request: Request): Promise<Response> {
 
   // Support "append a /" behavior for viewing file listings that are handled the app worker
   if (filename != null && filename.endsWith("/")) {
-    return redirect(hrefs.files(packageName, version, filename));
+    return redirect(hrefs.files(packageName, version, filename), 301);
   }
 
   let conditions = url.searchParams.has("conditions")
@@ -152,6 +156,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     return redirect(`${url.origin}/${packageName}@${version}${resolvedFilename}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=60, s-maxage=300",
         "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
@@ -163,6 +168,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     return redirect(`${url.origin}/${packageName}@${version}${filename ?? ""}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=60, s-maxage=300",
         "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
@@ -221,6 +227,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     files.find((file) => file.path === `${basename}.js`) || files.find((file) => file.path === `${basename}/index.js`);
   if (match != null) {
     return redirect(`${url.origin}/${packageName}@${version}${match.path}${url.search}`, {
+      status: 301,
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Cross-Origin-Resource-Policy": "cross-origin",

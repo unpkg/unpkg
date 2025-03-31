@@ -61,7 +61,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     return notFound();
   }
   if (url.pathname === "/" || url.pathname === "/index.html") {
-    return redirect(env.WWW_ORIGIN);
+    return redirect(env.WWW_ORIGIN, 301);
   }
 
   let parsed = parsePackagePathname(url.pathname);
@@ -86,10 +86,14 @@ async function handleRequest_(request: Request): Promise<Response> {
     return redirect(`${url.origin}/${packageName}@${version}${noTrailingSlash}`, 301);
   }
   if (parsed.filename === "/files") {
-    return redirect(`${url.origin}/${packageName}@${version}`);
+    return redirect(`${url.origin}/${packageName}@${version}`, 301);
   }
   if (version !== parsed.version) {
-    return redirect(`${url.origin}/${packageName}@${version}${parsed.filename ?? ""}`);
+    return redirect(`${url.origin}/${packageName}@${version}${parsed.filename ?? ""}`, {
+      headers: {
+        "Cache-Control": "public, max-age=60, s-maxage=300",
+      },
+    });
   }
 
   let files = await listFiles(publicNpmRegistry, packageName, version, "/");
@@ -142,10 +146,23 @@ function notFound(message?: string, init?: ResponseInit): Response {
   return new Response(message ?? "Not Found", { status: 404, ...init });
 }
 
-function redirect(location: string | URL, status = 302): Response {
+function redirect(location: string | URL, init?: ResponseInit | number): Response {
+  if (typeof init === "number") {
+    return new Response(`Redirecting to ${location}`, {
+      status: init,
+      headers: {
+        Location: location.toString(),
+      },
+    });
+  }
+
   return new Response(`Redirecting to ${location}`, {
-    status,
-    headers: { Location: location.toString() },
+    status: 302,
+    ...init,
+    headers: {
+      Location: location.toString(),
+      ...init?.headers,
+    },
   });
 }
 
