@@ -23,6 +23,7 @@ RUN npm install -g pnpm@10.7.0
 
 # Copy workspace configuration files
 COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/unpkg-app/package.json ./packages/unpkg-app/
 COPY packages/unpkg-tools/package.json ./packages/unpkg-tools/
 COPY packages/unpkg-www/package.json ./packages/unpkg-www/
 
@@ -35,7 +36,7 @@ COPY . .
 # Build all packages
 RUN pnpm run build
 
-# Prune development dependencies
+# Create production deploy
 RUN pnpm --filter unpkg-www deploy --prod dist-www
 
 
