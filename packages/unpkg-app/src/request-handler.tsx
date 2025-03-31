@@ -97,7 +97,9 @@ async function handleRequest_(request: Request): Promise<Response> {
 
   if (filename === "/") {
     return renderPage(<FileListing packageInfo={packageInfo} version={version} dirname="/" files={files} />, {
-      headers: { "Cache-Control": "public, max-age=180" },
+      headers: {
+        "Cache-Control": "public, max-age=60, s-maxage=300",
+      },
     });
   }
 
@@ -111,7 +113,9 @@ async function handleRequest_(request: Request): Promise<Response> {
       return renderPage(
         <FileDetail packageInfo={packageInfo} version={version} filename={remainingFilename} file={file!} />,
         {
-          headers: { "Cache-Control": "public, max-age=180" },
+          headers: {
+            "Cache-Control": "public, max-age=60, s-maxage=300",
+          },
         }
       );
     }
@@ -122,7 +126,9 @@ async function handleRequest_(request: Request): Promise<Response> {
     return renderPage(
       <FileListing packageInfo={packageInfo} version={version} dirname={dirname} files={matchingFiles} />,
       {
-        headers: { "Cache-Control": "public, max-age=180" },
+        headers: {
+          "Cache-Control": "public, max-age=60, s-maxage=300",
+        },
       }
     );
   }
