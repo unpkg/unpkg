@@ -1,6 +1,8 @@
 import * as esbuild from "esbuild";
 import * as path from "node:path";
 
+import { pathToFileURL } from "node:url";
+
 export interface AssetsConfig {
   projectDir: string;
   getBuildOptions(options?: { dev?: boolean }): esbuild.BuildOptions;
@@ -9,9 +11,10 @@ export interface AssetsConfig {
 
 export async function loadAssetsConfig(projectDir = process.cwd()): Promise<AssetsConfig> {
   let configFile = path.resolve(projectDir, "assets-config.ts");
+  let configFileUrl = pathToFileURL(configFile).href;
 
   try {
-    let config = await import(configFile);
+    let config = await import(configFileUrl);
     return { projectDir, ...config };
   } catch (error) {
     if (isNoEntityError(error)) {
