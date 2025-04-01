@@ -22,5 +22,5 @@
       }
     ]
   },
-  "vm": [{ "size": "performance-1x" }]
+  "vm": [{ "size": "shared-cpu-8x" }]
 }
