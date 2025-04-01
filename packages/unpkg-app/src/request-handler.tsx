@@ -83,13 +83,13 @@ async function handleRequest_(request: Request): Promise<Response> {
 
   if (parsed.filename != null && parsed.filename.endsWith("/")) {
     let noTrailingSlash = parsed.filename.replace(/\/+$/, "");
-    return redirect(`${url.origin}/${packageName}@${version}${noTrailingSlash}`, 301);
+    return redirect(new URL(`/${packageName}@${version}${noTrailingSlash}`, env.APP_ORIGIN), 301);
   }
   if (parsed.filename === "/files") {
-    return redirect(`${url.origin}/${packageName}@${version}`, 301);
+    return redirect(new URL(`/${packageName}@${version}`, env.APP_ORIGIN), 301);
   }
   if (version !== parsed.version) {
-    return redirect(`${url.origin}/${packageName}@${version}${parsed.filename ?? ""}`, {
+    return redirect(new URL(`/${packageName}@${version}${parsed.filename ?? ""}`, env.APP_ORIGIN), {
       headers: {
         "Cache-Control": "public, max-age=60, s-maxage=300",
       },

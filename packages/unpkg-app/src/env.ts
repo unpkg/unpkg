@@ -1,4 +1,5 @@
 export interface Env {
+  APP_ORIGIN: string;
   ASSETS_ORIGIN: string;
   DEV: boolean;
   HOST: string;
@@ -8,6 +9,7 @@ export interface Env {
 
 const envs: Record<string, Env> = {
   development: {
+    APP_ORIGIN: "http://localhost:3001",
     ASSETS_ORIGIN: "http://localhost:8001",
     DEV: true,
     HOST: "localhost:3001",
@@ -15,6 +17,7 @@ const envs: Record<string, Env> = {
     WWW_ORIGIN: "http://localhost:3000",
   },
   production: {
+    APP_ORIGIN: "https://app.unpkg.com",
     ASSETS_ORIGIN: "",
     DEV: false,
     HOST: "app.unpkg.com",
@@ -22,6 +25,7 @@ const envs: Record<string, Env> = {
     WWW_ORIGIN: "https://unpkg.com",
   },
   staging: {
+    APP_ORIGIN: "https://app.unpkg.dev",
     ASSETS_ORIGIN: "",
     DEV: false,
     HOST: "app.unpkg.dev",

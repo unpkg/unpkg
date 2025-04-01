@@ -80,6 +80,14 @@ describe("app request handler", () => {
     assert.match(location, /^https:\/\/app\.unpkg\.com\/react@18\.\d+\.\d+\/files\/index\.js$/);
   });
 
+  it("resolves http: protocol to https:", async () => {
+    let response = await dispatchFetch("http://app.unpkg.com/react@18/files/index.js", { redirect: "manual" });
+    assert.equal(response.status, 302);
+    let location = response.headers.get("Location");
+    assert.ok(location);
+    assert.match(location, /^https:\/\/app\.unpkg\.com\/react@18\.\d+\.\d+\/files\/index\.js$/);
+  });
+
   it("resolves npm tags", async () => {
     let response = await dispatchFetch("https://app.unpkg.com/react@latest/files/index.js", { redirect: "manual" });
     assert.equal(response.status, 302);
