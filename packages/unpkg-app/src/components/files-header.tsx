@@ -26,10 +26,14 @@ export function FilesHeader({
   let websiteUrl: URL | null = null;
   let websiteText: string | null = null;
   if (packageJson.homepage != null) {
-    websiteUrl = new URL(packageJson.homepage);
-    websiteText = websiteUrl.hostname;
-    if (websiteUrl.pathname !== "/") {
-      websiteText += websiteUrl.pathname;
+    try {
+      websiteUrl = new URL(packageJson.homepage);
+      websiteText = websiteUrl.hostname;
+      if (websiteUrl.pathname !== "/") {
+        websiteText += websiteUrl.pathname;
+      }
+    } catch (error) {
+      // Ignore invalid URLs in package.json "homepage" field
     }
   }
 
