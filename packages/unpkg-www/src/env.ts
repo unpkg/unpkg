@@ -2,37 +2,39 @@ export interface Env {
   APP_ORIGIN: string;
   ASSETS_ORIGIN: string;
   DEV: boolean;
-  HOST: string;
-  NAME: "development" | "production" | "staging" | "test";
+  MODE: "development" | "production" | "staging" | "test";
 }
 
-const envs: Record<string, Env> = {
+const envs: Record<Env["MODE"], Env> = {
   development: {
     APP_ORIGIN: "http://localhost:3001",
     ASSETS_ORIGIN: "http://localhost:8000",
     DEV: true,
-    HOST: "localhost:3000",
-    NAME: "development",
+    MODE: "development",
   },
   production: {
     APP_ORIGIN: "https://app.unpkg.com",
     ASSETS_ORIGIN: "",
     DEV: false,
-    HOST: "unpkg.com",
-    NAME: "production",
+    MODE: "production",
   },
   staging: {
     APP_ORIGIN: "https://app.unpkg.dev",
     ASSETS_ORIGIN: "",
     DEV: false,
-    HOST: "unpkg.dev",
-    NAME: "staging",
+    MODE: "staging",
+  },
+  test: {
+    APP_ORIGIN: "https://app.unpkg.com",
+    ASSETS_ORIGIN: "",
+    DEV: false,
+    MODE: "test",
   },
 };
 
-const envName = process.env.NODE_ENV ?? "production";
-if (!(envName in envs)) {
-  throw new Error(`Invalid NODE_ENV: ${envName}`);
+let mode = (process.env.NODE_ENV ?? "development") as Env["MODE"];
+if (!(mode in envs)) {
+  throw new Error(`Invalid NODE_ENV: ${mode}`);
 }
 
-export const env = envs[envName];
+export const env = envs[mode];

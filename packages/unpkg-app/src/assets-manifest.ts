@@ -13,8 +13,9 @@ export type AssetsManifest = Map<string, string>;
 
 export async function loadAssetsManifest(): Promise<AssetsManifest> {
   let mod: Record<string, string>;
-  switch (env.NAME) {
+  switch (env.MODE) {
     case "development":
+    case "test":
       mod = await loadJson(path.join(rootDir, "assets-manifest.dev.json"));
       break;
     case "production":
@@ -25,8 +26,6 @@ export async function loadAssetsManifest(): Promise<AssetsManifest> {
         throw new Error("Failed to load assets-manifest.json. Did you run `pnpm run build:assets`?");
       }
       break;
-    case "test":
-      return new Map();
   }
 
   let manifest: AssetsManifest = new Map();

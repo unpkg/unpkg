@@ -30,7 +30,7 @@
     "dev": "NODE_ENV=development PORT=3001 tsx ./src/server.ts",
     "dev:assets": "tsx ../../scripts/serve-assets.ts",
     "start": "node ./dist/server.js",
-    "test": "tsx --test ./src/**/*.test.ts",
+    "test": "tsx --import ./test/setup.ts --test ./src/**/*.test.ts",
     "deploy": "cd ../.. && fly deploy . -c ./packages/unpkg-app/fly.json",
     "deploy:staging": "cd ../.. && fly deploy . -c ./packages/unpkg-app/fly.staging.json"
   },

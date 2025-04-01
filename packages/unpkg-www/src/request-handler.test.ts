@@ -12,7 +12,7 @@ function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Re
   return handleRequest(request);
 }
 
-describe("www request handler", () => {
+describe("handleRequest", () => {
   let globalFetch: typeof fetch | undefined;
 
   function infoResponse(infoPath: string): Response {

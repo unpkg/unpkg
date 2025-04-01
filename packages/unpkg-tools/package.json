@@ -23,6 +23,6 @@
   },
   "scripts": {
     "build": "tsc --project ./tsconfig.build.json",
-    "test": "tsx --test ./src/**/*.test.ts"
+    "test": "tsx --import ./test/setup.ts --test ./src/**/*.test.ts"
   }
 }

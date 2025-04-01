@@ -27,7 +27,7 @@
     "dev": "NODE_ENV=development tsx ./src/server.ts",
     "dev:assets": "tsx ../../scripts/serve-assets.ts",
     "start": "node ./dist/server.js",
-    "test": "tsx --test ./src/**/*.test.ts",
+    "test": "tsx --import ./test/setup.ts --test ./src/**/*.test.ts",
     "deploy": "cd ../.. && fly deploy . -c ./packages/unpkg-www/fly.json",
     "deploy:staging": "cd ../.. && fly deploy . -c ./packages/unpkg-www/fly.staging.json"
   },

@@ -7,6 +7,7 @@
   },
   "scripts": {
     "build": "pnpm -r run build",
-    "clean": "git clean -fdX ."
+    "clean": "git clean -fdX .",
+    "test": "pnpm -r test"
   }
 }
