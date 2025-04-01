@@ -29,6 +29,7 @@
     "start": "node ./dist/server.js",
     "test": "tsx --import ./test/setup.ts --test ./src/**/*.test.ts",
     "deploy": "cd ../.. && fly deploy . -c ./packages/unpkg-www/fly.json",
+    "deploy:worker": "cd ../.. && fly deploy . -c ./packages/unpkg-www/fly.worker.json -a unpkg-www-worker",
     "deploy:staging": "cd ../.. && fly deploy . -c ./packages/unpkg-www/fly.staging.json"
   },
   "files": [

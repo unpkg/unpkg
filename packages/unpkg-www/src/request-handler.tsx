@@ -206,6 +206,15 @@ async function handleRequest_(request: Request): Promise<Response> {
   }
 
   if (filename != null) {
+    // this is a CPU heavy operation, we want it running on unpkg-www-worker
+    // if production and running on a differnet app, fly-replay to unpkg-www-worker
+    if(process.env.FLY_APP_NAME && process.env.FLY_APP_NAME !== "unpkg-www-worker") {
+      return new Response("replay to worker", {
+        headers: {
+          "Fly-Replay": "app=unpkg-www-worker"
+        },
+      });
+    }
     let file = await getFile(publicNpmRegistry, packageName, version, filename);
 
     if (file != null) {
