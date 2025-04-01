@@ -2,7 +2,10 @@
   "app": "unpkg-www",
   "primary_region": "lax",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "args": {
+      "NODE_ENV": "production"
+    }
   },
   "http_service": {
     "internal_port": 3000,
@@ -19,5 +22,5 @@
       }
     ]
   },
-  "vm": [{ "size": "performance-4x" }]
+  "vm": [{ "size": "performance-8x" }]
 }
