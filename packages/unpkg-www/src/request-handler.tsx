@@ -45,10 +45,12 @@ export async function handleRequest(request: Request): Promise<Response> {
 }
 
 async function handleRequest_(request: Request): Promise<Response> {
+  // Validate the request method
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response(`Invalid request method: ${request.method}`, { status: 405 });
   }
 
+  // Serve static assets from the public directory
   let assetFile = await findPublicAsset(request);
   if (assetFile != null) {
     return new Response(assetFile, {
@@ -78,7 +80,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     });
   }
 
-  // Redirect legacy /browse/* URLs to the app worker's /files view
+  // Redirect legacy /browse/* URLs to the app's /files view
   if (url.pathname.startsWith("/browse/")) {
     let parsed = parsePackagePathname(url.pathname.slice(7));
     if (parsed) {
@@ -86,6 +88,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     }
   }
 
+  // Parse and validate the package path
   let parsed = parsePackagePathname(url.pathname);
   if (parsed == null) {
     return notFound(`Invalid URL pathname: ${url.pathname}`);
@@ -109,8 +112,9 @@ async function handleRequest_(request: Request): Promise<Response> {
   if (url.searchParams.has("meta")) {
     let prefix = filename == null ? "/" : filename.replace(/\/*$/, "/");
 
+    // If the version number is not already resolved, redirect to a permanent URL
     if (version !== parsed.version) {
-      return redirect(`${url.origin}/${packageName}@${version}${prefix}${url.search}`, {
+      return redirect(new URL(`/${packageName}@${version}${prefix}${url.search}`, env.WWW_ORIGIN), {
         headers: {
           "Cache-Control": "public, max-age=60, s-maxage=300",
         },
@@ -125,21 +129,33 @@ async function handleRequest_(request: Request): Promise<Response> {
       files,
     };
 
-    return new Response(JSON.stringify(fileListing), {
+    return Response.json(fileListing, {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=31536000",
+        "Cache-Tag": "meta", // This allows us to purge the cache if ?meta behavior ever changes
         "Content-Type": "application/json",
         "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
   }
 
-  // Support "append a /" behavior for viewing file listings that are handled the app worker
+  // Support "append a /" behavior for viewing file listings in the app
   if (filename != null && filename.endsWith("/")) {
-    return redirect(hrefs.files(packageName, version, filename), 301);
+    // If the version number is already resolved, we can issue a permanent redirect (301)
+    if (version === parsed.version) {
+      return redirect(hrefs.files(packageName, version, filename), 301);
+    }
+
+    // Otherwise it should be temporary (302)
+    return redirect(hrefs.files(packageName, version, filename), {
+      headers: {
+        "Cache-Control": "public, max-age=60, s-maxage=300",
+      },
+    });
   }
 
+  // Try to resolve the filename using package.json exports, main, etc.
   let conditions = url.searchParams.has("conditions")
     ? url.searchParams.getAll("conditions").flatMap((condition) => condition.split(","))
     : undefined;
@@ -152,8 +168,23 @@ async function handleRequest_(request: Request): Promise<Response> {
     conditions,
   });
 
+  // If the resolved filename is different from the original filename, redirect to the new URL
   if (resolvedFilename != null && resolvedFilename !== filename) {
-    return redirect(`${url.origin}/${packageName}@${version}${resolvedFilename}${url.search}`, {
+    let location = new URL(`/${packageName}@${version}${resolvedFilename}${url.search}`, env.WWW_ORIGIN);
+
+    // If the version number is already resolved, we can issue a permanent redirect (301)
+    if (version === parsed.version) {
+      return redirect(location, {
+        status: 301,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Cross-Origin-Resource-Policy": "cross-origin",
+        },
+      });
+    }
+
+    // Otherwise it should be temporary (302)
+    return redirect(location, {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=60, s-maxage=300",
@@ -162,10 +193,10 @@ async function handleRequest_(request: Request): Promise<Response> {
     });
   }
 
-  // Maximize cache hits by redirecting to the correct version if the resolved version
-  // is different from the one that was requested in the URL
+  // Maximize cache hits by redirecting to the permanent URL if the version
+  // number is different from the one that was used in the request
   if (version !== parsed.version) {
-    return redirect(`${url.origin}/${packageName}@${version}${filename ?? ""}${url.search}`, {
+    return redirect(new URL(`/${packageName}@${version}${filename ?? ""}${url.search}`, env.WWW_ORIGIN), {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=60, s-maxage=300",
@@ -178,7 +209,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     let file = await getFile(publicNpmRegistry, packageName, version, filename);
 
     if (file != null) {
-      // Rewrite imports for JavaScript modules when ?module is used
+      // In ?module requests, rewrite imports to unpkg.com/* URLs in JavaScript modules
       if (file.type === "text/javascript" && url.searchParams.has("module")) {
         let code = new TextDecoder().decode(file.body);
         let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies);
@@ -188,6 +219,8 @@ async function handleRequest_(request: Request): Promise<Response> {
           headers: {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Expose-Headers": "*",
+            "Cache-Control": "public, max-age=31536000",
+            "Cache-Tag": "js-module", // This allows us to purge the cache if ?module behavior ever changes
             "Content-Type": file.type,
             "Cross-Origin-Resource-Policy": "cross-origin",
           },
@@ -195,6 +228,7 @@ async function handleRequest_(request: Request): Promise<Response> {
       }
 
       let [algorithm, hash] = file.integrity.split("-", 2);
+      let [type, subtype] = file.type.split("/");
       let contentType = file.type === "text/javascript" ? "text/javascript; charset=utf-8" : file.type;
 
       return new Response(file.body, {
@@ -202,6 +236,7 @@ async function handleRequest_(request: Request): Promise<Response> {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Expose-Headers": "*",
           "Cache-Control": "public, max-age=31536000",
+          "Cache-Tag": `type-${type},subtype-${subtype}`, // This allows us to purge the cache for any type/subtype
           "Content-Digest": `${algorithm}=:${hash}:`,
           "Content-Type": contentType,
           "Cross-Origin-Resource-Policy": "cross-origin",
@@ -226,7 +261,7 @@ async function handleRequest_(request: Request): Promise<Response> {
   let match =
     files.find((file) => file.path === `${basename}.js`) || files.find((file) => file.path === `${basename}/index.js`);
   if (match != null) {
-    return redirect(`${url.origin}/${packageName}@${version}${match.path}${url.search}`, {
+    return redirect(new URL(`/${packageName}@${version}${match.path}${url.search}`, env.WWW_ORIGIN), {
       status: 301,
       headers: {
         "Access-Control-Allow-Origin": "*",

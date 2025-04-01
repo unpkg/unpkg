@@ -3,6 +3,7 @@ export interface Env {
   ASSETS_ORIGIN: string;
   DEV: boolean;
   MODE: "development" | "production" | "staging" | "test";
+  WWW_ORIGIN: string;
 }
 
 const envs: Record<Env["MODE"], Env> = {
@@ -11,24 +12,28 @@ const envs: Record<Env["MODE"], Env> = {
     ASSETS_ORIGIN: "http://localhost:8000",
     DEV: true,
     MODE: "development",
+    WWW_ORIGIN: "http://localhost:3000",
   },
   production: {
     APP_ORIGIN: "https://app.unpkg.com",
     ASSETS_ORIGIN: "",
     DEV: false,
     MODE: "production",
+    WWW_ORIGIN: "https://unpkg.com",
   },
   staging: {
     APP_ORIGIN: "https://app.unpkg.dev",
     ASSETS_ORIGIN: "",
     DEV: false,
     MODE: "staging",
+    WWW_ORIGIN: "https://unpkg.dev",
   },
   test: {
     APP_ORIGIN: "https://app.unpkg.com",
     ASSETS_ORIGIN: "",
     DEV: false,
     MODE: "test",
+    WWW_ORIGIN: "https://unpkg.com",
   },
 };
 

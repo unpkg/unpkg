@@ -65,38 +65,6 @@ describe("handleRequest", () => {
   });
 
   describe("file requests", () => {
-    it("resolves tag", async () => {
-      let response = await dispatchFetch("https://unpkg.com/react@latest/index.js", { redirect: "manual" });
-      assert.equal(response.status, 302);
-      let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
-    });
-
-    it("resolves semver range", async () => {
-      let response = await dispatchFetch("https://unpkg.com/react@^18/index.js", { redirect: "manual" });
-      assert.equal(response.status, 302);
-      let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
-    });
-
-    it("resolves tag and filename in a single redirect", async () => {
-      let response = await dispatchFetch("https://unpkg.com/react@latest", { redirect: "manual" });
-      assert.equal(response.status, 302);
-      let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
-    });
-
-    it("resolves semver range and filename in a single redirect", async () => {
-      let response = await dispatchFetch("https://unpkg.com/react@^18", { redirect: "manual" });
-      assert.equal(response.status, 302);
-      let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
-    });
-
     it("returns 404 for invalid version specifiers", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@not-valid/");
       assert.equal(response.status, 404);
@@ -132,35 +100,47 @@ describe("handleRequest", () => {
       assert.equal(response.status, 404);
     });
 
+    it("resolves npm tags", async () => {
+      let response = await dispatchFetch("https://unpkg.com/react@latest/index.js", { redirect: "manual" });
+      assert.equal(response.status, 302);
+      let location = response.headers.get("Location");
+      assert.ok(location);
+      assert.match(location, /^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
+    });
+
+    it("resolves npm tag and filename in a single redirect", async () => {
+      let response = await dispatchFetch("https://unpkg.com/react@latest", { redirect: "manual" });
+      assert.equal(response.status, 302);
+      let location = response.headers.get("Location");
+      assert.ok(location);
+      assert.match(location, /^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
+    });
+
+    it("resolves semver ranges", async () => {
+      let response = await dispatchFetch("https://unpkg.com/react@^18/index.js", { redirect: "manual" });
+      assert.equal(response.status, 302);
+      let location = response.headers.get("Location");
+      assert.ok(location);
+      assert.match(location, /^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
+    });
+
+    it("resolves semver range and filename in a single redirect", async () => {
+      let response = await dispatchFetch("https://unpkg.com/react@^18", { redirect: "manual" });
+      assert.equal(response.status, 302);
+      let location = response.headers.get("Location");
+      assert.ok(location);
+      assert.match(location, /^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
+    });
+
     it('serves JavaScript files with "charset=utf-8"', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/index.js");
       assert.equal(response.status, 200);
       assert.match(response.headers.get("Content-Type")!, /^text\/javascript; charset=utf-8/);
     });
 
-    describe("the unpkg field in package.json", () => {
-      it("resolves files correctly", async () => {
-        let response = await dispatchFetch("https://unpkg.com/preact@10.25.4", { redirect: "manual" });
-        assert.equal(response.status, 302);
-        let location = response.headers.get("Location");
-        assert.ok(location);
-        assert.equal(location, "https://unpkg.com/preact@10.25.4/dist/preact.min.js");
-      });
-
-      it('resolves using "exports" field when conditions are present', async () => {
-        let response = await dispatchFetch("https://unpkg.com/preact@10.25.4?conditions=browser", {
-          redirect: "manual",
-        });
-        assert.equal(response.status, 302);
-        let location = response.headers.get("Location");
-        assert.ok(location);
-        assert.equal(location, "https://unpkg.com/preact@10.25.4/dist/preact.module.js?conditions=browser");
-      });
-    });
-
     it('resolves using "exports" field in package.json', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@19.0.0", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/react@19.0.0/index.js");
@@ -168,7 +148,7 @@ describe("handleRequest", () => {
 
     it('resolves using "exports" field and the "default" condition in package.json', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@19.0.0?conditions=default", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/react@19.0.0/index.js?conditions=default");
@@ -178,7 +158,7 @@ describe("handleRequest", () => {
       let response = await dispatchFetch("https://unpkg.com/react@19.0.0?conditions=react-server", {
         redirect: "manual",
       });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/react@19.0.0/react.react-server.js?conditions=react-server");
@@ -186,7 +166,7 @@ describe("handleRequest", () => {
 
     it('resolves using a custom filename with "exports" field in package.json', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@19.0.0/compiler-runtime", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/react@19.0.0/compiler-runtime.js");
@@ -196,17 +176,15 @@ describe("handleRequest", () => {
       let response = await dispatchFetch("https://unpkg.com/preact@10.25.4/hooks?conditions=import", {
         redirect: "manual",
       });
-      assert.equal(response.status, 302);
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/preact@10.25.4/hooks/dist/hooks.mjs?conditions=import");
     });
 
     it('resolves to "main" when "exports" field has no "default" condition', async () => {
-      let response = await dispatchFetch("https://unpkg.com/vitessce@3.5.9", {
-        redirect: "manual",
-      });
-      assert.equal(response.status, 302);
+      let response = await dispatchFetch("https://unpkg.com/vitessce@3.5.9", { redirect: "manual" });
+      assert.equal(response.status, 301);
       let location = response.headers.get("Location");
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/vitessce@3.5.9/dist/index.min.js");
@@ -227,10 +205,30 @@ describe("handleRequest", () => {
       assert.ok(location);
       assert.equal(location, "https://unpkg.com/preact@10.26.4/src/index.js");
     });
+
+    describe("the unpkg field in package.json", () => {
+      it("resolves files correctly", async () => {
+        let response = await dispatchFetch("https://unpkg.com/preact@10.25.4", { redirect: "manual" });
+        assert.equal(response.status, 301);
+        let location = response.headers.get("Location");
+        assert.ok(location);
+        assert.equal(location, "https://unpkg.com/preact@10.25.4/dist/preact.min.js");
+      });
+
+      it('resolves using "exports" field when conditions are present', async () => {
+        let response = await dispatchFetch("https://unpkg.com/preact@10.25.4?conditions=browser", {
+          redirect: "manual",
+        });
+        assert.equal(response.status, 301);
+        let location = response.headers.get("Location");
+        assert.ok(location);
+        assert.equal(location, "https://unpkg.com/preact@10.25.4/dist/preact.module.js?conditions=browser");
+      });
+    });
   });
 
   describe("?meta requests", () => {
-    it("resolves semver range", async () => {
+    it("resolves semver range with a temporary redirect", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@^18?meta", { redirect: "manual" });
       assert.equal(response.status, 302);
       let location = response.headers.get("Location");
@@ -312,6 +310,14 @@ describe("handleRequest", () => {
   });
 
   describe("/pkg/ index requests", () => {
+    it("resolves semver range with a temporary redirect", async () => {
+      let response = await dispatchFetch("https://unpkg.com/react@18/", { redirect: "manual" });
+      assert.equal(response.status, 302);
+      let location = response.headers.get("Location");
+      assert.ok(location);
+      assert.match(location, /^https:\/\/app\.unpkg\.com\/react@18\.\d+\.\d+/);
+    });
+
     it("redirects the package root", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/", { redirect: "manual" });
       assert.equal(response.status, 301);
