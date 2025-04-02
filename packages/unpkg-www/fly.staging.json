@@ -4,7 +4,7 @@
   "build": {
     "dockerfile": "Dockerfile",
     "args": {
-      "NODE_ENV": "staging"
+      "MODE": "staging"
     }
   },
   "http_service": {

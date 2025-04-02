@@ -1,8 +1,0 @@
-{
-  "nodejs-testing.extensions": [
-    {
-      "extensions": ["ts", "tsx"],
-      "parameters": ["--import", "tsx", "--import", "./test/setup.ts"]
-    }
-  ]
-}

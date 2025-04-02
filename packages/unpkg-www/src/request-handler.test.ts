@@ -1,7 +1,4 @@
-import * as assert from "node:assert/strict";
-import { describe, it, before, after } from "node:test";
-import * as fs from "node:fs";
-import * as streamWeb from "node:stream/web";
+import { expect, describe, it, beforeAll, afterAll } from "bun:test";
 
 import { packageInfo, packageTarballs } from "../test/fixtures.ts";
 
@@ -15,50 +12,42 @@ function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Re
 describe("handleRequest", () => {
   let globalFetch: typeof fetch | undefined;
 
-  function infoResponse(infoPath: string): Response {
-    let json = fs.readFileSync(infoPath, "utf8");
-    return new Response(json, {
-      headers: { "Content-Type": "application/json" },
-    });
+  function fileResponse(path: string): Response {
+    return new Response(Bun.file(path));
   }
 
-  function tarballResponse(tarballPath: string): Response {
-    let nodeStream = fs.createReadStream(tarballPath);
-    let stream = streamWeb.ReadableStream.from(nodeStream) as unknown as ReadableStream<Uint8Array>;
-    return new Response(stream, {
-      headers: { "Content-Type": "application/octet-stream" },
-    });
-  }
-
-  before(() => {
+  beforeAll(() => {
     globalFetch = globalThis.fetch;
+
+    // Does not implement Bun's non-spec fetch.preconnect API - https://bun.sh/docs/api/fetch#preconnect-to-a-host
+    // @ts-expect-error
     globalThis.fetch = async (input: RequestInfo | URL) => {
       let url = input instanceof Request ? input.url : input;
 
       switch (url.toString()) {
         case "https://registry.npmjs.org/lodash":
-          return infoResponse(packageInfo.lodash);
+          return fileResponse(packageInfo.lodash);
         case "https://registry.npmjs.org/preact":
-          return infoResponse(packageInfo.preact);
+          return fileResponse(packageInfo.preact);
         case "https://registry.npmjs.org/react":
-          return infoResponse(packageInfo.react);
+          return fileResponse(packageInfo.react);
         case "https://registry.npmjs.org/vitessce":
-          return infoResponse(packageInfo.vitessce);
+          return fileResponse(packageInfo.vitessce);
         case "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz":
-          return tarballResponse(packageTarballs.lodash["4.17.21"]);
+          return fileResponse(packageTarballs.lodash["4.17.21"]);
         case "https://registry.npmjs.org/preact/-/preact-10.26.4.tgz":
-          return tarballResponse(packageTarballs.preact["10.26.4"]);
+          return fileResponse(packageTarballs.preact["10.26.4"]);
         case "https://registry.npmjs.org/react/-/react-18.2.0.tgz":
-          return tarballResponse(packageTarballs.react["18.2.0"]);
+          return fileResponse(packageTarballs.react["18.2.0"]);
         case "https://registry.npmjs.org/vitessce/-/vitessce-3.5.9.tgz":
-          return tarballResponse(packageTarballs.vitessce["3.5.9"]);
+          return fileResponse(packageTarballs.vitessce["3.5.9"]);
         default:
           throw new Error(`Unexpected URL: ${url}`);
       }
     };
   });
 
-  after(() => {
+  afterAll(() => {
     if (globalFetch) {
       globalThis.fetch = globalFetch;
     }
@@ -67,162 +56,162 @@ describe("handleRequest", () => {
   describe("file requests", () => {
     it("returns 404 for invalid version specifiers", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@not-valid/");
-      assert.equal(response.status, 404);
+      expect(response.status).toBe(404);
     });
 
     it("serves a file", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/package.json");
-      assert.equal(response.status, 200);
-      assert.ok(response.headers.has("Access-Control-Allow-Origin"));
-      assert.ok(response.headers.has("Cache-Control"));
-      assert.ok(response.headers.has("Content-Digest"));
-      assert.match(response.headers.get("Content-Type")!, /^application\/json/);
-      assert.match(await response.text(), /"name": "react"/);
+      expect(response.status).toBe(200);
+      expect(response.headers.has("Access-Control-Allow-Origin")).toBeTruthy();
+      expect(response.headers.has("Cache-Control")).toBeTruthy();
+      expect(response.headers.has("Content-Digest")).toBeTruthy();
+      expect(response.headers.get("Content-Type")).toMatch(/^application\/json/);
+      expect(await response.text()).toMatch(/"name": "react"/);
     });
 
     it("serves a file in a subdirectory", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/cjs/react.development.js");
-      assert.equal(response.status, 200);
-      assert.ok(response.headers.has("Access-Control-Allow-Origin"));
-      assert.ok(response.headers.has("Cache-Control"));
-      assert.ok(response.headers.has("Content-Digest"));
-      assert.match(response.headers.get("Content-Type")!, /^text\/javascript/);
-      assert.match(await response.text(), /React.createElement/);
+      expect(response.status).toBe(200);
+      expect(response.headers.has("Access-Control-Allow-Origin")).toBeTruthy();
+      expect(response.headers.has("Cache-Control")).toBeTruthy();
+      expect(response.headers.has("Content-Digest")).toBeTruthy();
+      expect(response.headers.get("Content-Type")).toMatch(/^text\/javascript/);
+      expect(await response.text()).toMatch(/React.createElement/);
     });
 
     it("matches filenames in a case-insensitive way", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/readme.md");
-      assert.equal(response.status, 200);
+      expect(response.status).toBe(200);
     });
 
     it("returns 404 for a missing file", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/missing-file.txt");
-      assert.equal(response.status, 404);
+      expect(response.status).toBe(404);
     });
 
     it("resolves npm tags", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@latest/index.js", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      expect(response.status).toBe(302);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
+      expect(location).not.toBeNull();
+      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
     });
 
     it("resolves npm tag and filename in a single redirect", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@latest", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      expect(response.status).toBe(302);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
+      expect(location).not.toBeNull();
+      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
     });
 
     it("resolves semver ranges", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@^18/index.js", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      expect(response.status).toBe(302);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
+      expect(location).not.toBeNull();
+      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
     });
 
     it("resolves semver range and filename in a single redirect", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@^18", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      expect(response.status).toBe(302);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
+      expect(location).not.toBeNull();
+      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
     });
 
     it('serves JavaScript files with "charset=utf-8"', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/index.js");
-      assert.equal(response.status, 200);
-      assert.match(response.headers.get("Content-Type")!, /^text\/javascript; charset=utf-8/);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toMatch(/^text\/javascript; charset=utf-8/);
     });
 
     it('resolves using "exports" field in package.json', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@19.0.0", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://unpkg.com/react@19.0.0/index.js");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://unpkg.com/react@19.0.0/index.js");
     });
 
     it('resolves using "exports" field and the "default" condition in package.json', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@19.0.0?conditions=default", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://unpkg.com/react@19.0.0/index.js?conditions=default");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://unpkg.com/react@19.0.0/index.js?conditions=default");
     });
 
     it('resolves using "exports" field and a custom condition in package.json', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@19.0.0?conditions=react-server", {
         redirect: "manual",
       });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://unpkg.com/react@19.0.0/react.react-server.js?conditions=react-server");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://unpkg.com/react@19.0.0/react.react-server.js?conditions=react-server");
     });
 
     it('resolves using a custom filename with "exports" field in package.json', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@19.0.0/compiler-runtime", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://unpkg.com/react@19.0.0/compiler-runtime.js");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://unpkg.com/react@19.0.0/compiler-runtime.js");
     });
 
     it('resolves using a custom filename with "exports" field and custom conditions in package.json', async () => {
       let response = await dispatchFetch("https://unpkg.com/preact@10.25.4/hooks?conditions=import", {
         redirect: "manual",
       });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://unpkg.com/preact@10.25.4/hooks/dist/hooks.mjs?conditions=import");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://unpkg.com/preact@10.25.4/hooks/dist/hooks.mjs?conditions=import");
     });
 
     it('resolves to "main" when "exports" field has no "default" condition', async () => {
       let response = await dispatchFetch("https://unpkg.com/vitessce@3.5.9", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://unpkg.com/vitessce@3.5.9/dist/index.min.js");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://unpkg.com/vitessce@3.5.9/dist/index.min.js");
     });
 
     it("resolves to a matching .js file when the extension is missing", async () => {
       let response = await dispatchFetch("https://unpkg.com/preact@10.26.4/src/component", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://unpkg.com/preact@10.26.4/src/component.js");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://unpkg.com/preact@10.26.4/src/component.js");
     });
 
     it("resolves to an index.js file when a directory is requested", async () => {
       let response = await dispatchFetch("https://unpkg.com/preact@10.26.4/src", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://unpkg.com/preact@10.26.4/src/index.js");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://unpkg.com/preact@10.26.4/src/index.js");
     });
 
     describe("the unpkg field in package.json", () => {
       it("resolves files correctly", async () => {
         let response = await dispatchFetch("https://unpkg.com/preact@10.25.4", { redirect: "manual" });
-        assert.equal(response.status, 301);
+        expect(response.status).toBe(301);
         let location = response.headers.get("Location");
-        assert.ok(location);
-        assert.equal(location, "https://unpkg.com/preact@10.25.4/dist/preact.min.js");
+        expect(location).not.toBeNull();
+        expect(location).toBe("https://unpkg.com/preact@10.25.4/dist/preact.min.js");
       });
 
       it('resolves using "exports" field when conditions are present', async () => {
         let response = await dispatchFetch("https://unpkg.com/preact@10.25.4?conditions=browser", {
           redirect: "manual",
         });
-        assert.equal(response.status, 301);
+        expect(response.status).toBe(301);
         let location = response.headers.get("Location");
-        assert.ok(location);
-        assert.equal(location, "https://unpkg.com/preact@10.25.4/dist/preact.module.js?conditions=browser");
+        expect(location).not.toBeNull();
+        expect(location).toBe("https://unpkg.com/preact@10.25.4/dist/preact.module.js?conditions=browser");
       });
     });
   });
@@ -230,108 +219,108 @@ describe("handleRequest", () => {
   describe("?meta requests", () => {
     it("resolves semver range with a temporary redirect", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@^18?meta", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      expect(response.status).toBe(302);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/\?meta$/);
+      expect(location).not.toBeNull();
+      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/\?meta$/);
     });
 
     it("lists the files in a package", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/?meta");
-      assert.equal(response.status, 200);
+      expect(response.status).toBe(200);
       let json = (await response.json()) as any;
-      assert.equal(json.prefix, "/");
-      assert.ok(Array.isArray(json.files));
-      assert.equal(json.files.length, 20);
+      expect(json.prefix).toBe("/");
+      expect(Array.isArray(json.files)).toBeTruthy();
+      expect(json.files.length).toBe(20);
     });
 
     it("lists the files in a package subdirectory", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/cjs?meta");
-      assert.equal(response.status, 200);
+      expect(response.status).toBe(200);
       let json = (await response.json()) as any;
-      assert.equal(json.prefix, "/cjs/");
-      assert.ok(Array.isArray(json.files));
-      assert.equal(json.files.length, 10);
+      expect(json.prefix).toBe("/cjs/");
+      expect(Array.isArray(json.files)).toBeTruthy();
+      expect(json.files.length).toBe(10);
     });
 
     it("lists the files in a package with more than 1000 files", async () => {
       let response = await dispatchFetch("https://unpkg.com/lodash@4.17.21/?meta");
-      assert.equal(response.status, 200);
+      expect(response.status).toBe(200);
       let json = (await response.json()) as any;
-      assert.equal(json.prefix, "/");
-      assert.ok(Array.isArray(json.files));
-      assert.equal(json.files.length, 1054);
+      expect(json.prefix).toBe("/");
+      expect(Array.isArray(json.files)).toBeTruthy();
+      expect(json.files.length).toBe(1054);
     });
   });
 
   describe("?module requests", () => {
     it("rewrites imports in JavaScript files", async () => {
       let response = await dispatchFetch("https://unpkg.com/preact@10.26.4/src/component.js?module");
-      assert.equal(response.status, 200);
+      expect(response.status).toBe(200);
       let text = await response.text();
-      assert.match(text, /import { assign } from '\.\/util\?module';/);
+      expect(text).toMatch(/import { assign } from '\.\/util\?module';/);
     });
   });
 
   describe("/browse/* requests", () => {
     it("redirects to the package root", async () => {
       let response = await dispatchFetch("https://unpkg.com/browse/react@18.2.0/", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://app.unpkg.com/react@18.2.0");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://app.unpkg.com/react@18.2.0");
     });
 
     it("redirects to a specific file in the package root", async () => {
       let response = await dispatchFetch("https://unpkg.com/browse/react@18.2.0/package.json", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://app.unpkg.com/react@18.2.0/files/package.json");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://app.unpkg.com/react@18.2.0/files/package.json");
     });
 
     it("redirects to a subdirectory", async () => {
       let response = await dispatchFetch("https://unpkg.com/browse/react@18.2.0/cjs/", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://app.unpkg.com/react@18.2.0/files/cjs");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://app.unpkg.com/react@18.2.0/files/cjs");
     });
 
     it("redirects to a specific file in a subdirectory", async () => {
       let response = await dispatchFetch("https://unpkg.com/browse/react@18.2.0/cjs/react.development.js", {
         redirect: "manual",
       });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://app.unpkg.com/react@18.2.0/files/cjs/react.development.js");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://app.unpkg.com/react@18.2.0/files/cjs/react.development.js");
     });
   });
 
   describe("/pkg/ index requests", () => {
     it("resolves semver range with a temporary redirect", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18/", { redirect: "manual" });
-      assert.equal(response.status, 302);
+      expect(response.status).toBe(302);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.match(location, /^https:\/\/app\.unpkg\.com\/react@18\.\d+\.\d+/);
+      expect(location).not.toBeNull();
+      expect(location).toMatch(/^https:\/\/app\.unpkg\.com\/react@18\.\d+\.\d+/);
     });
 
     it("redirects the package root", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://app.unpkg.com/react@18.2.0");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://app.unpkg.com/react@18.2.0");
     });
 
     it("redirects a subdirectory", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/cjs/", { redirect: "manual" });
-      assert.equal(response.status, 301);
+      expect(response.status).toBe(301);
       let location = response.headers.get("Location");
-      assert.ok(location);
-      assert.equal(location, "https://app.unpkg.com/react@18.2.0/files/cjs");
+      expect(location).not.toBeNull();
+      expect(location).toBe("https://app.unpkg.com/react@18.2.0/files/cjs");
     });
   });
 });

@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@mjackson/node-fetch-server": "^0.6.1",
     "chalk": "^5.4.1",
     "highlight.js": "^11.11.1",
     "mrmime": "^2.0.0",
@@ -16,21 +15,20 @@
   },
   "devDependencies": {
     "@ryanto/esbuild-plugin-tailwind": "^0.0.1",
+    "@types/bun": "^1.2.8",
     "@types/node": "^22.10.2",
     "@types/semver": "^7.5.8",
     "esbuild": "^0.24.2",
     "tailwindcss": "4.0.0-beta.9",
-    "tsx": "^4.19.3",
     "typescript": "^5.7.2"
   },
   "scripts": {
-    "build": "pnpm run build:server && pnpm run build:assets",
+    "build": "pnpm run build:assets && pnpm run build:server",
+    "build:assets": "node --disable-warning=ExperimentalWarning ../../scripts/build-assets.ts",
     "build:server": "tsc --project ./tsconfig.build.json",
-    "build:assets": "tsx ../../scripts/build-assets.ts",
-    "dev": "NODE_ENV=development PORT=3001 tsx ./src/server.ts",
-    "dev:assets": "tsx ../../scripts/serve-assets.ts",
-    "start": "node ./dist/server.js",
-    "test": "tsx --import ./test/setup.ts --test ./src/**/*.test.ts",
+    "dev": "MODE=development bun --port=3001 ./src/server.ts",
+    "dev:assets": "bun ../../scripts/serve-assets.ts",
+    "test": "bun --preload=./test/setup.ts test",
     "deploy": "cd ../.. && fly deploy . -c ./packages/unpkg-app/fly.json",
     "deploy:staging": "cd ../.. && fly deploy . -c ./packages/unpkg-app/fly.staging.json"
   },

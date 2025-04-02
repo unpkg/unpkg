@@ -37,9 +37,9 @@ const envs: Record<Env["MODE"], Env> = {
   },
 };
 
-let mode = (process.env.NODE_ENV ?? "development") as Env["MODE"];
+let mode = (process.env.MODE ?? "development") as Env["MODE"];
 if (!(mode in envs)) {
-  throw new Error(`Invalid NODE_ENV: ${mode}`);
+  throw new Error(`Invalid MODE: ${mode}`);
 }
 
 export const env = envs[mode];

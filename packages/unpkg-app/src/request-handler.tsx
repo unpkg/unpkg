@@ -42,16 +42,6 @@ async function handleRequest_(request: Request): Promise<Response> {
     return new Response(`Invalid request method: ${request.method}`, { status: 405 });
   }
 
-  let assetFile = await findPublicAsset(request);
-  if (assetFile != null) {
-    return new Response(assetFile, {
-      headers: {
-        "Cache-Control": env.DEV ? "no-store" : "public, max-age=31536000",
-        "Content-Type": assetFile.type,
-      },
-    });
-  }
-
   let url = new URL(request.url);
 
   if (url.pathname === "/_health") {
@@ -62,6 +52,15 @@ async function handleRequest_(request: Request): Promise<Response> {
   }
   if (url.pathname === "/" || url.pathname === "/index.html") {
     return redirect(env.WWW_ORIGIN, 301);
+  }
+
+  let file = await findPublicAsset(url.pathname);
+  if (file != null) {
+    return new Response(file, {
+      headers: {
+        "Cache-Control": env.DEV ? "no-store" : "public, max-age=31536000",
+      },
+    });
   }
 
   let parsed = parsePackagePathname(url.pathname);

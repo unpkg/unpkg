@@ -4,7 +4,7 @@
   "build": {
     "dockerfile": "Dockerfile",
     "args": {
-      "NODE_ENV": "production"
+      "MODE": "production"
     }
   },
   "http_service": {

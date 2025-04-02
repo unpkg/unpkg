@@ -1,18 +1,8 @@
 # syntax = docker/dockerfile:1
 
-FROM node:23.6.0-slim AS base
-
-LABEL fly_launch_runtime="Node.js"
-
-# Node.js app lives here
+# Use Node.js for the build image
+FROM node:23.6.0-slim AS build
 WORKDIR /app
-
-ARG NODE_ENV=production
-ENV NODE_ENV=$NODE_ENV
-
-
-# Temp stage to reduce size of final image
-FROM base AS build
 
 # Install packages needed to build node modules
 RUN apt-get update -qq && \
@@ -40,12 +30,17 @@ RUN pnpm run build
 RUN pnpm --filter unpkg-www deploy --prod dist-www
 
 
-# Final stage for app image
-FROM base
+# Use Bun for the final image
+FROM oven/bun:1.2.8
+LABEL fly_launch_runtime="Bun"
+WORKDIR /app
+
+ARG MODE=production
+ENV MODE=$MODE
 
 # Copy built application
 COPY --from=build /app/dist-www /app
 
 # Start the server
 EXPOSE 3000
-CMD [ "node", "./dist/server.js" ]
+CMD [ "bun", "./dist/server.js" ]

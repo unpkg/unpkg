@@ -50,17 +50,6 @@ async function handleRequest_(request: Request): Promise<Response> {
     return new Response(`Invalid request method: ${request.method}`, { status: 405 });
   }
 
-  // Serve static assets from the public directory
-  let assetFile = await findPublicAsset(request);
-  if (assetFile != null) {
-    return new Response(assetFile, {
-      headers: {
-        "Cache-Control": env.DEV ? "no-store" : "public, max-age=31536000",
-        "Content-Type": assetFile.type,
-      },
-    });
-  }
-
   let url = new URL(request.url);
 
   if (url.pathname === "/_health") {
@@ -76,6 +65,16 @@ async function handleRequest_(request: Request): Promise<Response> {
     return renderPage(<Home />, {
       headers: {
         "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+      },
+    });
+  }
+
+  // Serve static assets from the public directory
+  let file = await findPublicAsset(url.pathname);
+  if (file != null) {
+    return new Response(file, {
+      headers: {
+        "Cache-Control": env.DEV ? "no-store" : "public, max-age=31536000",
       },
     });
   }
@@ -208,10 +207,10 @@ async function handleRequest_(request: Request): Promise<Response> {
   if (filename != null) {
     // this is a CPU heavy operation, we want it running on unpkg-www-worker
     // if production and running on a differnet app, fly-replay to unpkg-www-worker
-    if(process.env.FLY_APP_NAME && process.env.FLY_APP_NAME !== "unpkg-www-worker") {
+    if (process.env.FLY_APP_NAME && process.env.FLY_APP_NAME !== "unpkg-www-worker") {
       return new Response("replay to worker", {
         headers: {
-          "Fly-Replay": "app=unpkg-www-worker"
+          "Fly-Replay": "app=unpkg-www-worker",
         },
       });
     }

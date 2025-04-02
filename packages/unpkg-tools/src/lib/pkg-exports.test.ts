@@ -1,5 +1,4 @@
-import * as assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { expect, describe, it } from "bun:test";
 
 import { resolvePackageExport } from "./pkg-exports.ts";
 import type { PackageJson } from "./pkg-info.ts";
@@ -11,12 +10,12 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("does not resolve /", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), null);
+      expect(resolvePackageExport(packageJson, "/")).toBe(null);
     });
 
     describe("when useModuleField is used", () => {
       it("resolves /", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useModuleField: true }), "/dist/module.mjs");
+        expect(resolvePackageExport(packageJson, "/", { useModuleField: true })).toBe("/dist/module.mjs");
       });
     });
   });
@@ -28,12 +27,12 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("resolves / using the unpkg field", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/unpkg.js");
+      expect(resolvePackageExport(packageJson, "/")).toBe("/dist/unpkg.js");
     });
 
     describe("when useModuleField is used", () => {
       it("resolves / using the module field", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useModuleField: true }), "/dist/module.mjs");
+        expect(resolvePackageExport(packageJson, "/", { useModuleField: true })).toBe("/dist/module.mjs");
       });
     });
   });
@@ -44,12 +43,12 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("does not resolve /", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), null);
+      expect(resolvePackageExport(packageJson, "/")).toBe(null);
     });
 
     describe("when useBrowserField is used", () => {
       it("resolves /", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useBrowserField: true }), "/dist/browser.js");
+        expect(resolvePackageExport(packageJson, "/", { useBrowserField: true })).toBe("/dist/browser.js");
       });
     });
   });
@@ -61,12 +60,12 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("resolves / using the unpkg field", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/unpkg.js");
+      expect(resolvePackageExport(packageJson, "/")).toBe("/dist/unpkg.js");
     });
 
     describe("when useBrowserField is used", () => {
       it("resolves / using the browser field", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useBrowserField: true }), "/dist/browser.js");
+        expect(resolvePackageExport(packageJson, "/", { useBrowserField: true })).toBe("/dist/browser.js");
       });
     });
   });
@@ -80,28 +79,28 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("does not resolve /", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), null);
+      expect(resolvePackageExport(packageJson, "/")).toBe(null);
     });
 
     it('does not resolve "/subpath"', () => {
-      assert.equal(resolvePackageExport(packageJson, "/subpath"), null);
+      expect(resolvePackageExport(packageJson, "/subpath")).toBe(null);
     });
 
     it("does not resolve a custom filename", () => {
-      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+      expect(resolvePackageExport(packageJson, "/path/to/file")).toBe(null);
     });
 
     describe("when useBrowserField is used", () => {
       it("resolves /", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { useBrowserField: true }), "/dist/browser.js");
+        expect(resolvePackageExport(packageJson, "/", { useBrowserField: true })).toBe("/dist/browser.js");
       });
 
       it('resolves "/subpath"', () => {
-        assert.equal(resolvePackageExport(packageJson, "/subpath", { useBrowserField: true }), "/dist/subpath.js");
+        expect(resolvePackageExport(packageJson, "/subpath", { useBrowserField: true })).toBe("/dist/subpath.js");
       });
 
       it("does not resolve a custom filename", () => {
-        assert.equal(resolvePackageExport(packageJson, "/path/to/file", { useBrowserField: true }), null);
+        expect(resolvePackageExport(packageJson, "/path/to/file", { useBrowserField: true })).toBe(null);
       });
     });
   });
@@ -113,16 +112,16 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("resolves /", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/unpkg.js");
+      expect(resolvePackageExport(packageJson, "/")).toBe("/dist/unpkg.js");
     });
 
     it("does not resolve a custom filename", () => {
-      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+      expect(resolvePackageExport(packageJson, "/path/to/file")).toBe(null);
     });
 
     describe("when export conditions are provided", () => {
       it("resolves / using the exports field", () => {
-        assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["default"] }), "/dist/index.js");
+        expect(resolvePackageExport(packageJson, "/", { conditions: ["default"] })).toBe("/dist/index.js");
       });
     });
   });
@@ -133,11 +132,11 @@ describe("resolvePackageExport", () => {
     } as PackageJson;
 
     it("resolves /", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
+      expect(resolvePackageExport(packageJson, "/")).toBe("/dist/index.js");
     });
 
     it("does not resolve a custom filename", () => {
-      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+      expect(resolvePackageExport(packageJson, "/path/to/file")).toBe(null);
     });
   });
 
@@ -151,19 +150,19 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("resolves /", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
+      expect(resolvePackageExport(packageJson, "/")).toBe("/dist/index.js");
     });
 
     it('resolves "/" with matching conditions', () => {
-      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["import"] }), "/dist/index.mjs");
+      expect(resolvePackageExport(packageJson, "/", { conditions: ["import"] })).toBe("/dist/index.mjs");
     });
 
     it('resolves "/" to the first matching export with multiple matching conditions', () => {
-      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["import", "require"] }), "/dist/index.mjs");
+      expect(resolvePackageExport(packageJson, "/", { conditions: ["import", "require"] })).toBe("/dist/index.mjs");
     });
 
     it("does not resolve a custom filename", () => {
-      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+      expect(resolvePackageExport(packageJson, "/path/to/file")).toBe(null);
     });
   });
 
@@ -176,15 +175,15 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("resolves /", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
+      expect(resolvePackageExport(packageJson, "/")).toBe("/dist/index.js");
     });
 
     it('resolves "/subpath"', () => {
-      assert.equal(resolvePackageExport(packageJson, "/subpath"), "/dist/subpath.js");
+      expect(resolvePackageExport(packageJson, "/subpath")).toBe("/dist/subpath.js");
     });
 
     it("does not resolve a custom filename", () => {
-      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+      expect(resolvePackageExport(packageJson, "/path/to/file")).toBe(null);
     });
   });
 
@@ -205,42 +204,41 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("resolves /", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
+      expect(resolvePackageExport(packageJson, "/")).toBe("/dist/index.js");
     });
 
     it("resolves / with matching conditions", () => {
-      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["import"] }), "/dist/index.mjs");
+      expect(resolvePackageExport(packageJson, "/", { conditions: ["import"] })).toBe("/dist/index.mjs");
     });
 
     it("resolves / to the first matching export with multiple matching conditions", () => {
-      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["import", "require"] }), "/dist/index.mjs");
+      expect(resolvePackageExport(packageJson, "/", { conditions: ["import", "require"] })).toBe("/dist/index.mjs");
     });
 
     it("does not resolve / with non-matching conditions", () => {
-      assert.equal(resolvePackageExport(packageJson, "/", { conditions: ["worker"] }), null);
+      expect(resolvePackageExport(packageJson, "/", { conditions: ["worker"] })).toBe(null);
     });
 
     it('resolves "/subpath"', () => {
-      assert.equal(resolvePackageExport(packageJson, "/subpath"), "/dist/subpath.js");
+      expect(resolvePackageExport(packageJson, "/subpath")).toBe("/dist/subpath.js");
     });
 
     it('resolves "/subpath" with matching conditions', () => {
-      assert.equal(resolvePackageExport(packageJson, "/subpath", { conditions: ["import"] }), "/dist/subpath.mjs");
+      expect(resolvePackageExport(packageJson, "/subpath", { conditions: ["import"] })).toBe("/dist/subpath.mjs");
     });
 
     it('resolves "/subpath" to the first matching export with multiple matching conditions', () => {
-      assert.equal(
-        resolvePackageExport(packageJson, "/subpath", { conditions: ["import", "require"] }),
-        "/dist/subpath.mjs",
+      expect(resolvePackageExport(packageJson, "/subpath", { conditions: ["import", "require"] })).toBe(
+        "/dist/subpath.mjs"
       );
     });
 
     it('does not resolve "/subpath" with non-matching conditions', () => {
-      assert.equal(resolvePackageExport(packageJson, "/subpath", { conditions: ["worker"] }), null);
+      expect(resolvePackageExport(packageJson, "/subpath", { conditions: ["worker"] })).toBe(null);
     });
 
     it("does not resolve a custom filename", () => {
-      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+      expect(resolvePackageExport(packageJson, "/path/to/file")).toBe(null);
     });
   });
 
@@ -254,11 +252,11 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it('resolves / to the "main" field', () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/index.js");
+      expect(resolvePackageExport(packageJson, "/")).toBe("/dist/index.js");
     });
 
     it("does not resolve a custom filename", () => {
-      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+      expect(resolvePackageExport(packageJson, "/path/to/file")).toBe(null);
     });
   });
 
@@ -268,11 +266,11 @@ describe("resolvePackageExport", () => {
     } as unknown as PackageJson;
 
     it("resolves /", () => {
-      assert.equal(resolvePackageExport(packageJson, "/"), "/dist/main.js");
+      expect(resolvePackageExport(packageJson, "/")).toBe("/dist/main.js");
     });
 
     it("does not resolve a custom filename", () => {
-      assert.equal(resolvePackageExport(packageJson, "/path/to/file"), null);
+      expect(resolvePackageExport(packageJson, "/path/to/file")).toBe(null);
     });
   });
 });
