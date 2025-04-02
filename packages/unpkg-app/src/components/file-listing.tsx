@@ -199,11 +199,15 @@ function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo
 
   let websiteUrl: URL | null = null;
   let websiteText: string | null = null;
-  if (packageJson.homepage != null) {
-    websiteUrl = new URL(packageJson.homepage);
-    websiteText = websiteUrl.hostname;
-    if (websiteUrl.pathname !== "/") {
-      websiteText += websiteUrl.pathname;
+  if (packageJson.homepage != null && packageJson.homepage !== "") {
+    try {
+      websiteUrl = new URL(packageJson.homepage);
+      websiteText = websiteUrl.hostname;
+      if (websiteUrl.pathname !== "/") {
+        websiteText += websiteUrl.pathname;
+      }
+    } catch (error) {
+      // Ignore invalid package.homepage URLs
     }
   }
 
