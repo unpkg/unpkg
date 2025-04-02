@@ -22,5 +22,5 @@
       }
     ]
   },
-  "vm": [{ "size": "performance-1x" }]
+  "vm": [{ "size": "shared-cpu-4x", "memory": 4096 }]
 }
