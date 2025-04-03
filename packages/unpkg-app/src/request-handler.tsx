@@ -4,7 +4,7 @@ import { getFile, getPackageInfo, listFiles, parsePackagePathname, resolvePackag
 
 import { AssetsContext } from "./assets-context.ts";
 import { loadAssetsManifest } from "./assets-manifest.ts";
-import { devLogger } from "./dev-logging.ts";
+import { logRequest } from "./request-logging.ts";
 import { env } from "./env.ts";
 import { findPublicAsset } from "./public-assets.ts";
 import { Document } from "./components/document.tsx";
@@ -20,7 +20,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (env.DEV) {
       let start = Date.now();
       response = await handleRequest_(request);
-      devLogger(request, response, Date.now() - start);
+      logRequest(request, response, Date.now() - start);
     } else {
       response = await handleRequest_(request);
     }

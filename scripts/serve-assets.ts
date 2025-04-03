@@ -13,16 +13,18 @@ let ctx = await esbuild.context(buildOptions);
 await ctx.watch();
 
 let { host, port } = await ctx.serve({
-  onRequest({ method, path, status, timeInMS: ms }) {
+  // @ts-expect-error - esbuild types are not up to date
+  onRequest({ method, path, status: statusCode, timeInMS: ms }) {
+    let timestamp = chalk.gray(`[${new Date().toLocaleTimeString("en-US")}]`);
     // prettier-ignore
-    let statusColor = status < 200 ? chalk.gray : status < 300 ? chalk.greenBright : status < 400 ? chalk.cyanBright : chalk.redBright;
+    let statusColor = statusCode < 200 ? chalk.gray : statusCode < 300 ? chalk.greenBright : statusCode < 400 ? chalk.cyanBright : chalk.redBright;
+    let status = statusColor(statusCode);
     // prettier-ignore
-    let statusTextColor = status < 200 ? chalk.gray : status < 300 ? chalk.green : status < 400 ? chalk.cyan : chalk.red;
-    let statusText = STATUS_CODES[status];
+    let statusTextColor = statusCode < 200 ? chalk.gray : statusCode < 300 ? chalk.green : statusCode < 400 ? chalk.cyan : chalk.red;
+    let statusText = statusTextColor(STATUS_CODES[statusCode]);
+    let duration = chalk.gray(ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s`);
 
-    console.log(
-      `${chalk.gray(`[${new Date().toLocaleTimeString("en-US")}]`)} ${method} ${path} ${statusColor(status)} ${statusTextColor(statusText)} ${chalk.gray(`(${ms}ms)`)}`,
-    );
+    console.log(`${timestamp} ${method} ${path} ${status} ${statusText} ${duration}`);
   },
   ...config.getServeOptions(),
 });
