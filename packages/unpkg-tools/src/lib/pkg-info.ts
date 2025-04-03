@@ -55,5 +55,5 @@ export async function getPackageInfo(registry: string, packageName: string): Pro
 }
 
 function createPackageInfoUrl(registry: string, packageName: string): URL {
-  return new URL(`/${packageName}`, registry);
+  return new URL(`/${packageName.toLowerCase()}`, registry);
 }

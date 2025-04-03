@@ -79,7 +79,12 @@ describe("handleRequest", () => {
       expect(await response.text()).toMatch(/React.createElement/);
     });
 
-    it("matches filenames in a case-insensitive way", async () => {
+    it("matches package names in any case", async () => {
+      let response = await dispatchFetch("https://unpkg.com/React@18.2.0/package.json");
+      expect(response.status).toBe(200);
+    });
+
+    it("matches filenames in any case", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/readme.md");
       expect(response.status).toBe(200);
     });

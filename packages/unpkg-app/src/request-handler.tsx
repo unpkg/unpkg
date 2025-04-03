@@ -73,7 +73,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     return notFound(`Invalid package pathname: ${url.pathname}`);
   }
 
-  let packageName = parsed.package;
+  let packageName = parsed.package.toLowerCase();
   let packageInfo = await getPackageInfo(publicNpmRegistry, packageName);
   if (packageInfo == null) {
     return notFound(`Package not found: "${packageName}"`);

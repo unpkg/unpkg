@@ -27,7 +27,7 @@ export async function getFile(
   registry: string,
   packageName: string,
   version: string,
-  filename: string,
+  filename: string
 ): Promise<PackageFile | null> {
   let file: PackageFile | null = null;
 
@@ -52,7 +52,7 @@ export async function listFiles(
   registry: string,
   packageName: string,
   version: string,
-  prefix = "/",
+  prefix = "/"
 ): Promise<PackageFileMetadata[]> {
   let files: PackageFileMetadata[] = [];
 
@@ -76,7 +76,7 @@ export async function parsePackage(
   registry: string,
   packageName: string,
   version: string,
-  handler: (name: string, content: Uint8Array, header: tar.Headers) => void,
+  handler: (name: string, content: Uint8Array, header: tar.Headers) => void
 ): Promise<void> {
   let tarballUrl = createTarballUrl(registry, packageName, version);
   let response = await fetch(tarballUrl);
@@ -124,6 +124,6 @@ export async function parsePackage(
 }
 
 function createTarballUrl(registry: string, packageName: string, version: string): URL {
-  let basename = packageName.split("/").pop()!;
-  return new URL(`/${packageName}/-/${basename}-${version}.tgz`, registry);
+  let basename = packageName.split("/").pop()!.toLowerCase();
+  return new URL(`/${packageName.toLowerCase()}/-/${basename}-${version}.tgz`, registry);
 }
