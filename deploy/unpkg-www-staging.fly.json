@@ -2,7 +2,7 @@
   "app": "unpkg-www-staging",
   "primary_region": "lax",
   "build": {
-    "dockerfile": "Dockerfile",
+    "dockerfile": "./unpkg-www/Dockerfile",
     "args": {
       "MODE": "staging"
     }

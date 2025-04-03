@@ -1,8 +1,8 @@
 {
-  "app": "unpkg-app",
+  "app": "unpkg-www-worker",
   "primary_region": "lax",
   "build": {
-    "dockerfile": "Dockerfile",
+    "dockerfile": "./unpkg-www/Dockerfile",
     "args": {
       "MODE": "production"
     }
@@ -12,6 +12,11 @@
     "auto_start_machines": true,
     "min_machines_running": 2,
     "processes": ["app"],
+    "concurrency": {
+      "type": "requests",
+      "soft_limit": 2,
+      "hard_limit": 8
+    },
     "checks": [
       {
         "grace_period": "10s",
@@ -22,5 +27,6 @@
       }
     ]
   },
-  "vm": [{ "size": "shared-cpu-4x", "memory": "4096" }]
+
+  "vm": [{ "size": "performance-2x" }]
 }

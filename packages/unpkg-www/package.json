@@ -24,10 +24,7 @@
     "build:server": "tsc --project ./tsconfig.build.json",
     "dev": "MODE=development bun ./src/server.ts",
     "dev:assets": "bun ../../scripts/serve-assets.ts",
-    "test": "bun --preload=./test/setup.ts test",
-    "deploy": "cd ../.. && fly deploy . -c ./packages/unpkg-www/fly.json",
-    "deploy:worker": "cd ../.. && fly deploy . -c ./packages/unpkg-www/fly.worker.json -a unpkg-www-worker",
-    "deploy:staging": "cd ../.. && fly deploy . -c ./packages/unpkg-www/fly.staging.json"
+    "test": "bun --preload=./test/setup.ts test"
   },
   "files": [
     "assets-manifest.json",

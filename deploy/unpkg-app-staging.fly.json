@@ -1,22 +1,17 @@
 {
-  "app": "unpkg-www",
+  "app": "unpkg-app-staging",
   "primary_region": "lax",
   "build": {
-    "dockerfile": "Dockerfile",
+    "dockerfile": "./unpkg-app/Dockerfile",
     "args": {
-      "MODE": "production"
+      "MODE": "staging"
     }
   },
   "http_service": {
     "internal_port": 3000,
     "auto_start_machines": true,
-    "min_machines_running": 2,
+    "min_machines_running": 1,
     "processes": ["app"],
-    "concurrency": {
-      "type": "requests",
-      "soft_limit": 10,
-      "hard_limit": 25
-    },
     "checks": [
       {
         "grace_period": "10s",
@@ -27,5 +22,5 @@
       }
     ]
   },
-  "vm": [{ "size": "shared-cpu-4x", "memory": 4096 }]
+  "vm": [{ "size": "shared-cpu-8x" }]
 }

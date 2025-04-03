@@ -8,6 +8,11 @@
   "scripts": {
     "build": "pnpm -r run build",
     "clean": "git clean -fdX .",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "deploy:app": "fly deploy . -c ./deploy/unpkg-app.fly.json",
+    "deploy:app:staging": "fly deploy . -c ./deploy/unpkg-app-staging.fly.json",
+    "deploy:www": "fly deploy . -c ./deploy/unpkg-www.fly.json",
+    "deploy:www:staging": "fly deploy . -c ./deploy/unpkg-www-staging.fly.json",
+    "deploy:www:worker": "fly deploy . -c ./deploy/unpkg-www-worker.fly.json"
   }
 }

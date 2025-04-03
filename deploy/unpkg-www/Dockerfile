@@ -27,7 +27,7 @@ COPY . .
 RUN pnpm run build
 
 # Create production deploy
-RUN pnpm --filter unpkg-app deploy --prod dist-app
+RUN pnpm --filter unpkg-www deploy --prod dist-www
 
 
 # Use Bun for the final image
@@ -35,13 +35,13 @@ FROM oven/bun:1.2.8
 LABEL fly_launch_runtime="Bun"
 WORKDIR /app
 
-#ENV DEBUG=1
+ENV DEBUG=1
 
 ARG MODE=production
 ENV MODE=$MODE
 
 # Copy built application
-COPY --from=build /app/dist-app /app
+COPY --from=build /app/dist-www /app
 
 # Start the server
 EXPOSE 3000

@@ -1,16 +1,16 @@
 {
-  "app": "unpkg-app-staging",
+  "app": "unpkg-app",
   "primary_region": "lax",
   "build": {
-    "dockerfile": "Dockerfile",
+    "dockerfile": "./unpkg-app/Dockerfile",
     "args": {
-      "MODE": "staging"
+      "MODE": "production"
     }
   },
   "http_service": {
     "internal_port": 3000,
     "auto_start_machines": true,
-    "min_machines_running": 1,
+    "min_machines_running": 2,
     "processes": ["app"],
     "checks": [
       {
@@ -22,5 +22,5 @@
       }
     ]
   },
-  "vm": [{ "size": "shared-cpu-8x" }]
+  "vm": [{ "size": "shared-cpu-4x", "memory": "4096" }]
 }

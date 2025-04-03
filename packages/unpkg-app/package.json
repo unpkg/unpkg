@@ -28,9 +28,7 @@
     "build:server": "tsc --project ./tsconfig.build.json",
     "dev": "MODE=development bun --port=3001 ./src/server.ts",
     "dev:assets": "bun ../../scripts/serve-assets.ts",
-    "test": "bun --preload=./test/setup.ts test",
-    "deploy": "cd ../.. && fly deploy . -c ./packages/unpkg-app/fly.json",
-    "deploy:staging": "cd ../.. && fly deploy . -c ./packages/unpkg-app/fly.staging.json"
+    "test": "bun --preload=./test/setup.ts test"
   },
   "files": [
     "assets-manifest.json",
