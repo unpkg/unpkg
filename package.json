@@ -11,6 +11,8 @@
     "test": "pnpm -r test",
     "deploy:app": "fly deploy . -c ./deploy/unpkg-app.fly.json",
     "deploy:app:staging": "fly deploy . -c ./deploy/unpkg-app-staging.fly.json",
+    "deploy:files": "fly deploy . -c ./deploy/unpkg-files.fly.json",
+    "deploy:files:staging": "fly deploy . -c ./deploy/unpkg-files-staging.fly.json",
     "deploy:www": "fly deploy . -c ./deploy/unpkg-www.fly.json",
     "deploy:www:staging": "fly deploy . -c ./deploy/unpkg-www-staging.fly.json",
     "deploy:www:worker": "fly deploy . -c ./deploy/unpkg-www-worker.fly.json"

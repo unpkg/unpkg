@@ -1,0 +1,31 @@
+{
+  "app": "unpkg-files",
+  "primary_region": "lax",
+  "build": {
+    "dockerfile": "./unpkg-files/Dockerfile",
+    "args": {
+      "MODE": "production"
+    }
+  },
+  "http_service": {
+    "internal_port": 3000,
+    "auto_start_machines": true,
+    "min_machines_running": 2,
+    "processes": ["app"],
+    "concurrency": {
+      "type": "requests",
+      "soft_limit": 10,
+      "hard_limit": 25
+    },
+    "checks": [
+      {
+        "grace_period": "10s",
+        "interval": "1m0s",
+        "method": "get",
+        "path": "/_health",
+        "timeout": "5s"
+      }
+    ]
+  },
+  "vm": [{ "size": "performance-2x" }]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "unpkg-files",
+  "description": "The backend file server for UNPKG",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "gunzip-maybe": "^1.4.2",
+    "mrmime": "^2.0.1",
+    "semver": "^7.6.3",
+    "tar-stream": "^3.1.7"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.8",
+    "@types/gunzip-maybe": "^1.4.2",
+    "@types/node": "^22.10.2",
+    "@types/semver": "^7.5.8",
+    "@types/tar-stream": "^3.1.3",
+    "typescript": "^5.7.2"
+  },
+  "scripts": {
+    "build": "tsc --project ./tsconfig.build.json",
+    "dev": "MODE=development bun ./src/server.ts",
+    "test": "bun --preload=./test/setup.ts test"
+  },
+  "files": [
+    "dist"
+  ]
+}

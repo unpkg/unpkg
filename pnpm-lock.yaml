@@ -58,6 +58,43 @@ importers:
         specifier: ^5.7.2
         version: 5.7.2
 
+  packages/unpkg-files:
+    dependencies:
+      chalk:
+        specifier: ^5.4.1
+        version: 5.4.1
+      gunzip-maybe:
+        specifier: ^1.4.2
+        version: 1.4.2
+      mrmime:
+        specifier: ^2.0.1
+        version: 2.0.1
+      semver:
+        specifier: ^7.6.3
+        version: 7.6.3
+      tar-stream:
+        specifier: ^3.1.7
+        version: 3.1.7
+    devDependencies:
+      '@types/bun':
+        specifier: ^1.2.8
+        version: 1.2.8
+      '@types/gunzip-maybe':
+        specifier: ^1.4.2
+        version: 1.4.2
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.10.2
+      '@types/semver':
+        specifier: ^7.5.8
+        version: 7.5.8
+      '@types/tar-stream':
+        specifier: ^3.1.3
+        version: 3.1.3
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.2
+
   packages/unpkg-tools:
     dependencies:
       es-module-lexer:
