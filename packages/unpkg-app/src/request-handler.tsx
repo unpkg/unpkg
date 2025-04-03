@@ -17,7 +17,7 @@ const publicNpmRegistry = "https://registry.npmjs.org";
 export async function handleRequest(request: Request): Promise<Response> {
   try {
     let response: Response;
-    if (env.DEV) {
+    if (env.DEBUG) {
       let start = Date.now();
       response = await handleRequest_(request);
       logRequest(request, response, Date.now() - start);

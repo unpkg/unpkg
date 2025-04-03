@@ -35,6 +35,8 @@ FROM oven/bun:1.2.8
 LABEL fly_launch_runtime="Bun"
 WORKDIR /app
 
+#ENV DEBUG=1
+
 ARG MODE=production
 ENV MODE=$MODE
 
