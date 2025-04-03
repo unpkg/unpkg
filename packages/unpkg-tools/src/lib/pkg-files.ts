@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 
-import gunzip from "gunzip-maybe";
+import gunzipMaybe from "gunzip-maybe";
 import tar from "tar-stream";
 
 import { getContentType } from "./content-type.ts";
@@ -72,25 +72,52 @@ export async function listFiles(
   return files;
 }
 
-export async function parsePackage(
+async function parsePackage(
   registry: string,
   packageName: string,
   version: string,
   handler: (name: string, content: Uint8Array, header: tar.Headers) => void
 ): Promise<void> {
   let tarballUrl = createTarballUrl(registry, packageName, version);
-  let response = await fetch(tarballUrl);
 
+  let response = await fetch(tarballUrl);
   if (!response.ok || !response.body) {
     throw new Error(`Failed to fetch tarball (${response.status})`);
   }
 
-  let readable = Readable.from(response.body!);
+  let tarball = Readable.from(response.body!);
+  let gunzip = gunzipMaybe();
+  let extract = tar.extract();
+
+  const cleanup = () => {
+    try {
+      // Destroy all streams in the pipeline
+      tarball.destroy();
+      gunzip.destroy();
+      extract.destroy();
+
+      // If the response body is a ReadableStream, cancel it
+      if (response.body && typeof response.body.cancel === "function") {
+        response.body.cancel();
+      }
+    } catch (cleanupError) {
+      console.error("Error during cleanup:", cleanupError);
+    }
+  };
 
   return new Promise((resolve, reject) => {
-    let extract = tar.extract();
-
     extract.on("error", (error) => {
+      cleanup();
+      reject(error);
+    });
+
+    gunzip.on("error", (error) => {
+      cleanup();
+      reject(error);
+    });
+
+    tarball.on("error", (error) => {
+      cleanup();
       reject(error);
     });
 
@@ -106,22 +133,83 @@ export async function parsePackage(
 
       let chunks: Buffer[] = [];
 
+      stream.on("error", (error) => {
+        cleanup();
+        reject(error);
+      });
+
       stream.on("data", (chunk) => {
         chunks.push(chunk);
       });
 
       stream.on("end", () => {
-        // Every npm tarball has a top-level directory named "package" or
-        // similar. Strip it off to get the actual file path.
-        let name = header.name.replace(/^[^\/]+\//, "/");
-        handler(name, Buffer.concat(chunks), header);
-        next();
+        try {
+          // Every npm tarball has a top-level directory named "package" or
+          // similar. Strip it off to get the actual file path.
+          let name = header.name.replace(/^[^\/]+\//, "/");
+          handler(name, Buffer.concat(chunks), header);
+          next();
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
       });
     });
 
-    readable.pipe(gunzip()).pipe(extract);
+    tarball.pipe(gunzip).pipe(extract);
   });
 }
+
+// export async function parsePackage(
+//   registry: string,
+//   packageName: string,
+//   version: string,
+//   handler: (name: string, content: Uint8Array, header: tar.Headers) => void
+// ): Promise<void> {
+//   let tarballUrl = createTarballUrl(registry, packageName, version);
+//   let response = await fetch(tarballUrl);
+
+//   if (!response.ok || !response.body) {
+//     throw new Error(`Failed to fetch tarball (${response.status})`);
+//   }
+
+//   let readable = Readable.from(response.body!);
+
+//   return new Promise((resolve, reject) => {
+//     let extract = tar.extract();
+
+//     extract.on("error", (error) => {
+//       reject(error);
+//     });
+
+//     extract.on("finish", () => {
+//       resolve();
+//     });
+
+//     extract.on("entry", (header, stream, next) => {
+//       if (header.type === "directory") {
+//         stream.resume();
+//         return next();
+//       }
+
+//       let chunks: Buffer[] = [];
+
+//       stream.on("data", (chunk) => {
+//         chunks.push(chunk);
+//       });
+
+//       stream.on("end", () => {
+//         // Every npm tarball has a top-level directory named "package" or
+//         // similar. Strip it off to get the actual file path.
+//         let name = header.name.replace(/^[^\/]+\//, "/");
+//         handler(name, Buffer.concat(chunks), header);
+//         next();
+//       });
+//     });
+
+//     readable.pipe(gunzip()).pipe(extract);
+//   });
+// }
 
 function createTarballUrl(registry: string, packageName: string, version: string): URL {
   let basename = packageName.split("/").pop()!.toLowerCase();
