@@ -14,7 +14,7 @@ import { Hydrate } from "./hydrate.tsx";
 import { ImageViewer } from "./image-viewer.tsx";
 
 // The maximum number of characters we are willing to show and apply highlighting.
-const maxTextSize = 1024 * 1024;
+const maxTextSize = 50_000;
 
 export function FileDetail({
   packageInfo,
