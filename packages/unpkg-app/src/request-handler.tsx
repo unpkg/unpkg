@@ -38,6 +38,11 @@ export async function handleRequest(request: Request): Promise<Response> {
 }
 
 async function handleRequest_(request: Request): Promise<Response> {
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      headers: { Allow: "GET, HEAD, OPTIONS" },
+    });
+  }
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response(`Invalid request method: ${request.method}`, { status: 405 });
   }

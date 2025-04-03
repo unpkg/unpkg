@@ -45,7 +45,16 @@ export async function handleRequest(request: Request): Promise<Response> {
 }
 
 async function handleRequest_(request: Request): Promise<Response> {
-  // Validate the request method
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      headers: {
+        Allow: "GET, HEAD, OPTIONS",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+      },
+    });
+  }
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response(`Invalid request method: ${request.method}`, { status: 405 });
   }
