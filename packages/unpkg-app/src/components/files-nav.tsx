@@ -1,7 +1,7 @@
 import { type VNode } from "preact";
-import { type PackageInfo } from "unpkg-tools";
+import { type PackageInfo } from "unpkg-worker";
 
-import * as hrefs from "../hrefs.ts";
+import { useHrefs } from "../hooks.ts";
 
 export function FilesNav({
   packageInfo,
@@ -12,6 +12,8 @@ export function FilesNav({
   version: string;
   filename: string;
 }): VNode {
+  let hrefs = useHrefs();
+
   let breadcrumbs = [
     filename === "/" ? (
       <span>{packageInfo.name}</span>
@@ -38,12 +40,12 @@ export function FilesNav({
               <a href={href} class="text-blue-600 hover:underline">
                 {part}
               </a>
-            </span>,
+            </span>
           );
         }
 
         return acc;
-      }, [] as VNode[]),
+      }, [] as VNode[])
   );
 
   return <nav class="py-2">{breadcrumbs}</nav>;

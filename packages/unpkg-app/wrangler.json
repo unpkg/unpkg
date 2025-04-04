@@ -1,0 +1,46 @@
+{
+  "compatibility_date": "2024-12-05",
+  "main": "./src/worker.ts",
+  "assets": { "directory": "./public" },
+
+  "name": "unpkg-app",
+  "observability": { "enabled": true, "head_sampling_rate": 0.01 },
+  "routes": [{ "pattern": "app.unpkg.com", "custom_domain": true }],
+  "vars": {
+    "ASSETS_ORIGIN": "https://app.unpkg.com",
+    "DEV": false,
+    "FILES_ORIGIN": "https://files.unpkg.com",
+    "MODE": "production",
+    "ORIGIN": "https://app.unpkg.com",
+    "WWW_ORIGIN": "https://unpkg.com"
+  },
+
+  "env": {
+    "dev": {
+      "name": "unpkg-app-dev",
+      "routes": [],
+      "vars": {
+        "ASSETS_ORIGIN": "http://localhost:8001",
+        "DEV": true,
+        "FILES_ORIGIN": "http://localhost:4000",
+        "MODE": "development",
+        "ORIGIN": "http://localhost:3001",
+        "WWW_ORIGIN": "http://localhost:3000"
+      }
+    },
+
+    "staging": {
+      "name": "unpkg-app-staging",
+      "observability": { "enabled": true, "head_sampling_rate": 0.01 },
+      "routes": [{ "pattern": "app.unpkg.dev", "custom_domain": true }],
+      "vars": {
+        "ASSETS_ORIGIN": "https://app.unpkg.dev",
+        "DEV": false,
+        "FILES_ORIGIN": "https://files.unpkg.dev",
+        "MODE": "staging",
+        "ORIGIN": "app.unpkg.dev",
+        "WWW_ORIGIN": "https://unpkg.dev"
+      }
+    }
+  }
+}

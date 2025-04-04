@@ -1,9 +1,9 @@
 import { type VNode } from "preact";
 import prettyBytes from "pretty-bytes";
-import { type PackageInfo, type PackageFile } from "unpkg-tools";
+import type { PackageInfo, PackageFile } from "unpkg-worker";
 
-import * as hrefs from "../hrefs.ts";
 import { highlightCode } from "../highlight.ts";
+import { useHrefs } from "../hooks.ts";
 import { getLanguageName } from "../language-names.ts";
 
 import { CodeViewer } from "./code-viewer.tsx";
@@ -27,6 +27,7 @@ export function FileDetail({
   filename: string;
   file: PackageFile;
 }): VNode {
+  let hrefs = useHrefs();
   let rawHref = hrefs.raw(packageInfo.name, version, filename);
 
   let lines: string[] | undefined;

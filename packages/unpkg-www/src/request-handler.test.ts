@@ -15,7 +15,7 @@ const env: Env = {
   ORIGIN: "https://unpkg.com",
 };
 
-const context: ExecutionContext = {
+const context = {
   waitUntil() {},
 } as unknown as ExecutionContext;
 

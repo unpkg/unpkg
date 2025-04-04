@@ -1,43 +1,20 @@
 import { type VNode } from "preact";
 import { render } from "preact-render-to-string";
-import { getFile, getPackageInfo, listFiles, parsePackagePathname, resolvePackageVersion } from "unpkg-tools";
+import { getFile, getPackageInfo, listFiles, parsePackagePathname, resolvePackageVersion } from "unpkg-worker";
 
 import { AssetsContext } from "./assets-context.ts";
 import { loadAssetsManifest } from "./assets-manifest.ts";
-import { logRequest } from "./request-logging.ts";
-import { env } from "./env.ts";
-import { findPublicAsset } from "./public-assets.ts";
 import { Document } from "./components/document.tsx";
 import { FileDetail } from "./components/file-detail.tsx";
 import { FileListing } from "./components/file-listing.tsx";
 import { NotFound } from "./components/not-found.tsx";
+import type { Env } from "./env.ts";
+import { HrefBuilder } from "./href-builder.ts";
+import { HrefsContext } from "./hrefs-context.ts";
 
 const publicNpmRegistry = "https://registry.npmjs.org";
 
-export async function handleRequest(request: Request): Promise<Response> {
-  try {
-    let response: Response;
-    if (env.DEBUG) {
-      let start = Date.now();
-      response = await handleRequest_(request);
-      logRequest(request, response, Date.now() - start);
-    } else {
-      response = await handleRequest_(request);
-    }
-
-    if (request.method === "HEAD") {
-      return new Response(null, response);
-    }
-
-    return response;
-  } catch (error) {
-    console.error(error);
-
-    return new Response("Internal Server Error", { status: 500 });
-  }
-}
-
-async function handleRequest_(request: Request): Promise<Response> {
+export async function handleRequest(request: Request, env: Env, context: ExecutionContext): Promise<Response> {
   if (request.method === "OPTIONS") {
     return new Response(null, {
       headers: { Allow: "GET, HEAD, OPTIONS" },
@@ -59,22 +36,13 @@ async function handleRequest_(request: Request): Promise<Response> {
     return redirect(env.WWW_ORIGIN, 301);
   }
 
-  let file = await findPublicAsset(url.pathname);
-  if (file != null) {
-    return new Response(file, {
-      headers: {
-        "Cache-Control": env.DEV ? "no-store" : "public, max-age=31536000",
-      },
-    });
-  }
-
   let parsed = parsePackagePathname(url.pathname);
   if (parsed == null) {
     return notFound(`Invalid package pathname: ${url.pathname}`);
   }
 
   let packageName = parsed.package.toLowerCase();
-  let packageInfo = await getPackageInfo(publicNpmRegistry, packageName);
+  let packageInfo = await getPackageInfo(context, publicNpmRegistry, packageName);
   if (packageInfo == null) {
     return notFound(`Package not found: "${packageName}"`);
   }
@@ -87,24 +55,24 @@ async function handleRequest_(request: Request): Promise<Response> {
 
   if (parsed.filename != null && parsed.filename.endsWith("/")) {
     let noTrailingSlash = parsed.filename.replace(/\/+$/, "");
-    return redirect(new URL(`/${packageName}@${version}${noTrailingSlash}`, env.APP_ORIGIN), 301);
+    return redirect(new URL(`/${packageName}@${version}${noTrailingSlash}`, env.ORIGIN), 301);
   }
   if (parsed.filename === "/files") {
-    return redirect(new URL(`/${packageName}@${version}`, env.APP_ORIGIN), 301);
+    return redirect(new URL(`/${packageName}@${version}`, env.ORIGIN), 301);
   }
   if (version !== parsed.version) {
-    return redirect(new URL(`/${packageName}@${version}${parsed.filename ?? ""}`, env.APP_ORIGIN), {
+    return redirect(new URL(`/${packageName}@${version}${parsed.filename ?? ""}`, env.ORIGIN), {
       headers: {
         "Cache-Control": "public, max-age=60, s-maxage=300",
       },
     });
   }
 
-  let files = await listFiles(publicNpmRegistry, packageName, version, "/");
+  let files = await listFiles(context, env.FILES_ORIGIN, packageName, version, "/");
   let filename = parsed.filename ?? "/";
 
   if (filename === "/") {
-    return renderPage(<FileListing packageInfo={packageInfo} version={version} dirname="/" files={files} />, {
+    return renderPage(env, <FileListing packageInfo={packageInfo} version={version} dirname="/" files={files} />, {
       headers: {
         "Cache-Control": "public, max-age=60, s-maxage=300",
       },
@@ -116,9 +84,10 @@ async function handleRequest_(request: Request): Promise<Response> {
     let matchingFile = files.find((file) => file.path === remainingFilename);
 
     if (matchingFile != null) {
-      let file = await getFile(publicNpmRegistry, packageName, version, remainingFilename);
+      let file = await getFile(context, env.FILES_ORIGIN, packageName, version, remainingFilename);
 
       return renderPage(
+        env,
         <FileDetail packageInfo={packageInfo} version={version} filename={remainingFilename} file={file!} />,
         {
           headers: {
@@ -132,6 +101,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     let matchingFiles = files.filter((file) => file.path.startsWith(dirname));
 
     return renderPage(
+      env,
       <FileListing packageInfo={packageInfo} version={version} dirname={dirname} files={matchingFiles} />,
       {
         headers: {
@@ -141,7 +111,7 @@ async function handleRequest_(request: Request): Promise<Response> {
     );
   }
 
-  return renderPage(<NotFound message={`Not Found: ${url.pathname}`} />, {
+  return renderPage(env, <NotFound message={`Not Found: ${url.pathname}`} />, {
     status: 404,
   });
 }
@@ -170,12 +140,15 @@ function redirect(location: string | URL, init?: ResponseInit | number): Respons
   });
 }
 
-async function renderPage(node: VNode, init?: ResponseInit): Promise<Response> {
-  let assetsManifest = await loadAssetsManifest();
+async function renderPage(env: Env, node: VNode, init?: ResponseInit): Promise<Response> {
+  let assetsManifest = await loadAssetsManifest(env);
+  let hrefBuilder = new HrefBuilder(env);
 
   let html = render(
     <AssetsContext.Provider value={assetsManifest}>
-      <Document>{node}</Document>
+      <HrefsContext.Provider value={hrefBuilder}>
+        <Document>{node}</Document>
+      </HrefsContext.Provider>
     </AssetsContext.Provider>
   );
 

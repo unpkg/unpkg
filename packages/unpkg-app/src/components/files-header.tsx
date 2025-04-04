@@ -1,9 +1,9 @@
 import { type VNode } from "preact";
 import { compare as compareVersions } from "semver";
-import { type PackageInfo } from "unpkg-tools";
+import { type PackageInfo } from "unpkg-worker";
 
-import * as hrefs from "../hrefs.ts";
 import { parseGitHubRepo, createGitHubUrl } from "../github.ts";
+import { useHrefs } from "../hooks.ts";
 
 import { Hydrate } from "./hydrate.tsx";
 import { VersionSelector } from "./version-selector.tsx";
@@ -18,8 +18,11 @@ export function FilesHeader({
   version: string;
   filename: string;
 }): VNode {
+  let hrefs = useHrefs();
+
   let availableTags = packageInfo["dist-tags"]!;
   let availableVersions = Object.keys(packageInfo.versions!).sort((a, b) => compareVersions(b, a));
+  let pathnameFormat = new URL(hrefs.files(packageInfo.name, "%s", filename)).pathname;
 
   let packageJson = packageInfo.versions![version];
 
@@ -60,7 +63,7 @@ export function FilesHeader({
               availableTags={availableTags}
               availableVersions={availableVersions}
               currentVersion={version}
-              pathnameFormat={hrefs.files(packageInfo.name, "%s", filename)}
+              pathnameFormat={pathnameFormat}
               class="w-28 p-1 border border-slate-300 bg-slate-100 text-sm"
             />
           </Hydrate>

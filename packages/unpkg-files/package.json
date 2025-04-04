@@ -28,7 +28,7 @@
   },
   "scripts": {
     "build": "tsc --project ./tsconfig.build.json",
-    "dev": "MODE=development bun ./src/server.ts",
+    "dev": "MODE=development bun --port 4000 ./src/server.ts",
     "test": "bun --preload=./test/setup.ts test"
   }
 }

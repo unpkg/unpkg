@@ -1,9 +1,9 @@
 import { type VNode, Fragment } from "preact";
 import prettyBytes from "pretty-bytes";
-import { type PackageInfo, type PackageFileMetadata } from "unpkg-tools";
+import type { PackageInfo, PackageFileMetadata } from "unpkg-worker";
 
-import * as hrefs from "../hrefs.ts";
 import { parseGitHubRepo, createGitHubUrl } from "../github.ts";
+import { useHrefs } from "../hooks.ts";
 
 import { FilesHeader } from "./files-header.tsx";
 import { FilesLayout } from "./files-layout.tsx";
@@ -21,6 +21,8 @@ export function FileListing({
   dirname: string;
   files: PackageFileMetadata[];
 }): VNode {
+  let hrefs = useHrefs();
+
   return (
     <FilesLayout>
       <FilesHeader packageInfo={packageInfo} version={version} filename={dirname} />
@@ -55,6 +57,8 @@ function FileListingContent({
   dirname: string;
   files: PackageFileMetadata[];
 }): VNode {
+  let hrefs = useHrefs();
+
   let parentHref: string | null = null;
   if (dirname !== "/") {
     let names = dirname.split("/").filter(Boolean);
@@ -193,6 +197,8 @@ function FileListingContent({
 }
 
 function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo; version: string }): VNode {
+  let hrefs = useHrefs();
+
   let latestVersion = packageInfo["dist-tags"]!.latest;
   let latestVersionDate = new Date(packageInfo.time[latestVersion]);
   let packageJson = packageInfo.versions![version];

@@ -1,9 +1,11 @@
 import { type VNode, Fragment } from "preact";
 
-import * as hrefs from "../hrefs.ts";
+import { useHrefs } from "../hooks.ts";
 import { GitHubIcon } from "./icons.tsx";
 
 export function FilesLayout({ children }: { children: VNode | VNode[] }): VNode {
+  let hrefs = useHrefs();
+
   return (
     <Fragment>
       <header class="border-b border-slate-300 bg-slate-100 text-slate-950">

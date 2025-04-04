@@ -1,4 +1,3 @@
-import type { ExecutionContext } from "@cloudflare/workers-types";
 import type { VNode } from "preact";
 import { render } from "preact-render-to-string";
 import {
