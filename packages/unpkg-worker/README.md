@@ -1,23 +1,20 @@
 # unpkg-worker
 
-Common utilities for UNPKG Cloudflare Workers.
+This is a library of common utilities for UNPKG Cloudflare Workers.
 
 ## Development
 
-First, install all dependencies.
+Install dependencies and run the tests:
 
 ```
 pnpm install
+pnpm test
 ```
 
-Then, you can run the tests with:
+## Deploying
+
+Build it before you deploy:
 
 ```
-pnpm run test
-```
-
-Before you can use this package as part of the monorepo, you need to build it:
-
-```
-pnpm run build
+pnpm build
 ```

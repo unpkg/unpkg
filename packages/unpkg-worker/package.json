@@ -7,6 +7,9 @@
     "types": "./dist/unpkg-worker.d.ts",
     "default": "./dist/unpkg-worker.js"
   },
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "es-module-lexer": "^1.6.0",
     "semver": "^7.6.3"

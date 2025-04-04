@@ -53,9 +53,17 @@ export async function getFile(
   let path = filename;
   let body = new Uint8Array(await response.arrayBuffer());
   let size = body.length;
-  let type = response.headers.get("Content-Type")!;
 
-  let digest = response.headers.get("Content-Digest")!;
+  let type = response.headers.get("Content-Type");
+  if (type == null) {
+    throw new Error(`Missing Content-Type header for file: "${filename}"`);
+  }
+
+  let digest = response.headers.get("Content-Digest");
+  if (digest == null) {
+    throw new Error(`Missing Content-Digest header for file: "${filename}"`);
+  }
+
   let match = digest.match(/^([a-zA-Z0-9]+)=:([A-Za-z0-9+/=]+):$/);
   if (match == null) {
     throw new Error(`Invalid Content-Digest header: "${digest}"`);
@@ -95,9 +103,13 @@ export async function listFiles(
     throw new Error(`Failed to fetch file listing: ${response.status} ${response.statusText}`);
   }
 
-  let { files } = (await response.json()) as PackageFileListing;
+  let json = (await response.json()) as PackageFileListing;
 
-  return files;
+  if (json.files == null) {
+    throw new Error(`Invalid response format: ${JSON.stringify(json)}`);
+  }
+
+  return json.files;
 }
 
 function createListUrl(filesOrigin: string, packageName: string, version: string, prefix: string): URL {

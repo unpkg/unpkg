@@ -1,8 +1,9 @@
 import { expect, describe, it, beforeAll, afterAll } from "bun:test";
 
-import { packageTarballs } from "../test/fixtures.ts";
+import type { PackageFile } from "unpkg-worker";
 
-import { type PackageFile, getFile, listFiles } from "./npm-files.ts";
+import { packageTarballs } from "../../test/fixtures.ts";
+import { getFile, listFiles } from "./npm-files.ts";
 
 const publicNpmRegistry = "https://registry.npmjs.org";
 

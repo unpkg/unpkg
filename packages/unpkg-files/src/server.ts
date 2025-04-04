@@ -1,4 +1,4 @@
-import { handleRequest } from "./request-handler.tsx";
+import { handleRequest } from "./lib/request-handler.ts";
 
 let server = Bun.serve({
   fetch: handleRequest,

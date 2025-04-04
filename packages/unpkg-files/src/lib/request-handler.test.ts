@@ -1,8 +1,7 @@
 import { expect, describe, it, beforeAll, afterAll } from "bun:test";
 
-import { packageTarballs } from "../test/fixtures.ts";
-
-import { handleRequest } from "./request-handler.tsx";
+import { packageTarballs } from "../../test/fixtures.ts";
+import { handleRequest } from "./request-handler.ts";
 
 function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let request = input instanceof Request ? input : new Request(input, init);

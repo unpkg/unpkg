@@ -11,6 +11,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "skipLibCheck": true,
-    "outDir": "dist"
+    "noEmit": true
   }
 }

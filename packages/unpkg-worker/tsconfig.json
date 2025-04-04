@@ -8,7 +8,6 @@
     "verbatimModuleSyntax": true,
     "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true,
-    "declaration": true,
-    "outDir": "dist"
+    "noEmit": true
   }
 }
