@@ -1,30 +1,63 @@
 import { expect, describe, it, beforeAll, afterAll } from "bun:test";
+import type { ExecutionContext } from "@cloudflare/workers-types";
+import { handleRequest as handleFilesRequest } from "unpkg-files";
 
 import { packageInfo, packageTarballs } from "../test/fixtures.ts";
-
+import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
+
+const env: Env = {
+  APP_ORIGIN: "https://app.unpkg.com",
+  ASSETS_ORIGIN: "https://unpkg.com",
+  DEV: false,
+  FILES_ORIGIN: "https://files.unpkg.com",
+  MODE: "test",
+  ORIGIN: "https://unpkg.com",
+};
+
+const context: ExecutionContext = {
+  waitUntil() {},
+} as unknown as ExecutionContext;
 
 function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let request = input instanceof Request ? input : new Request(input, init);
-  return handleRequest(request);
+  return handleRequest(request, env, context);
+}
+
+function fileResponse(path: string): Response {
+  return new Response(Bun.file(path));
 }
 
 describe("handleRequest", () => {
+  let globalCaches: CacheStorage | undefined;
   let globalFetch: typeof fetch | undefined;
 
-  function fileResponse(path: string): Response {
-    return new Response(Bun.file(path));
-  }
-
   beforeAll(() => {
+    globalCaches = globalThis.caches;
     globalFetch = globalThis.fetch;
 
-    // Does not implement Bun's non-spec fetch.preconnect API - https://bun.sh/docs/api/fetch#preconnect-to-a-host
-    // @ts-expect-error
-    globalThis.fetch = async (input: RequestInfo | URL) => {
-      let url = input instanceof Request ? input.url : input;
+    globalThis.caches = {
+      async open() {
+        return {
+          async match() {
+            return null;
+          },
+          async put() {},
+        };
+      },
+    } as unknown as CacheStorage;
 
-      switch (url.toString()) {
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      let request = input instanceof Request ? input : new Request(input, init);
+      let url = new URL(request.url);
+
+      if (url.origin === env.FILES_ORIGIN) {
+        // Run the request through the file server. This allows us to write integration tests
+        // that run without booting the file server.
+        return handleFilesRequest(request);
+      }
+
+      switch (url.href) {
         case "https://registry.npmjs.org/lodash":
           return fileResponse(packageInfo.lodash);
         case "https://registry.npmjs.org/preact":
@@ -44,13 +77,12 @@ describe("handleRequest", () => {
         default:
           throw new Error(`Unexpected URL: ${url}`);
       }
-    };
+    }) as unknown as typeof fetch;
   });
 
   afterAll(() => {
-    if (globalFetch) {
-      globalThis.fetch = globalFetch;
-    }
+    if (globalCaches) globalThis.caches = globalCaches;
+    if (globalFetch) globalThis.fetch = globalFetch;
   });
 
   describe("file requests", () => {

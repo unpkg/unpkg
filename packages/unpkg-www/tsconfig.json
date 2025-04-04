@@ -2,15 +2,13 @@
   "compilerOptions": {
     "strict": true,
     "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "rewriteRelativeImportExtensions": true,
-    "resolveJsonModule": true,
+    "types": ["@cloudflare/workers-types", "bun", "node"],
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
-    "skipLibCheck": true,
-    "outDir": "dist"
+    "noEmit": true
   }
 }

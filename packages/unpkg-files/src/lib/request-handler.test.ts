@@ -18,12 +18,11 @@ describe("handleRequest", () => {
   beforeAll(() => {
     globalFetch = globalThis.fetch;
 
-    // Does not implement Bun's non-spec fetch.preconnect API - https://bun.sh/docs/api/fetch#preconnect-to-a-host
-    // @ts-expect-error
-    globalThis.fetch = async (input: RequestInfo | URL) => {
-      let url = input instanceof Request ? input.url : input;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      let request = input instanceof Request ? input : new Request(input, init);
+      let url = new URL(request.url);
 
-      switch (url.toString()) {
+      switch (url.href) {
         case "https://registry.npmjs.org/@ffmpeg/core/-/core-0.12.6.tgz":
           return fileResponse(packageTarballs["@ffmpeg/core"]["0.12.6"]);
         case "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz":
@@ -35,7 +34,7 @@ describe("handleRequest", () => {
         default:
           throw new Error(`Unexpected URL: ${url}`);
       }
-    };
+    }) as unknown as typeof fetch;
   });
 
   afterAll(() => {

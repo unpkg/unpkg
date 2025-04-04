@@ -1,34 +1,32 @@
 {
   "name": "unpkg-www",
-  "description": "The UNPKG home page and file server",
+  "description": "The UNPKG home page and file server as a Cloudflare Worker",
   "private": true,
   "type": "module",
   "dependencies": {
-    "chalk": "^5.4.1",
     "highlight.js": "^11.11.1",
     "preact": "^10.25.2",
     "preact-render-to-string": "^6.5.12",
-    "unpkg-tools": "workspace:^"
+    "unpkg-worker": "workspace:*"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250320.0",
     "@ryanto/esbuild-plugin-tailwind": "^0.0.1",
     "@types/bun": "^1.2.8",
     "@types/node": "^22.10.2",
     "esbuild": "^0.24.2",
+    "miniflare": "^3.20241205.0",
     "tailwindcss": "4.0.0-beta.9",
-    "typescript": "^5.7.2"
+    "unpkg-files": "workspace:*",
+    "wrangler": "^4.3.0"
   },
   "scripts": {
-    "build": "pnpm run build:assets && pnpm run build:server",
+    "build": "wrangler deploy --dry-run --outdir=dist",
     "build:assets": "node --disable-warning=ExperimentalWarning ../../scripts/build-assets.ts",
-    "build:server": "tsc --project ./tsconfig.build.json",
-    "dev": "MODE=development bun ./src/server.ts",
+    "dev": "wrangler dev --env dev --port 3000",
     "dev:assets": "bun ../../scripts/serve-assets.ts",
-    "test": "bun --preload=./test/setup.ts test"
-  },
-  "files": [
-    "assets-manifest.json",
-    "dist",
-    "public"
-  ]
+    "test": "bun --preload=./test/setup.ts test",
+    "predeploy": "pnpm run build:assets",
+    "deploy": "wrangler deploy"
+  }
 }
