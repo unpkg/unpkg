@@ -35,7 +35,7 @@
 
     "staging": {
       "name": "unpkg-www-staging",
-      "observability": { "enabled": true, "head_sampling_rate": 0.001 },
+      "observability": { "enabled": true },
       "routes": [
         { "pattern": "www.unpkg.dev", "custom_domain": true },
         { "pattern": "unpkg.dev", "custom_domain": true }

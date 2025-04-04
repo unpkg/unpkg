@@ -14,12 +14,14 @@ RUN npm install -g pnpm@10.7.0
 # Copy workspace configuration files
 COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/unpkg-files/package.json ./packages/unpkg-files/
+COPY packages/unpkg-worker/package.json ./packages/unpkg-worker/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy application code
 COPY packages/unpkg-files ./packages/unpkg-files/
+COPY packages/unpkg-worker ./packages/unpkg-worker/
 
 # Build all packages
 RUN pnpm run build
