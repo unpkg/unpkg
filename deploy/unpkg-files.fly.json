@@ -27,5 +27,5 @@
       }
     ]
   },
-  "vm": [{ "size": "performance-2x" }]
+  "vm": [{ "size": "performance-1x" }]
 }
