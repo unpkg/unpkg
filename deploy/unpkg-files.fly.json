@@ -15,7 +15,7 @@
     "concurrency": {
       "type": "requests",
       "soft_limit": 10,
-      "hard_limit": 25
+      "hard_limit": 100
     },
     "checks": [
       {

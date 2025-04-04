@@ -6,9 +6,8 @@
   "name": "unpkg-www",
   "observability": { "enabled": true, "head_sampling_rate": 0.001 },
   "routes": [
-    { "pattern": "new.unpkg.com", "custom_domain": true }
-    // { "pattern": "www.unpkg.com", "custom_domain": true },
-    // { "pattern": "unpkg.com", "custom_domain": true }
+    { "pattern": "www.unpkg.com", "custom_domain": true },
+    { "pattern": "unpkg.com", "custom_domain": true }
   ],
   "vars": {
     "APP_ORIGIN": "https://app.unpkg.com",
