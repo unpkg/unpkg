@@ -1,0 +1,24 @@
+{
+  "name": "unpkg-worker",
+  "description": "Common utilities for UNPKG Cloudflare Workers",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "types": "./dist/unpkg-worker.d.ts",
+    "default": "./dist/unpkg-worker.js"
+  },
+  "dependencies": {
+    "es-module-lexer": "^1.6.0",
+    "semver": "^7.6.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250320.0",
+    "@types/bun": "^1.2.8",
+    "@types/semver": "^7.5.8",
+    "typescript": "^5.7.2"
+  },
+  "scripts": {
+    "build": "tsc --project ./tsconfig.build.json",
+    "test": "bun test"
+  }
+}

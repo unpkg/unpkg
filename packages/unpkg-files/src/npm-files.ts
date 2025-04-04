@@ -2,26 +2,10 @@ import { Readable } from "node:stream";
 
 import gunzipMaybe from "gunzip-maybe";
 import tar from "tar-stream";
+import type { PackageFile, PackageFileMetadata } from "unpkg-worker";
 
 import { getContentType } from "./content-type.ts";
 import { getSubresourceIntegrity } from "./subresource-integrity.ts";
-
-export interface PackageFile {
-  path: string;
-  body: Uint8Array;
-  size: number;
-  type: string;
-  integrity: string;
-}
-
-export type PackageFileMetadata = Omit<PackageFile, "body">;
-
-export interface PackageFileListing {
-  package: string;
-  version: string;
-  prefix: string;
-  files: PackageFileMetadata[];
-}
 
 export async function getFile(
   registry: string,

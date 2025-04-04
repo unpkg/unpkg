@@ -1,4 +1,5 @@
 import * as semver from "semver";
+import type { PackageFileListing } from "unpkg-worker";
 
 import { env } from "./env.ts";
 import { getFile, listFiles } from "./npm-files.ts";
@@ -106,7 +107,7 @@ async function handleRequest_(request: Request): Promise<Response> {
 
     // List tarball contents
     let files = await listFiles(publicNpmRegistry, packageName, version, prefix);
-    let fileListing = {
+    let fileListing: PackageFileListing = {
       package: packageName,
       version,
       prefix,
