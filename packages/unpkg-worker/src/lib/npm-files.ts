@@ -1,5 +1,3 @@
-import type { ExecutionContext } from "@cloudflare/workers-types";
-
 import { createCacheableResponse } from "./cache-utils.ts";
 
 export interface PackageFile {
