@@ -12,7 +12,7 @@ export default {
       if (!response) {
         response = await handleRequest(request, env, context);
 
-        if (response.status === 200 && response.headers.has("Cache-Control")) {
+        if (request.method === "GET" && response.status === 200 && response.headers.has("Cache-Control")) {
           context.waitUntil(cache.put(request, response.clone()));
         }
       }
