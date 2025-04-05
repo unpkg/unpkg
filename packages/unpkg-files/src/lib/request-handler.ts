@@ -2,20 +2,18 @@ import * as semver from "semver";
 import type { PackageFileListing } from "unpkg-worker";
 
 import { env } from "./env.ts";
-import { getFile, listFiles } from "./npm-files.ts";
+import { getFile, listFiles, PackageNotFoundError } from "./npm-files.ts";
 import { logRequest } from "./request-logging.ts";
 
 const publicNpmRegistry = "https://registry.npmjs.org";
 
 export async function handleRequest(request: Request): Promise<Response> {
   try {
-    let response: Response;
-    if (env.DEBUG) {
-      let start = Date.now();
-      response = await handleRequest_(request);
+    let start = Date.now();
+    let response = await handleRequest_(request);
+
+    if (env.MODE !== "test") {
       logRequest(request, response, Date.now() - start);
-    } else {
-      response = await handleRequest_(request);
     }
 
     if (request.method === "HEAD") {
@@ -51,75 +49,80 @@ async function handleRequest_(request: Request): Promise<Response> {
     return notFound();
   }
 
-  if (url.pathname.startsWith("/file")) {
-    let parsed = parsePackagePathname(url.pathname.slice(5));
+  try {
+    if (url.pathname.startsWith("/file")) {
+      let parsed = parsePackagePathname(url.pathname.slice(5));
+      if (parsed == null) {
+        return notFound(`Invalid file pathname: ${url.pathname}`);
+      }
 
-    if (parsed == null) {
-      return notFound(`Invalid file pathname: ${url.pathname}`);
+      let { package: packageName, version, filename } = parsed;
+
+      if (version == null) {
+        return notFound(`Missing version in pathname: ${url.pathname}`);
+      }
+      if (semver.clean(version) !== version) {
+        return notFound(`Invalid version: ${version}`);
+      }
+      if (filename == null || filename === "/") {
+        return notFound(`Missing filename in pathname: ${url.pathname}`);
+      }
+
+      let file = await getFile(publicNpmRegistry, packageName, version, filename);
+      if (file == null) {
+        return notFound(`File not found: ${url.pathname}`);
+      }
+
+      let [algorithm, hash] = file.integrity.split("-", 2);
+
+      return new Response(file.body, {
+        headers: {
+          "Cache-Control": "public, max-age=31536000",
+          "Content-Digest": `${algorithm}=:${hash}:`,
+          "Content-Type": file.type,
+        },
+      });
     }
 
-    let { package: packageName, version, filename } = parsed;
+    if (url.pathname.startsWith("/list")) {
+      let parsed = parsePackagePathname(url.pathname.slice(5));
+      if (parsed == null) {
+        return notFound(`Invalid list pathname: ${url.pathname}`);
+      }
 
-    if (version == null) {
-      return notFound(`Missing version in pathname: ${url.pathname}`);
+      let { package: packageName, version, filename } = parsed;
+
+      if (version == null) {
+        return notFound(`Missing version in pathname: ${url.pathname}`);
+      }
+      if (semver.clean(version) !== version) {
+        return notFound(`Invalid version: ${version}`);
+      }
+
+      let prefix = filename ?? "/";
+
+      // List tarball contents
+      let files = await listFiles(publicNpmRegistry, packageName, version, prefix);
+      let fileListing: PackageFileListing = {
+        package: packageName,
+        version,
+        prefix,
+        files,
+      };
+
+      return Response.json(fileListing, {
+        headers: {
+          "Cache-Control": "public, max-age=31536000",
+          "Content-Type": "application/json",
+        },
+      });
     }
-    if (semver.clean(version) !== version) {
-      return notFound(`Invalid version: ${version}`);
-    }
-    if (filename == null || filename === "/") {
-      return notFound(`Missing filename in pathname: ${url.pathname}`);
-    }
-
-    let file = await getFile(publicNpmRegistry, packageName, version, filename);
-
-    if (file == null) {
-      return notFound(`File not found: ${url.pathname}`);
-    }
-
-    let [algorithm, hash] = file.integrity.split("-", 2);
-
-    return new Response(file.body, {
-      headers: {
-        "Cache-Control": "public, max-age=31536000",
-        "Content-Digest": `${algorithm}=:${hash}:`,
-        "Content-Type": file.type,
-      },
-    });
-  }
-
-  if (url.pathname.startsWith("/list")) {
-    let parsed = parsePackagePathname(url.pathname.slice(5));
-
-    if (parsed == null) {
-      return notFound(`Invalid list pathname: ${url.pathname}`);
-    }
-
-    let { package: packageName, version, filename } = parsed;
-
-    if (version == null) {
-      return notFound(`Missing version in pathname: ${url.pathname}`);
-    }
-    if (semver.clean(version) !== version) {
-      return notFound(`Invalid version: ${version}`);
+  } catch (error) {
+    if (error instanceof PackageNotFoundError) {
+      return notFound(`Package not found: ${error.packageName}@${error.version}`);
     }
 
-    let prefix = filename ?? "/";
-
-    // List tarball contents
-    let files = await listFiles(publicNpmRegistry, packageName, version, prefix);
-    let fileListing: PackageFileListing = {
-      package: packageName,
-      version,
-      prefix,
-      files,
-    };
-
-    return Response.json(fileListing, {
-      headers: {
-        "Cache-Control": "public, max-age=31536000",
-        "Content-Type": "application/json",
-      },
-    });
+    throw error;
   }
 
   return notFound(`Not found: ${url.pathname}${url.search}`);

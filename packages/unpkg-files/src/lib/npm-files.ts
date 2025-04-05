@@ -15,7 +15,7 @@ export async function getFile(
 ): Promise<PackageFile | null> {
   let file: PackageFile | null = null;
 
-  await parsePackage(registry, packageName, version, (path, content) => {
+  await fetchAndParsePackage(registry, packageName, version, (path, content) => {
     if (path.toLowerCase() !== filename.toLowerCase()) {
       return;
     }
@@ -40,7 +40,7 @@ export async function listFiles(
 ): Promise<PackageFileMetadata[]> {
   let files: PackageFileMetadata[] = [];
 
-  await parsePackage(registry, packageName, version, async (path, content) => {
+  await fetchAndParsePackage(registry, packageName, version, async (path, content) => {
     if (path.endsWith("/") || !path.startsWith(prefix)) {
       return;
     }
@@ -56,7 +56,21 @@ export async function listFiles(
   return files;
 }
 
-async function parsePackage(
+export class PackageNotFoundError extends Error {
+  registry: string;
+  packageName: string;
+  version: string;
+
+  constructor(message: string, registry: string, packageName: string, version: string) {
+    super(message);
+    this.name = "PackageNotFoundError";
+    this.registry = registry;
+    this.packageName = packageName;
+    this.version = version;
+  }
+}
+
+async function fetchAndParsePackage(
   registry: string,
   packageName: string,
   version: string,
@@ -66,7 +80,10 @@ async function parsePackage(
 
   let response = await fetch(tarballUrl);
   if (!response.ok || !response.body) {
-    throw new Error(`Failed to fetch tarball (${response.status})`);
+    if (response.status === 404) {
+      throw new PackageNotFoundError(`Package not found: ${packageName}`, registry, packageName, version);
+    }
+    throw new Error(`Failed to fetch tarball: ${response.status} ${response.statusText}`);
   }
 
   let tarball = Readable.from(response.body!);
@@ -143,57 +160,6 @@ async function parsePackage(
     tarball.pipe(gunzip).pipe(extract);
   });
 }
-
-// export async function parsePackage(
-//   registry: string,
-//   packageName: string,
-//   version: string,
-//   handler: (name: string, content: Uint8Array, header: tar.Headers) => void
-// ): Promise<void> {
-//   let tarballUrl = createTarballUrl(registry, packageName, version);
-//   let response = await fetch(tarballUrl);
-
-//   if (!response.ok || !response.body) {
-//     throw new Error(`Failed to fetch tarball (${response.status})`);
-//   }
-
-//   let readable = Readable.from(response.body!);
-
-//   return new Promise((resolve, reject) => {
-//     let extract = tar.extract();
-
-//     extract.on("error", (error) => {
-//       reject(error);
-//     });
-
-//     extract.on("finish", () => {
-//       resolve();
-//     });
-
-//     extract.on("entry", (header, stream, next) => {
-//       if (header.type === "directory") {
-//         stream.resume();
-//         return next();
-//       }
-
-//       let chunks: Buffer[] = [];
-
-//       stream.on("data", (chunk) => {
-//         chunks.push(chunk);
-//       });
-
-//       stream.on("end", () => {
-//         // Every npm tarball has a top-level directory named "package" or
-//         // similar. Strip it off to get the actual file path.
-//         let name = header.name.replace(/^[^\/]+\//, "/");
-//         handler(name, Buffer.concat(chunks), header);
-//         next();
-//       });
-//     });
-
-//     readable.pipe(gunzip()).pipe(extract);
-//   });
-// }
 
 function createTarballUrl(registry: string, packageName: string, version: string): URL {
   let basename = packageName.split("/").pop()!.toLowerCase();

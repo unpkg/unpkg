@@ -31,6 +31,8 @@ describe("handleRequest", () => {
           return fileResponse(packageTarballs.preact["10.26.4"]);
         case "https://registry.npmjs.org/react/-/react-18.2.0.tgz":
           return fileResponse(packageTarballs.react["18.2.0"]);
+        case "https://registry.npmjs.org/missing-package/-/missing-package-0.0.0.tgz":
+          return new Response("Not Found", { status: 404 });
         default:
           throw new Error(`Unexpected URL: ${url}`);
       }
@@ -68,12 +70,12 @@ describe("handleRequest", () => {
       expect(response.status).toBe(200);
     });
 
-    it("returns 404 for a missing package", async () => {
+    it("returns 404 for a missing package name in the URL", async () => {
       let response = await dispatchFetch("https://files.unpkg.com/file");
       expect(response.status).toBe(404);
     });
 
-    it("returns 404 for a missing version", async () => {
+    it("returns 404 for a missing version in the URL", async () => {
       let response = await dispatchFetch("https://files.unpkg.com/file/react/package.json");
       expect(response.status).toBe(404);
     });
@@ -83,8 +85,13 @@ describe("handleRequest", () => {
       expect(response.status).toBe(404);
     });
 
-    it("returns 404 for a missing filename", async () => {
+    it("returns 404 for a missing filename in the URL", async () => {
       let response = await dispatchFetch("https://files.unpkg.com/file/react@18.2.0/");
+      expect(response.status).toBe(404);
+    });
+
+    it("returns 404 for a missing package", async () => {
+      let response = await dispatchFetch("https://files.unpkg.com/file/missing-package@0.0.0/package.json");
       expect(response.status).toBe(404);
     });
 
