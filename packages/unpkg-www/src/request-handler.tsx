@@ -179,7 +179,9 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     });
   }
 
-  if (filename != null) {
+  let files = await listFiles(context, env.FILES_ORIGIN, packageName, version);
+
+  if (filename != null && files.some((file) => file.path.toLowerCase() === filename.toLowerCase())) {
     let file = await getFile(context, env.FILES_ORIGIN, packageName, version, filename);
 
     if (file != null) {
@@ -230,13 +232,12 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   // an index.js file.
   // See https://nodejs.org/api/modules.html#file-modules and
   // https://nodejs.org/api/modules.html#folders-as-modules
-  let files = await listFiles(context, env.FILES_ORIGIN, packageName, version);
   let basename = filename == null || filename === "/" ? "" : filename.replace(/\/+$/, "");
   let match =
     files.find((file) => file.path === `${basename}.js`) || files.find((file) => file.path === `${basename}/index.js`);
   if (match != null) {
     return redirect(`/${packageName}@${version}${match.path}${url.search}`, {
-      status: 301,
+      status: 301, // Version number in the URL is already resolved, so this is a permanent redirect
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Cross-Origin-Resource-Policy": "cross-origin",
