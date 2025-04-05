@@ -55,13 +55,13 @@ export async function handleRequest(request: Request, env: Env, context: Executi
 
   if (parsed.filename != null && parsed.filename.endsWith("/")) {
     let noTrailingSlash = parsed.filename.replace(/\/+$/, "");
-    return redirect(new URL(`/${packageName}@${version}${noTrailingSlash}`, env.ORIGIN), 301);
+    return redirect(`/${packageName}@${version}${noTrailingSlash}`, 301);
   }
   if (parsed.filename === "/files") {
-    return redirect(new URL(`/${packageName}@${version}`, env.ORIGIN), 301);
+    return redirect(`/${packageName}@${version}`, 301);
   }
   if (version !== parsed.version) {
-    return redirect(new URL(`/${packageName}@${version}${parsed.filename ?? ""}`, env.ORIGIN), {
+    return redirect(`/${packageName}@${version}${parsed.filename ?? ""}`, {
       headers: {
         "Cache-Control": "public, max-age=60, s-maxage=300",
       },

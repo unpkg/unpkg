@@ -74,28 +74,28 @@ describe("handleRequest", () => {
     let response = await dispatchFetch("https://app.unpkg.com/react@18.2.0/", { redirect: "manual" });
     expect(response.status).toBe(301);
     let location = response.headers.get("Location");
-    expect(location).toBe("https://app.unpkg.com/react@18.2.0");
+    expect(location).toBe("/react@18.2.0");
   });
 
   it('redirects "/:package/files" to "/package@version"', async () => {
     let response = await dispatchFetch("https://app.unpkg.com/react/files", { redirect: "manual" });
     expect(response.status).toBe(301);
     let location = response.headers.get("Location");
-    expect(location).toMatch(/^https:\/\/app\.unpkg\.com\/react@\d+\.\d+\.\d+$/);
+    expect(location).toMatch(/^\/react@\d+\.\d+\.\d+$/);
   });
 
   it("matches package names in any case", async () => {
     let response = await dispatchFetch("https://app.unpkg.com/React/files", { redirect: "manual" });
     expect(response.status).toBe(301);
     let location = response.headers.get("Location");
-    expect(location).toMatch(/^https:\/\/app\.unpkg\.com\/react@\d+\.\d+\.\d+$/);
+    expect(location).toMatch(/^\/react@\d+\.\d+\.\d+$/);
   });
 
   it('redirects "/:package@:version/files" to "/package@version"', async () => {
     let response = await dispatchFetch("https://app.unpkg.com/react@18.2.0/files", { redirect: "manual" });
     expect(response.status).toBe(301);
     let location = response.headers.get("Location");
-    expect(location).toBe("https://app.unpkg.com/react@18.2.0");
+    expect(location).toBe("/react@18.2.0");
   });
 
   it("resolves semver range on package root", async () => {
@@ -103,7 +103,7 @@ describe("handleRequest", () => {
     expect(response.status).toBe(302);
     let location = response.headers.get("Location");
     expect(location).toBeTruthy();
-    expect(location).toMatch(/^https:\/\/app\.unpkg\.com\/react@18\.\d+\.\d+$/);
+    expect(location).toMatch(/^\/react@18\.\d+\.\d+$/);
   });
 
   it("resolves semver range on specific filename", async () => {
@@ -111,7 +111,7 @@ describe("handleRequest", () => {
     expect(response.status).toBe(302);
     let location = response.headers.get("Location");
     expect(location).toBeTruthy();
-    expect(location).toMatch(/^https:\/\/app\.unpkg\.com\/react@18\.\d+\.\d+\/files\/index\.js$/);
+    expect(location).toMatch(/^\/react@18\.\d+\.\d+\/files\/index\.js$/);
   });
 
   it("resolves http: protocol to https:", async () => {
@@ -119,7 +119,7 @@ describe("handleRequest", () => {
     expect(response.status).toBe(302);
     let location = response.headers.get("Location");
     expect(location).toBeTruthy();
-    expect(location).toMatch(/^https:\/\/app\.unpkg\.com\/react@18\.\d+\.\d+\/files\/index\.js$/);
+    expect(location).toMatch(/^\/react@18\.\d+\.\d+\/files\/index\.js$/);
   });
 
   it("resolves npm tags", async () => {
@@ -127,6 +127,6 @@ describe("handleRequest", () => {
     expect(response.status).toBe(302);
     let location = response.headers.get("Location");
     expect(location).toBeTruthy();
-    expect(location).toMatch(/^https:\/\/app\.unpkg\.com\/react@\d+\.\d+\.\d+\/files\/index\.js$/);
+    expect(location).toMatch(/^\/react@\d+\.\d+\.\d+\/files\/index\.js$/);
   });
 });

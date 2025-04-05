@@ -58,7 +58,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   if (url.pathname.startsWith("/browse/")) {
     let parsed = parsePackagePathname(url.pathname.slice(7));
     if (parsed) {
-      return redirect(filesHref(env, parsed.package, parsed.version, parsed.filename), 301);
+      return redirect(new URL(filesPathname(parsed.package, parsed.version, parsed.filename), env.APP_ORIGIN), 301);
     }
   }
 
@@ -88,7 +88,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
 
     // If the version number is not already resolved, redirect to a permanent URL
     if (version !== parsed.version) {
-      return redirect(new URL(`/${packageName}@${version}${prefix}${url.search}`, env.ORIGIN), {
+      return redirect(`/${packageName}@${version}${prefix}${url.search}`, {
         headers: {
           "Cache-Control": "public, max-age=60, s-maxage=300",
         },
@@ -118,11 +118,11 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   if (filename != null && filename.endsWith("/")) {
     // If the version number is already resolved, we can issue a permanent redirect (301)
     if (version === parsed.version) {
-      return redirect(filesHref(env, packageName, version, filename), 301);
+      return redirect(new URL(filesPathname(packageName, version, filename), env.APP_ORIGIN), 301);
     }
 
     // Otherwise it should be temporary (302)
-    return redirect(filesHref(env, packageName, version, filename), {
+    return redirect(new URL(filesPathname(packageName, version, filename), env.APP_ORIGIN), {
       headers: {
         "Cache-Control": "public, max-age=60, s-maxage=300",
       },
@@ -144,7 +144,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
 
   // If the resolved filename is different from the original filename, redirect to the new URL
   if (resolvedFilename != null && resolvedFilename !== filename) {
-    let location = new URL(`/${packageName}@${version}${resolvedFilename}${url.search}`, env.ORIGIN);
+    let location = `/${packageName}@${version}${resolvedFilename}${url.search}`;
 
     // If the version number is already resolved, we can issue a permanent redirect (301)
     if (version === parsed.version) {
@@ -170,7 +170,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   // Maximize cache hits by redirecting to the permanent URL if the version
   // number is different from the one that was used in the request
   if (version !== parsed.version) {
-    return redirect(new URL(`/${packageName}@${version}${filename ?? ""}${url.search}`, env.ORIGIN), {
+    return redirect(`/${packageName}@${version}${filename ?? ""}${url.search}`, {
       headers: {
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=60, s-maxage=300",
@@ -235,7 +235,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   let match =
     files.find((file) => file.path === `${basename}.js`) || files.find((file) => file.path === `${basename}/index.js`);
   if (match != null) {
-    return redirect(new URL(`/${packageName}@${version}${match.path}${url.search}`, env.ORIGIN), {
+    return redirect(`/${packageName}@${version}${match.path}${url.search}`, {
       status: 301,
       headers: {
         "Access-Control-Allow-Origin": "*",
@@ -289,9 +289,8 @@ async function renderPage(env: Env, node: VNode, init?: ResponseInit): Promise<R
   });
 }
 
-function filesHref(env: Env, packageName: string, version?: string, filename?: string): string {
+function filesPathname(packageName: string, version?: string, filename?: string): string {
   // The /files prefix is not needed for the root of the file browser.
   let path = filename == null || filename === "/" ? "" : `/files${filename.replace(/\/+$/, "")}`;
-  let url = new URL(`/${packageName}${version ? `@${version}` : ""}${path}`, env.APP_ORIGIN);
-  return url.href;
+  return `/${packageName}${version ? `@${version}` : ""}${path}`;
 }

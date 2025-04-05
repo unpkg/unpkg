@@ -131,7 +131,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(302);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
+      expect(location).toMatch(/^\/react@\d+\.\d+\.\d+\/index\.js/);
     });
 
     it("resolves npm tag and filename in a single redirect", async () => {
@@ -139,7 +139,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(302);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@\d+\.\d+\.\d+\/index\.js/);
+      expect(location).toMatch(/^\/react@\d+\.\d+\.\d+\/index\.js/);
     });
 
     it("resolves semver ranges", async () => {
@@ -147,7 +147,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(302);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
+      expect(location).toMatch(/^\/react@18\.\d+\.\d+\/index\.js/);
     });
 
     it("resolves semver range and filename in a single redirect", async () => {
@@ -155,7 +155,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(302);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/index\.js/);
+      expect(location).toMatch(/^\/react@18\.\d+\.\d+\/index\.js/);
     });
 
     it('serves JavaScript files with "charset=utf-8"', async () => {
@@ -169,7 +169,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("https://unpkg.com/react@19.0.0/index.js");
+      expect(location).toBe("/react@19.0.0/index.js");
     });
 
     it('resolves using "exports" field and the "default" condition in package.json', async () => {
@@ -177,7 +177,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("https://unpkg.com/react@19.0.0/index.js?conditions=default");
+      expect(location).toBe("/react@19.0.0/index.js?conditions=default");
     });
 
     it('resolves using "exports" field and a custom condition in package.json', async () => {
@@ -187,7 +187,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("https://unpkg.com/react@19.0.0/react.react-server.js?conditions=react-server");
+      expect(location).toBe("/react@19.0.0/react.react-server.js?conditions=react-server");
     });
 
     it('resolves using a custom filename with "exports" field in package.json', async () => {
@@ -195,7 +195,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("https://unpkg.com/react@19.0.0/compiler-runtime.js");
+      expect(location).toBe("/react@19.0.0/compiler-runtime.js");
     });
 
     it('resolves using a custom filename with "exports" field and custom conditions in package.json', async () => {
@@ -205,7 +205,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("https://unpkg.com/preact@10.25.4/hooks/dist/hooks.mjs?conditions=import");
+      expect(location).toBe("/preact@10.25.4/hooks/dist/hooks.mjs?conditions=import");
     });
 
     it('resolves to "main" when "exports" field has no "default" condition', async () => {
@@ -213,7 +213,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("https://unpkg.com/vitessce@3.5.9/dist/index.min.js");
+      expect(location).toBe("/vitessce@3.5.9/dist/index.min.js");
     });
 
     it("resolves to a matching .js file when the extension is missing", async () => {
@@ -221,7 +221,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("https://unpkg.com/preact@10.26.4/src/component.js");
+      expect(location).toBe("/preact@10.26.4/src/component.js");
     });
 
     it("resolves to an index.js file when a directory is requested", async () => {
@@ -229,7 +229,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("https://unpkg.com/preact@10.26.4/src/index.js");
+      expect(location).toBe("/preact@10.26.4/src/index.js");
     });
 
     describe("the unpkg field in package.json", () => {
@@ -238,7 +238,7 @@ describe("handleRequest", () => {
         expect(response.status).toBe(301);
         let location = response.headers.get("Location");
         expect(location).not.toBeNull();
-        expect(location).toBe("https://unpkg.com/preact@10.25.4/dist/preact.min.js");
+        expect(location).toBe("/preact@10.25.4/dist/preact.min.js");
       });
 
       it('resolves using "exports" field when conditions are present', async () => {
@@ -248,18 +248,18 @@ describe("handleRequest", () => {
         expect(response.status).toBe(301);
         let location = response.headers.get("Location");
         expect(location).not.toBeNull();
-        expect(location).toBe("https://unpkg.com/preact@10.25.4/dist/preact.module.js?conditions=browser");
+        expect(location).toBe("/preact@10.25.4/dist/preact.module.js?conditions=browser");
       });
     });
   });
 
   describe("?meta requests", () => {
-    it("resolves semver range with a temporary redirect", async () => {
+    it("resolves semver range with a relative, temporary redirect", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@^18?meta", { redirect: "manual" });
       expect(response.status).toBe(302);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toMatch(/^https:\/\/unpkg\.com\/react@18\.\d+\.\d+\/\?meta$/);
+      expect(location).toMatch(/^\/react@18\.\d+\.\d+\/\?meta$/);
     });
 
     it("lists the files in a package", async () => {
