@@ -158,12 +158,6 @@ describe("handleRequest", () => {
       expect(location).toMatch(/^\/react@18\.\d+\.\d+\/index\.js/);
     });
 
-    it('serves JavaScript files with "charset=utf-8"', async () => {
-      let response = await dispatchFetch("https://unpkg.com/react@18.2.0/index.js");
-      expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toMatch(/^text\/javascript; charset=utf-8/);
-    });
-
     it('resolves using "exports" field in package.json', async () => {
       let response = await dispatchFetch("https://unpkg.com/react@19.0.0", { redirect: "manual" });
       expect(response.status).toBe(301);
@@ -232,24 +226,40 @@ describe("handleRequest", () => {
       expect(location).toBe("/preact@10.26.4/src/index.js");
     });
 
-    describe("the unpkg field in package.json", () => {
-      it("resolves files correctly", async () => {
-        let response = await dispatchFetch("https://unpkg.com/preact@10.25.4", { redirect: "manual" });
-        expect(response.status).toBe(301);
-        let location = response.headers.get("Location");
-        expect(location).not.toBeNull();
-        expect(location).toBe("/preact@10.25.4/dist/preact.min.js");
-      });
+    it('serves JavaScript files with "charset=utf-8"', async () => {
+      let response = await dispatchFetch("https://unpkg.com/react@18.2.0/index.js");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toMatch(/^text\/javascript; charset=utf-8/);
+    });
 
-      it('resolves using "exports" field when conditions are present', async () => {
-        let response = await dispatchFetch("https://unpkg.com/preact@10.25.4?conditions=browser", {
-          redirect: "manual",
-        });
-        expect(response.status).toBe(301);
-        let location = response.headers.get("Location");
-        expect(location).not.toBeNull();
-        expect(location).toBe("/preact@10.25.4/dist/preact.module.js?conditions=browser");
+    it("adds CORS headers to the response", async () => {
+      let response = await dispatchFetch("https://unpkg.com/react@18.2.0/index.js");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Access-Control-Allow-Headers")).toBe("*");
+      expect(response.headers.get("Access-Control-Allow-Methods")).toBe("GET, HEAD, OPTIONS");
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(response.headers.get("Access-Control-Expose-Headers")).toBe("*");
+      expect(response.headers.get("Cross-Origin-Resource-Policy")).toBe("cross-origin");
+    });
+  });
+
+  describe("the unpkg field in package.json", () => {
+    it("resolves files correctly", async () => {
+      let response = await dispatchFetch("https://unpkg.com/preact@10.25.4", { redirect: "manual" });
+      expect(response.status).toBe(301);
+      let location = response.headers.get("Location");
+      expect(location).not.toBeNull();
+      expect(location).toBe("/preact@10.25.4/dist/preact.min.js");
+    });
+
+    it('resolves using "exports" field when conditions are present', async () => {
+      let response = await dispatchFetch("https://unpkg.com/preact@10.25.4?conditions=browser", {
+        redirect: "manual",
       });
+      expect(response.status).toBe(301);
+      let location = response.headers.get("Location");
+      expect(location).not.toBeNull();
+      expect(location).toBe("/preact@10.25.4/dist/preact.module.js?conditions=browser");
     });
   });
 
@@ -296,6 +306,16 @@ describe("handleRequest", () => {
       expect(response.status).toBe(200);
       let text = await response.text();
       expect(text).toMatch(/import { assign } from '\.\/util\?module';/);
+    });
+
+    it("adds CORS headers to the response", async () => {
+      let response = await dispatchFetch("https://unpkg.com/preact@10.26.4/src/component.js?module");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Access-Control-Allow-Headers")).toBe("*");
+      expect(response.headers.get("Access-Control-Allow-Methods")).toBe("GET, HEAD, OPTIONS");
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(response.headers.get("Access-Control-Expose-Headers")).toBe("*");
+      expect(response.headers.get("Cross-Origin-Resource-Policy")).toBe("cross-origin");
     });
   });
 

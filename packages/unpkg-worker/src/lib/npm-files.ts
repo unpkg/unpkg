@@ -17,18 +17,19 @@ export interface PackageFileListing {
   files: PackageFileMetadata[];
 }
 
-export async function getFile(
+export async function fetchFile(
   context: ExecutionContext,
-  filesOrigin: string,
+  origin: string,
   packageName: string,
   version: string,
   filename: string
-): Promise<PackageFile | null> {
+): Promise<Response | null> {
   if (filename === "" || filename === "/") {
     return null;
   }
 
-  let request = new Request(createFileUrl(filesOrigin, packageName, version, filename));
+  let url = new URL(`/file/${packageName.toLowerCase()}@${version}${filename}`, origin);
+  let request = new Request(url);
 
   let cache = await caches.open("npm-files");
   let response = await cache.match(request);
@@ -46,6 +47,22 @@ export async function getFile(
     }
 
     throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+  }
+
+  return response;
+}
+
+export async function getFile(
+  context: ExecutionContext,
+  origin: string,
+  packageName: string,
+  version: string,
+  filename: string
+): Promise<PackageFile | null> {
+  let response = await fetchFile(context, origin, packageName, version, filename);
+
+  if (response == null) {
+    return null;
   }
 
   let path = filename;
@@ -73,18 +90,15 @@ export async function getFile(
   return { path, body, size, type, integrity };
 }
 
-function createFileUrl(filesOrigin: string, packageName: string, version: string, filename: string): URL {
-  return new URL(`/file/${packageName.toLowerCase()}@${version}${filename}`, filesOrigin);
-}
-
 export async function listFiles(
   context: ExecutionContext,
-  filesOrigin: string,
+  origin: string,
   packageName: string,
   version: string,
   prefix = "/"
 ): Promise<PackageFileMetadata[]> {
-  let request = new Request(createListUrl(filesOrigin, packageName, version, prefix));
+  let url = new URL(`/list/${packageName.toLowerCase()}@${version}${prefix}`, origin);
+  let request = new Request(url);
 
   let cache = await caches.open("npm-file-listings");
   let response = await cache.match(request);
@@ -108,8 +122,4 @@ export async function listFiles(
   }
 
   return json.files;
-}
-
-function createListUrl(filesOrigin: string, packageName: string, version: string, prefix: string): URL {
-  return new URL(`/list/${packageName.toLowerCase()}@${version}${prefix}`, filesOrigin);
 }

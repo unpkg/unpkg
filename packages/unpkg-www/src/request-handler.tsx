@@ -1,7 +1,7 @@
 import type { VNode } from "preact";
 import { render } from "preact-render-to-string";
 import {
-  getFile,
+  fetchFile,
   getPackageInfo,
   listFiles,
   parsePackagePathname,
@@ -182,41 +182,58 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   let files = await listFiles(context, env.FILES_ORIGIN, packageName, version);
 
   if (filename != null && files.some((file) => file.path.toLowerCase() === filename.toLowerCase())) {
-    let file = await getFile(context, env.FILES_ORIGIN, packageName, version, filename);
+    let response = await fetchFile(context, env.FILES_ORIGIN, packageName, version, filename);
 
-    if (file != null) {
+    if (response != null) {
       // In ?module requests, rewrite imports to unpkg.com/* URLs in JavaScript modules
-      if (file.type === "text/javascript" && url.searchParams.has("module")) {
-        let code = new TextDecoder().decode(file.body);
+      if (
+        response.headers.has("Content-Type") &&
+        response.headers.get("Content-Type")!.startsWith("text/javascript") &&
+        url.searchParams.has("module")
+      ) {
+        let code = new TextDecoder().decode(await response.arrayBuffer());
         let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies);
         let newCode = rewriteImports(code, url.origin, deps);
 
         return new Response(newCode, {
           headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Expose-Headers": "*",
             "Cache-Control": "public, max-age=31536000",
             "Cache-Tag": "js-module", // This allows us to purge the cache if ?module behavior ever changes
-            "Content-Type": file.type,
+            "Content-Type": "text/javascript; charset=utf-8",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Expose-Headers": "*",
             "Cross-Origin-Resource-Policy": "cross-origin",
           },
         });
       }
 
-      let [algorithm, hash] = file.integrity.split("-", 2);
-      let [type, subtype] = file.type.split("/");
-      let contentType = file.type === "text/javascript" ? "text/javascript; charset=utf-8" : file.type;
+      // In all other requests adjust some headers and pass the response straight through
+      let headers = new Headers(response.headers);
 
-      return new Response(file.body, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Expose-Headers": "*",
-          "Cache-Control": "public, max-age=31536000",
-          "Cache-Tag": `type-${type},subtype-${subtype}`, // This allows us to purge the cache for any type/subtype
-          "Content-Digest": `${algorithm}=:${hash}:`,
-          "Content-Type": contentType,
-          "Cross-Origin-Resource-Policy": "cross-origin",
-        },
+      // Cache the response for 1 year if it isn't already set
+      if (!headers.has("Cache-Control")) {
+        headers.set("Cache-Control", "public, max-age=31536000");
+      }
+
+      // Serve JavaScript files with charset="utf-8"
+      if (headers.get("Content-Type") === "text/javascript") {
+        headers.set("Content-Type", "text/javascript; charset=utf-8");
+      }
+
+      // Add CORS headers
+      headers.set("Access-Control-Allow-Headers", "*");
+      headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+      headers.set("Access-Control-Allow-Origin", "*");
+      headers.set("Access-Control-Expose-Headers", "*");
+      headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+
+      let clone = response.clone();
+      return new Response(clone.body, {
+        status: clone.status,
+        statusText: clone.statusText,
+        headers,
       });
     }
   }
