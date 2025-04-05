@@ -79,6 +79,7 @@ async function handleRequest_(request: Request): Promise<Response> {
         headers: {
           "Cache-Control": "public, max-age=31536000",
           "Content-Digest": `${algorithm}=:${hash}:`,
+          "Content-Length": file.size.toString(),
           "Content-Type": file.type,
         },
       });

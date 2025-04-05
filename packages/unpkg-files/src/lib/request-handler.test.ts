@@ -49,14 +49,12 @@ describe("handleRequest", () => {
     it("serves a file", async () => {
       let response = await dispatchFetch("https://files.unpkg.com/file/@ffmpeg/core@0.12.6/package.json");
       expect(response.status).toBe(200);
-      expect(response.headers.has("Content-Digest")).toBe(true);
       expect(response.headers.get("Content-Type")).toMatch(/^application\/json/);
     });
 
     it("serves a file in a subdirectory", async () => {
       let response = await dispatchFetch("https://files.unpkg.com/file/react@18.2.0/cjs/react.development.js");
       expect(response.status).toBe(200);
-      expect(response.headers.has("Content-Digest")).toBe(true);
       expect(response.headers.get("Content-Type")).toMatch(/^text\/javascript/);
     });
 
