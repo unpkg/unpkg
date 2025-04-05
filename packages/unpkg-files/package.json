@@ -29,6 +29,8 @@
   "scripts": {
     "build": "tsc --project ./tsconfig.build.json",
     "dev": "MODE=development bun --port 4000 ./src/server.ts",
-    "test": "bun --preload=./test/setup.ts test"
+    "test": "bun --preload=./test/setup.ts test",
+    "deploy": "fly deploy ../.. -c ./packages/unpkg-files/fly.json",
+    "deploy:staging": "fly deploy ../.. -c ./packages/unpkg-files/fly.staging.json"
   }
 }

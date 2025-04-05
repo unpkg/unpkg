@@ -1,6 +1,6 @@
 # unpkg-www
 
-This is the main home page and file server for UNPKG. It is built and deployed as a Cloudflare Worker.
+This package is the main home page for UNPKG. It is built and deployed as a [Cloudflare Worker](https://workers.cloudflare.com/).
 
 ## Development
 

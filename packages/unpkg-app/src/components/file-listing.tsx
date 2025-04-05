@@ -21,8 +21,6 @@ export function FileListing({
   dirname: string;
   files: PackageFileMetadata[];
 }): VNode {
-  let hrefs = useHrefs();
-
   return (
     <FilesLayout>
       <FilesHeader packageInfo={packageInfo} version={version} filename={dirname} />

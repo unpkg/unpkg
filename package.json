@@ -8,8 +8,7 @@
   "scripts": {
     "build": "pnpm -r run build",
     "clean": "git clean -fdX .",
-    "test": "pnpm -r test",
-    "deploy:files": "fly deploy . -c ./deploy/unpkg-files.fly.json",
-    "deploy:files:staging": "fly deploy . -c ./deploy/unpkg-files-staging.fly.json"
+    "pretest": "pnpm run build",
+    "test": "pnpm -r test"
   }
 }

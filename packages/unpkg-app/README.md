@@ -1,6 +1,6 @@
 # unpkg-app
 
-This is file browser interface for UNPKG. It is built and deployed as a Cloudflare Worker.
+This packages is the UNPKG web app. It is built and deployed as a [Cloudflare Worker](https://workers.cloudflare.com/).
 
 ## Development
 

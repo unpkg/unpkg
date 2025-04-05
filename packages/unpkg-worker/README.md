@@ -1,6 +1,6 @@
 # unpkg-worker
 
-This is a library of common utilities for UNPKG Cloudflare Workers.
+This package is a library of common utilities for UNPKG Cloudflare Workers.
 
 ## Development
 
