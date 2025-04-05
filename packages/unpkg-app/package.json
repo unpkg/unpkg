@@ -30,6 +30,7 @@
     "dev:assets": "bun ../../scripts/serve-assets.ts",
     "test": "bun --preload=./test/setup.ts test",
     "predeploy": "pnpm run build:assets",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging"
   }
 }
