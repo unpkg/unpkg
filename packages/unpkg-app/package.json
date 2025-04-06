@@ -18,7 +18,6 @@
     "@types/node": "^22.10.2",
     "@types/semver": "^7.5.8",
     "esbuild": "^0.24.2",
-    "miniflare": "^3.20241205.0",
     "tailwindcss": "4.0.0-beta.9",
     "unpkg-files": "workspace:*",
     "wrangler": "^4.3.0"
