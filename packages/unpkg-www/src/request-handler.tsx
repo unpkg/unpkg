@@ -23,9 +23,9 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     return new Response(null, {
       headers: {
         Allow: "GET, HEAD, OPTIONS",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
         "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        "Access-Control-Allow-Origin": "*",
       },
     });
   }
@@ -105,10 +105,12 @@ export async function handleRequest(request: Request, env: Env, context: Executi
 
     return Response.json(fileListing, {
       headers: {
-        "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=31536000",
         "Cache-Tag": "meta", // This allows us to purge the cache if ?meta behavior ever changes
         "Content-Type": "application/json",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+        "Access-Control-Allow-Origin": "*",
         "Cross-Origin-Resource-Policy": "cross-origin",
       },
     });
