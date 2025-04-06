@@ -13,7 +13,7 @@
     "APP_ORIGIN": "https://app.unpkg.com",
     "ASSETS_ORIGIN": "https://unpkg.com",
     "DEV": false,
-    "FILES_ORIGIN": "https://files.unpkg.com",
+    "FILES_ORIGIN": "https://fly.unpkg.com",
     "MODE": "production",
     "ORIGIN": "https://unpkg.com"
   },
@@ -43,7 +43,7 @@
         "APP_ORIGIN": "https://app.unpkg.dev",
         "ASSETS_ORIGIN": "https://unpkg.dev",
         "DEV": false,
-        "FILES_ORIGIN": "https://files.unpkg.dev",
+        "FILES_ORIGIN": "https://fly.unpkg.dev",
         "MODE": "staging",
         "ORIGIN": "https://unpkg.dev"
       }

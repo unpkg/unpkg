@@ -9,7 +9,7 @@
   "vars": {
     "ASSETS_ORIGIN": "https://app.unpkg.com",
     "DEV": false,
-    "FILES_ORIGIN": "https://files.unpkg.com",
+    "FILES_ORIGIN": "https://fly.unpkg.com",
     "MODE": "production",
     "ORIGIN": "https://app.unpkg.com",
     "WWW_ORIGIN": "https://unpkg.com"
@@ -36,7 +36,7 @@
       "vars": {
         "ASSETS_ORIGIN": "https://app.unpkg.dev",
         "DEV": false,
-        "FILES_ORIGIN": "https://files.unpkg.dev",
+        "FILES_ORIGIN": "https://fly.unpkg.dev",
         "MODE": "staging",
         "ORIGIN": "https://app.unpkg.dev",
         "WWW_ORIGIN": "https://unpkg.dev"

@@ -1,5 +1,5 @@
 {
-  "app": "unpkg-files-staging",
+  "app": "unpkg-staging",
   "primary_region": "lax",
   "build": {
     "dockerfile": "./Dockerfile",
