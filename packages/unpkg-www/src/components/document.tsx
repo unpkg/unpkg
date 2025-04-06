@@ -3,23 +3,25 @@ import { type VNode } from "preact";
 import { useAsset } from "../hooks.ts";
 import { type ImportMap } from "../import-map.ts";
 
-const importMap: ImportMap = {
-  imports: {
-    preact: "https://unpkg.com/preact@10.25.4/dist/preact.module.js",
-    "preact/hooks": "https://unpkg.com/preact@10.25.4/hooks/dist/hooks.module.js",
-    "preact/jsx-runtime": "https://unpkg.com/preact@10.25.4/jsx-runtime/dist/jsxRuntime.module.js",
-  },
-};
-
 export function Document({
   children,
   description = "The CDN for everything on npm",
+  origin = "https://unpkg.com",
   title = "UNPKG",
 }: {
   children: VNode;
   description?: string;
+  origin?: string;
   title?: string;
 }): VNode {
+  let importMap: ImportMap = {
+    imports: {
+      preact: new URL("/preact@10.25.4/dist/preact.module.js", origin).href,
+      "preact/hooks": new URL("/preact@10.25.4/hooks/dist/hooks.module.js", origin).href,
+      "preact/jsx-runtime": new URL("/preact@10.25.4/jsx-runtime/dist/jsxRuntime.module.js", origin).href,
+    },
+  };
+
   return (
     <html lang="en">
       <head>

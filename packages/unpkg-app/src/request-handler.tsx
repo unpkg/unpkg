@@ -147,7 +147,7 @@ async function renderPage(env: Env, node: VNode, init?: ResponseInit): Promise<R
   let html = render(
     <AssetsContext.Provider value={assetsManifest}>
       <HrefsContext.Provider value={hrefBuilder}>
-        <Document>{node}</Document>
+        <Document wwwOrigin={env.WWW_ORIGIN}>{node}</Document>
       </HrefsContext.Provider>
     </AssetsContext.Provider>
   );

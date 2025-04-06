@@ -231,10 +231,11 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       headers.set("Access-Control-Expose-Headers", "*");
       headers.set("Cross-Origin-Resource-Policy", "cross-origin");
 
-      let clone = response.clone();
-      return new Response(clone.body, {
-        status: clone.status,
-        statusText: clone.statusText,
+      let body = await response.arrayBuffer();
+
+      return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
         headers,
       });
     }
@@ -296,7 +297,7 @@ async function renderPage(env: Env, node: VNode, init?: ResponseInit): Promise<R
 
   let html = render(
     <AssetsContext.Provider value={assetsManifest}>
-      <Document>{node}</Document>
+      <Document origin={env.ORIGIN}>{node}</Document>
     </AssetsContext.Provider>
   );
 
