@@ -15,7 +15,7 @@
     "processes": ["app"],
     "checks": [
       {
-        "grace_period": "10s",
+        "grace_period": "5s",
         "interval": "1m0s",
         "method": "get",
         "path": "/_health",
