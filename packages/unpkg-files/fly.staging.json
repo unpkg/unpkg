@@ -1,12 +1,14 @@
 {
   "app": "unpkg-staging",
-  "primary_region": "lax",
+  "primary_region": "sjc",
+
   "build": {
     "dockerfile": "./Dockerfile",
     "args": {
       "MODE": "staging"
     }
   },
+
   "http_service": {
     "internal_port": 3000,
     "auto_stop_machines": "stop",
@@ -23,5 +25,8 @@
       }
     ]
   },
-  "vm": [{ "size": "performance-1x" }]
+
+  "vm": {
+    "size": "performance-1x"
+  }
 }

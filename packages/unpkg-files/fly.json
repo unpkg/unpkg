@@ -1,12 +1,14 @@
 {
   "app": "unpkg",
-  "primary_region": "lax",
+  "primary_region": "sjc",
+
   "build": {
     "dockerfile": "./Dockerfile",
     "args": {
       "MODE": "production"
     }
   },
+
   "http_service": {
     "internal_port": 3000,
     "auto_start_machines": true,
@@ -28,5 +30,8 @@
       }
     ]
   },
-  "vm": [{ "size": "performance-2x" }]
+
+  "vm": {
+    "size": "performance-2x"
+  }
 }
