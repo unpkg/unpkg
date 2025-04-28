@@ -28,7 +28,7 @@ importers:
         version: 7.6.3
       unpkg-worker:
         specifier: workspace:*
-        version: file:packages/unpkg-worker
+        version: link:../unpkg-worker
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250320.0
@@ -51,9 +51,6 @@ importers:
       tailwindcss:
         specifier: 4.0.0-beta.9
         version: 4.0.0-beta.9
-      unpkg-files:
-        specifier: workspace:*
-        version: file:packages/unpkg-files
       wrangler:
         specifier: ^4.3.0
         version: 4.7.0(@cloudflare/workers-types@4.20250403.0)
@@ -133,7 +130,7 @@ importers:
         version: 6.5.12(preact@10.25.2)
       unpkg-worker:
         specifier: workspace:*
-        version: file:packages/unpkg-worker
+        version: link:../unpkg-worker
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250320.0
@@ -155,7 +152,7 @@ importers:
         version: 4.0.0-beta.9
       unpkg-files:
         specifier: workspace:*
-        version: file:packages/unpkg-files
+        version: link:../unpkg-files
       wrangler:
         specifier: ^4.3.0
         version: 4.7.0(@cloudflare/workers-types@4.20250403.0)
@@ -938,12 +935,6 @@ packages:
   unenv@2.0.0-rc.15:
     resolution: {integrity: sha512-J/rEIZU8w6FOfLNz/hNKsnY+fFHWnu9MH4yRbSZF3xbbGHovcetXPs7sD+9p8L6CeNC//I9bhRYAOsBt2u7/OA==}
 
-  unpkg-files@file:packages/unpkg-files:
-    resolution: {directory: packages/unpkg-files, type: directory}
-
-  unpkg-worker@file:packages/unpkg-worker:
-    resolution: {directory: packages/unpkg-worker, type: directory}
-
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
@@ -1634,19 +1625,6 @@ snapshots:
       ohash: 2.0.11
       pathe: 2.0.3
       ufo: 1.5.4
-
-  unpkg-files@file:packages/unpkg-files:
-    dependencies:
-      chalk: 5.4.1
-      gunzip-maybe: 1.4.2
-      mrmime: 2.0.1
-      semver: 7.6.3
-      tar-stream: 3.1.7
-
-  unpkg-worker@file:packages/unpkg-worker:
-    dependencies:
-      es-module-lexer: 1.6.0
-      semver: 7.6.3
 
   util-deprecate@1.0.2: {}
 
