@@ -1,22 +1,31 @@
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
-
-// @ts-expect-error - `caches.default` is missing in @cloudflare/workers-types
-const cache = caches.default as Cache;
+import { withUtf8Charset } from "./response.ts";
 
 export default {
   async fetch(request, env, context) {
     try {
+      // @ts-expect-error - `caches.default` is missing in @cloudflare/workers-types
+      let cache = caches.default as Cache;
       let url = new URL(request.url);
       let shouldUseCache = url.pathname !== "/" && url.pathname !== "/index.html";
       let response = shouldUseCache ? await cache.match(request) : undefined;
+      let cacheMiss = response == null;
 
       if (!response) {
         response = await handleRequest(request, env, context);
+      }
 
-        if (shouldUseCache && request.method === "GET" && response.status === 200 && response.headers.has("Cache-Control")) {
-          context.waitUntil(cache.put(request, response.clone()));
-        }
+      response = withUtf8Charset(response);
+
+      if (
+        cacheMiss &&
+        shouldUseCache &&
+        request.method === "GET" &&
+        response.status === 200 &&
+        response.headers.has("Cache-Control")
+      ) {
+        context.waitUntil(cache.put(request, response.clone()));
       }
 
       if (request.method === "HEAD") {
