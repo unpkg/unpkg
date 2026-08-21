@@ -1,0 +1,4 @@
+interface:
+  display_name: "UNPKG Cloudflare Logs"
+  short_description: "Query and aggregate UNPKG Worker logs"
+  default_prompt: "Use $unpkg-cf-logs to investigate recent Cloudflare Worker errors in production."
