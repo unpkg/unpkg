@@ -1,5 +1,7 @@
 # syntax = docker/dockerfile:1
 
+FROM denoland/deno:bin-2.9.4 AS deno
+
 # Use Node.js for the build image
 FROM node:23.6.0-slim AS build
 WORKDIR /app
@@ -34,6 +36,8 @@ RUN pnpm --filter unpkg-files deploy --prod dist-files
 FROM oven/bun:1.2.8
 LABEL fly_launch_runtime="Bun"
 WORKDIR /app
+
+COPY --from=deno /deno /usr/local/bin/deno
 
 ENV DEBUG=1
 

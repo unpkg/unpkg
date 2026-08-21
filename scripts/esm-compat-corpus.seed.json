@@ -206,6 +206,15 @@
     },
     {
       "category": "build-options",
+      "description": "Selected ESM exports",
+      "expect": "module",
+      "features": ["exports-selection", "tree-shaking"],
+      "package": "preact",
+      "path": "/preact@10.26.4?exports=h,render",
+      "preserveRedirectQuery": ["exports"]
+    },
+    {
+      "category": "build-options",
       "description": "Keep names option",
       "expect": "module",
       "features": ["keep-names"],

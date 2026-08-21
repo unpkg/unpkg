@@ -106,35 +106,55 @@ export function resolveExportConditions(
   entry: string,
   supportedConditions: string[]
 ): string | null {
-  return _resolveExportConditions(exports, entry, supportedConditions, entry === ".");
+  return _resolveExportConditions(exports, entry, supportedConditions, entry === ".", null);
 }
 
 function _resolveExportConditions(
   exports: ExportConditions,
   entry: string,
   supportedConditions: string[],
-  entryWasFound: boolean
+  entryWasFound: boolean,
+  wildcardMatch: string | null
 ): string | null {
+  for (let key in exports) {
+    if (!isSubpath(key) || entry !== normalizeEntryPath(key)) continue;
+
+    let value = exports[key];
+    if (typeof value === "string") {
+      return applyWildcardMatch(value, wildcardMatch);
+    }
+
+    return _resolveExportConditions(value, entry, supportedConditions, true, wildcardMatch);
+  }
+
+  let wildcardEntries = Object.entries(exports)
+    .filter(([key]) => isSubpath(key) && key.includes("*"))
+    .map(([key, value]) => {
+      let match = matchWildcardExport(normalizeEntryPath(key), entry);
+      return match == null ? null : { key, match, value };
+    })
+    .filter((candidate): candidate is NonNullable<typeof candidate> => candidate != null)
+    .sort((left, right) => wildcardSpecificity(right.key) - wildcardSpecificity(left.key));
+
+  for (let { match, value } of wildcardEntries) {
+    if (typeof value === "string") {
+      return applyWildcardMatch(value, match);
+    }
+
+    let resolved = _resolveExportConditions(value, entry, supportedConditions, true, match);
+    if (resolved != null) {
+      return resolved;
+    }
+  }
+
   for (let key in exports) {
     let value = exports[key];
 
-    if (isSubpath(key)) {
-      if (entry === normalizeEntryPath(key)) {
-        if (typeof value === "string") {
-          // "exports": { ".": "./dist/index.js" }
-          return value;
-        } else {
-          // "exports": { ".": { ... } }
-          return _resolveExportConditions(value, entry, supportedConditions, true);
-        }
-      }
-    } else if (supportedConditions.includes(key)) {
+    if (!isSubpath(key) && supportedConditions.includes(key)) {
       if (typeof value === "string") {
-        // "exports": { "import": "./dist/index.mjs" }
-        if (entryWasFound) return value;
+        if (entryWasFound) return applyWildcardMatch(value, wildcardMatch);
       } else {
-        // "exports": { "import": { ... } }
-        let resolved = _resolveExportConditions(value, entry, supportedConditions, entryWasFound);
+        let resolved = _resolveExportConditions(value, entry, supportedConditions, entryWasFound, wildcardMatch);
         if (resolved != null) {
           return resolved;
         }
@@ -143,6 +163,25 @@ function _resolveExportConditions(
   }
 
   return null;
+}
+
+function matchWildcardExport(pattern: string, entry: string): string | null {
+  let wildcardIndex = pattern.indexOf("*");
+  let prefix = pattern.slice(0, wildcardIndex);
+  let suffix = pattern.slice(wildcardIndex + 1);
+  if (!entry.startsWith(prefix) || !entry.endsWith(suffix)) {
+    return null;
+  }
+
+  return entry.slice(prefix.length, entry.length - suffix.length);
+}
+
+function wildcardSpecificity(pattern: string): number {
+  return pattern.replace("*", "").length;
+}
+
+function applyWildcardMatch(value: string, wildcardMatch: string | null): string {
+  return wildcardMatch == null ? value : value.replaceAll("*", wildcardMatch);
 }
 
 function isSubpath(path: string): boolean {

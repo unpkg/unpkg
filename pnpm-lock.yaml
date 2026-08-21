@@ -88,6 +88,9 @@ importers:
 
   packages/unpkg-files:
     dependencies:
+      '@esm.sh/cjs-module-lexer':
+        specifier: 1.1.0
+        version: 1.1.0
       chalk:
         specifier: ^5.4.1
         version: 5.4.1
@@ -420,6 +423,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@esm.sh/cjs-module-lexer@1.1.0':
+    resolution: {integrity: sha512-IjpcpUe1mYxPBnGreYMxDSbdVmD2zFXxHeJ2EbJsbTkC+RDAjPQDpkvOSYzB0qYo4npBtwrgLiGYcUVfyH6b8g==}
 
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
@@ -1146,6 +1152,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.24.2':
     optional: true
+
+  '@esm.sh/cjs-module-lexer@1.1.0': {}
 
   '@fastify/busboy@2.1.1': {}
 

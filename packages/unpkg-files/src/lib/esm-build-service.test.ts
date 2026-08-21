@@ -5,10 +5,12 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 
 import {
+  analyzeCommonJsSource,
   bundleSource,
   normalizeBuildOptions,
   parseAliases,
   parseDependencyOverrides,
+  parseSelectedExports,
   resolveBuildFilename,
   rewriteEsmImports,
   transformSource,
@@ -32,6 +34,53 @@ describe("parseAliases", () => {
       react: "preact/compat",
       "react-dom": "preact/compat",
     });
+  });
+});
+
+describe("parseSelectedExports", () => {
+  it("normalizes valid unique export names", () => {
+    expect(parseSelectedExports("render, h,render,default,not-valid!,class")).toEqual(["default", "h", "render"]);
+  });
+});
+
+describe("analyzeCommonJsSource", () => {
+  it("tracks properties assigned through a module.exports alias", () => {
+    let result = analyzeCommonJsSource(
+      "/process.js",
+      "var process = module.exports = {}; process.cwd = function () {}; process.env = {};",
+      "production"
+    );
+
+    expect(result.exports).toEqual(["cwd", "env"]);
+  });
+
+  it("tracks properties on exported functions and objects", () => {
+    let functionResult = analyzeCommonJsSource(
+      "/events.js",
+      "function EventEmitter() {} module.exports = EventEmitter; EventEmitter.EventEmitter = EventEmitter; EventEmitter.listenerCount = function () {};",
+      "production"
+    );
+    let objectResult = analyzeCommonJsSource(
+      "/path.js",
+      "var posix = { resolve: function () {}, sep: '/' }; posix.posix = posix; module.exports = posix;",
+      "production"
+    );
+
+    expect(functionResult.exports).toEqual(["EventEmitter", "listenerCount"]);
+    expect(objectResult.exports).toEqual(["resolve", "sep", "posix"]);
+  });
+
+  it("selects conditional reexports using the active environment", () => {
+    let code = [
+      "if (process.env.NODE_ENV === 'production') {",
+      "  module.exports = require('./production.js');",
+      "} else {",
+      "  module.exports = require('./development.js');",
+      "}",
+    ].join("\n");
+
+    expect(analyzeCommonJsSource("/index.js", code, "production").reexports).toEqual(["./production.js"]);
+    expect(analyzeCommonJsSource("/index.js", code, "development").reexports).toEqual(["./development.js"]);
   });
 });
 
@@ -273,8 +322,22 @@ describe("transformSource", () => {
       options()
     );
 
-    expect(result.code).toContain("export { __unpkg_cjs_default as default };");
-    expect(result.code).toContain("export const answer = __unpkg_cjs_default.answer;");
+    expect(result.code).toContain("__unpkg_cjs_default as default");
+    expect(result.code).toContain('__unpkg_cjs_default["answer"]');
+    expect(result.code).toContain("as answer");
+  });
+
+  it("aliases named exports without shadowing globals used by CommonJS source", async () => {
+    let result = await transformSource(
+      "exports.parseInt = parseInt; exports.setTimeout = setTimeout;",
+      "/src/index.cjs",
+      options()
+    );
+
+    expect(result.code).not.toContain("const parseInt =");
+    expect(result.code).not.toContain("const setTimeout =");
+    expect(result.code).toContain("as parseInt");
+    expect(result.code).toContain("as setTimeout");
   });
 
   it("rejects dynamic require with a clear diagnostic", async () => {
@@ -315,6 +378,29 @@ describe("transformSource", () => {
 });
 
 describe("bundleSource", () => {
+  it("tree-shakes ESM builds to selected exports", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-selected-exports-"));
+
+    try {
+      let code = "export const foo = 'foo'; export const bar = 'bar';";
+      await writeFile(path.join(packageDirectory, "index.js"), code);
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "selected-exports-package" },
+        "selected-exports-package",
+        "1.0.0",
+        "/index.js",
+        code,
+        options("exports=foo")
+      );
+
+      expect(result.code).toContain("foo");
+      expect(result.code).not.toContain("bar");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
   it("bundles package self-references as package-internal imports", async () => {
     let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-self-reference-"));
 
@@ -353,8 +439,9 @@ describe("bundleSource", () => {
 
       expect(result.code).not.toContain('Dynamic require of "self-referencing-package"');
       expect(result.code).toContain("createRoot");
-      expect(result.code).toContain("export { __unpkg_cjs_default as default };");
-      expect(result.code).toContain("export const createRoot = __unpkg_cjs_default.createRoot;");
+      expect(result.code).toContain("__unpkg_cjs_default as default");
+      expect(result.code).toContain('__unpkg_cjs_default["createRoot"]');
+      expect(result.code).toContain("as createRoot");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }
@@ -396,7 +483,8 @@ describe("bundleSource", () => {
         options()
       );
 
-      expect(result.code).toContain("export const createContext = __unpkg_cjs_default.createContext;");
+      expect(result.code).toContain('__unpkg_cjs_default["createContext"]');
+      expect(result.code).toContain("as createContext");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }
@@ -420,8 +508,9 @@ describe("bundleSource", () => {
         options()
       );
 
-      expect(result.code).toContain("export const createRoot = __unpkg_cjs_default.createRoot;");
-      expect(result.code).not.toContain("export const privateInternal");
+      expect(result.code).toContain('__unpkg_cjs_default["createRoot"]');
+      expect(result.code).toContain("as createRoot");
+      expect(result.code).not.toContain('unpkg_cjs_default["privateInternal"]');
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }
@@ -434,8 +523,10 @@ describe("bundleSource", () => {
       options()
     );
 
-    expect(result.code).toContain("export const camelCase = __unpkg_cjs_default.camelCase;");
-    expect(result.code).toContain("export const forEach = __unpkg_cjs_default.forEach;");
+    expect(result.code).toContain('__unpkg_cjs_default["camelCase"]');
+    expect(result.code).toContain("as camelCase");
+    expect(result.code).toContain('__unpkg_cjs_default["forEach"]');
+    expect(result.code).toContain("as forEach");
   });
 
   it("preserves ESM dependency re-exports as external ESM", async () => {
