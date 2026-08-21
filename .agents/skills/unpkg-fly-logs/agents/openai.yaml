@@ -1,0 +1,4 @@
+interface:
+  display_name: "UNPKG Fly Logs"
+  short_description: "Search UNPKG backend logs and Fly metrics"
+  default_prompt: "Use $unpkg-fly-logs to investigate recent backend errors in production."
