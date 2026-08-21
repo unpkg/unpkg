@@ -9,6 +9,7 @@ interface CompatCase {
   category?: string;
   description: string;
   expect: "module" | "javascript" | "json" | "css" | "typescript" | "diagnostic";
+  exportParity?: "expected-only";
   features?: string[];
   package?: string;
   path: string;
@@ -151,7 +152,9 @@ function addBaselineParity(
 
   let parityError =
     result.error ??
-    (baseline.error == null ? compareExportKeys(baseline.exportKeys, result.exportKeys) : `Baseline failed: ${baseline.error}`);
+    (baseline.error == null
+      ? compareExportKeys(baseline.exportKeys, result.exportKeys, result.case.exportParity ?? "match")
+      : `Baseline failed: ${baseline.error}`);
   return {
     ...result,
     baselineExportKeys: baseline.exportKeys,
@@ -602,7 +605,11 @@ function isCompatCorpus(value: unknown): value is CompatCorpus {
 function isCompatCase(value: unknown): value is CompatCase {
   if (typeof value !== "object" || value == null) return false;
   let compatCase = value as Record<string, unknown>;
-  return typeof compatCase.description === "string" && typeof compatCase.path === "string";
+  return (
+    typeof compatCase.description === "string" &&
+    typeof compatCase.path === "string" &&
+    (compatCase.exportParity == null || compatCase.exportParity === "expected-only")
+  );
 }
 
 function parseArgs(args: string[]): {

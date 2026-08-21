@@ -15,10 +15,6 @@ import { getFile, withPackageFileDirectory } from "./npm-files.ts";
 
 const defaultEsmOrigin = "https://esm.unpkg.com";
 const moduleCacheControl = "public, max-age=60, s-maxage=300";
-// esm.sh uses runtime inspection for lexer-resistant UMD packages. Keep this
-// allowlist narrow so arbitrary packages are never evaluated speculatively.
-const runtimeRevealPackages = new Set(["lodash"]);
-const runtimeRevealTimeoutMs = 10_000;
 const hardNodeBuiltins = new Set([
   "child_process",
   "cluster",
@@ -719,87 +715,7 @@ export async function analyzeCommonJsExports(
     }
   }
 
-  if (exportNames.size === 0 && runtimeRevealPackages.has(packageName)) {
-    for (let name of await revealCommonJsExports(filename, packageName, options.env, version)) {
-      exportNames.add(name);
-    }
-  }
-
   return Array.from(exportNames).sort();
-}
-
-async function revealCommonJsExports(
-  filename: string,
-  packageName: string,
-  nodeEnv: NormalizedBuildOptions["env"],
-  version: string
-): Promise<string[]> {
-  let moduleSpecifier = `npm:${packageName}@${version}${filename}`;
-  let script = [
-    "const namespace = await import(Deno.args[0]);",
-    "const value = namespace.default ?? namespace;",
-    "console.log(JSON.stringify(Object.keys(value)));",
-  ].join("\n");
-  let subprocess: Bun.Subprocess<"ignore", "pipe", "ignore">;
-
-  try {
-    // Package code receives only NODE_ENV. Filesystem, network, subprocess,
-    // FFI, and write permissions remain denied by Deno's default sandbox.
-    subprocess = Bun.spawn(
-      [
-        process.env.DENO_PATH ?? "deno",
-        "run",
-        "--allow-env=NODE_ENV",
-        "--no-config",
-        "--no-lock",
-        "--no-prompt",
-        "--quiet",
-        "--v8-flags=--max-old-space-size=128",
-        `data:application/javascript,${encodeURIComponent(script)}`,
-        moduleSpecifier,
-      ],
-      {
-        env: {
-          DENO_DIR: process.env.DENO_DIR ?? "/tmp/unpkg-deno-cache",
-          DENO_NO_PROMPT: "1",
-          DENO_NO_UPDATE_CHECK: "1",
-          NODE_ENV: nodeEnv,
-          PATH: process.env.PATH ?? "",
-        },
-        stderr: "ignore",
-        stdin: "ignore",
-        stdout: "pipe",
-      }
-    );
-  } catch {
-    return [];
-  }
-
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  try {
-    let timedOut = new Promise<never>((_, reject) => {
-      timeout = setTimeout(() => {
-        subprocess.kill();
-        reject(new Error("CommonJS runtime export reveal timed out"));
-      }, runtimeRevealTimeoutMs);
-    });
-    let [exitCode, output] = await Promise.race([
-      Promise.all([subprocess.exited, new Response(subprocess.stdout).text()]),
-      timedOut,
-    ]);
-    if (exitCode !== 0) {
-      return [];
-    }
-
-    let value = JSON.parse(output) as unknown;
-    return Array.isArray(value)
-      ? value.filter((name): name is string => typeof name === "string" && isSafeExportName(name))
-      : [];
-  } catch {
-    return [];
-  } finally {
-    if (timeout != null) clearTimeout(timeout);
-  }
 }
 
 function resolveCommonJsReexport(

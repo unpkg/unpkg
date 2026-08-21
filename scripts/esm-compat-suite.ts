@@ -23,6 +23,7 @@ export interface CompatCase {
   contentParity?: "expected-only";
   description: string;
   expect: ExpectedBehavior;
+  exportParity?: "expected-only";
   features?: string[];
   package?: string;
   path: string;
@@ -779,6 +780,7 @@ export function isCompatCase(value: unknown): value is CompatCase {
   let preserveRedirectQuery = compatCase.preserveRedirectQuery;
   let redirectParity = compatCase.redirectParity;
   let contentParity = compatCase.contentParity;
+  let exportParity = compatCase.exportParity;
   return (
     typeof compatCase.description === "string" &&
     typeof compatCase.path === "string" &&
@@ -788,6 +790,7 @@ export function isCompatCase(value: unknown): value is CompatCase {
         preserveRedirectQuery.every((name) => typeof name === "string" && name !== ""))) &&
     (redirectParity == null || redirectParity === "final-path-and-query") &&
     (contentParity == null || contentParity === "expected-only") &&
+    (exportParity == null || exportParity === "expected-only") &&
     (compatCase.expect === "module" ||
       compatCase.expect === "javascript" ||
       compatCase.expect === "json" ||

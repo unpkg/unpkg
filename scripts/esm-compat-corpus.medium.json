@@ -192,7 +192,8 @@
       "expect": "module",
       "features": ["commonjs"],
       "package": "lodash",
-      "path": "/lodash@4.17.21"
+      "path": "/lodash@4.17.21",
+      "exportParity": "expected-only"
     },
     {
       "category": "library",

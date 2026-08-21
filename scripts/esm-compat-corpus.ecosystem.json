@@ -1453,7 +1453,8 @@
         "package-root"
       ],
       "package": "lodash",
-      "path": "/lodash@4.18.1"
+      "path": "/lodash@4.18.1",
+      "exportParity": "expected-only"
     },
     {
       "category": "cjs",

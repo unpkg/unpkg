@@ -172,6 +172,7 @@ describe("isCompatCase", () => {
         preserveRedirectQuery: ["target"],
         redirectParity: "final-path-and-query",
         contentParity: "expected-only",
+        exportParity: "expected-only",
       })
     ).toBe(true);
   });
@@ -185,6 +186,9 @@ describe("isCompatCase", () => {
     ).toBe(false);
     expect(
       isCompatCase({ description: "content", expect: "module", path: "/react", contentParity: "ignore" })
+    ).toBe(false);
+    expect(
+      isCompatCase({ description: "exports", expect: "module", path: "/react", exportParity: "ignore" })
     ).toBe(false);
   });
 });

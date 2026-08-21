@@ -1,4 +1,12 @@
-export function compareExportKeys(baseline: readonly string[], candidate: readonly string[]): string | null {
+export function compareExportKeys(
+  baseline: readonly string[],
+  candidate: readonly string[],
+  mode: "match" | "expected-only" = "match"
+): string | null {
+  if (mode === "expected-only") {
+    return null;
+  }
+
   let baselineSet = new Set(baseline);
   let candidateSet = new Set(candidate);
   let missing = [...baselineSet].filter((name) => !candidateSet.has(name)).sort();

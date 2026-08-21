@@ -12,4 +12,8 @@ describe("compareExportKeys", () => {
       'export surface mismatch: missing=["hydrateRoot"], extra=["render"]'
     );
   });
+
+  it("allows explicitly documented export-surface divergences", () => {
+    expect(compareExportKeys(["default", "map"], ["default"], "expected-only")).toBeNull();
+  });
 });
