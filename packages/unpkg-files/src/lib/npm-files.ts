@@ -1,4 +1,5 @@
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -173,20 +174,26 @@ async function fetchAndParsePackage(
   let gunzip = gunzipMaybe();
   let extract = tar.extract();
   let settled = false;
+  let cleanedUp = false;
 
   const cleanup = () => {
-    try {
-      // Destroy all streams in the pipeline
-      tarball.destroy();
-      gunzip.destroy();
-      extract.destroy();
+    if (cleanedUp) return;
+    cleanedUp = true;
 
-      // If the response body is a ReadableStream, cancel it
-      if (response.body && typeof response.body.cancel === "function" && !response.body.locked) {
-        response.body.cancel();
+    for (let stream of [tarball, gunzip, extract]) {
+      try {
+        stream.destroy();
+      } catch (cleanupError) {
+        console.error("Error destroying tarball stream:", cleanupError);
       }
-    } catch (cleanupError) {
-      console.error("Error during cleanup:", cleanupError);
+    }
+
+    if (response.body && !response.body.locked) {
+      void response.body.cancel().catch((cleanupError) => {
+        if (!isTimeoutError(cleanupError, signal)) {
+          console.error("Error canceling tarball response body:", cleanupError);
+        }
+      });
     }
   };
 
@@ -282,7 +289,13 @@ async function fetchAndParsePackage(
       });
     });
 
-    tarball.pipe(gunzip).pipe(extract);
+    // Bun can surface a second unhandled rejection when a web response body
+    // aborts inside a manual .pipe() chain. pipeline() observes that rejection
+    // while the stream listeners above preserve the original error handling.
+    void pipeline(tarball, gunzip, extract).catch((error) => {
+      if (settled) return;
+      rejectWithCleanup(error);
+    });
   });
 }
 

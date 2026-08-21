@@ -35,6 +35,23 @@ describe("handleRequest", () => {
           return new Response("Not Found", { status: 404 });
         case "https://registry.npmjs.org/timeout-package/-/timeout-package-0.0.0.tgz":
           throw new DOMException("The operation timed out.", "TimeoutError");
+        case "https://registry.npmjs.org/stalled-package/-/stalled-package-0.0.0.tgz": {
+          let signal = init?.signal;
+          return new Response(
+            new ReadableStream({
+              start(controller) {
+                // Resolve the response headers, then stall while reading a gzip body
+                // until the fetch timeout aborts it.
+                controller.enqueue(new Uint8Array([0x1f, 0x8b, 0x08, 0x00]));
+                signal?.addEventListener(
+                  "abort",
+                  () => controller.error(signal.reason),
+                  { once: true }
+                );
+              },
+            })
+          );
+        }
         default:
           throw new Error(`Unexpected URL: ${url}`);
       }
@@ -100,6 +117,24 @@ describe("handleRequest", () => {
         "https://files.unpkg.com/file/timeout-package@0.0.0/package.json"
       );
       expect(response.status).toBe(504);
+    });
+
+    it("survives a timeout while consuming a tarball body", async () => {
+      let timeout = AbortSignal.timeout;
+      AbortSignal.timeout = () => timeout(10);
+
+      try {
+        let response = await dispatchFetch(
+          "https://files.unpkg.com/file/stalled-package@0.0.0/package.json"
+        );
+        expect(response.status).toBe(504);
+
+        let healthResponse = await dispatchFetch("https://files.unpkg.com/_health");
+        expect(healthResponse.status).toBe(200);
+        await Bun.sleep(10);
+      } finally {
+        AbortSignal.timeout = timeout;
+      }
     });
 
     it("returns 404 for a missing file", async () => {
