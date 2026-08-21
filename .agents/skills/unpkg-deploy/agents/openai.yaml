@@ -1,0 +1,4 @@
+interface:
+  display_name: "UNPKG Deploy"
+  short_description: "Deploy and operate every UNPKG service"
+  default_prompt: "Use $unpkg-deploy to deploy UNPKG safely and verify the affected services."
