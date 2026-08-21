@@ -91,6 +91,14 @@ describe("normalizeEsmRequestUrl", () => {
     expect("url" in cssPackage && cssPackage.url.search).toBe("");
     expect("url" in cssModule && cssModule.url.search).toBe("?module=");
   });
+
+  it("does not add a default target to declaration assets", () => {
+    let typesPackage = normalizeEsmRequestUrl("https://esm.unpkg.com/@types/react@18.2.0?dev");
+    let declaration = normalizeEsmRequestUrl("https://esm.unpkg.com/preact@10.26.4/src/index.d.ts?dev");
+
+    expect("url" in typesPackage && typesPackage.url.search).toBe("?dev=");
+    expect("url" in declaration && declaration.url.search).toBe("?dev=");
+  });
 });
 
 describe("getEsmPackageSubpath", () => {

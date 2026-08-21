@@ -2,6 +2,9 @@
   "name": "unpkg-scripts",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
   "dependencies": {
     "@types/node": "^22.10.2",
     "chalk": "^5.4.1",

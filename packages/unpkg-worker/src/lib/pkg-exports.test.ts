@@ -187,6 +187,40 @@ describe("resolvePackageExport", () => {
     });
   });
 
+  describe("when package.exports contains wildcard subpaths", () => {
+    let packageJson = {
+      exports: {
+        "./features/special/*": {
+          import: "./esm/special/*.mjs",
+          default: "./special/*.js",
+        },
+        "./*": {
+          import: "./esm/*.mjs",
+          default: "./*.js",
+        },
+        "./exact": "./exact.js",
+      },
+    } as unknown as PackageJson;
+
+    it("substitutes wildcard matches through conditions", () => {
+      expect(resolvePackageExport(packageJson, "/vanilla", { conditions: ["import"] })).toBe("/esm/vanilla.mjs");
+    });
+
+    it("prefers exact subpaths over wildcard matches", () => {
+      expect(resolvePackageExport(packageJson, "/exact", { conditions: ["import"] })).toBe("/exact.js");
+    });
+
+    it("prefers the most specific wildcard", () => {
+      expect(resolvePackageExport(packageJson, "/features/special/client", { conditions: ["import"] })).toBe(
+        "/esm/special/client.mjs"
+      );
+    });
+
+    it("uses the matching fallback condition", () => {
+      expect(resolvePackageExport(packageJson, "/vanilla", { conditions: ["default"] })).toBe("/vanilla.js");
+    });
+  });
+
   describe("when package.exports is a nested object with subpaths and export conditions", () => {
     let packageJson = {
       exports: {

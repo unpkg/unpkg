@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { parse as parseCommonJs } from "@esm.sh/cjs-module-lexer";
 import * as esbuild from "esbuild";
 import { parse } from "es-module-lexer/js";
 import {
@@ -104,6 +105,7 @@ export interface NormalizedBuildOptions {
   conditions: string[];
   dependencyOverrides: Record<string, string>;
   env: "development" | "production";
+  exportNames: string[];
   external: string[];
   ignoreAnnotations: boolean;
   jsx?: "react" | "preact" | "automatic";
@@ -297,6 +299,7 @@ export function normalizeBuildOptions(searchParams: URLSearchParams): Normalized
     conditions: parseConditions(searchParams),
     dependencyOverrides: parseDependencyOverrides(searchParams.get("deps")),
     env: searchParams.has("dev") || searchParams.get("env") === "development" ? "development" : "production",
+    exportNames: parseSelectedExports(searchParams.get("exports")),
     external: searchParams.get("external")?.split(",").filter(Boolean) ?? [],
     ignoreAnnotations: searchParams.has("ignore-annotations"),
     jsx: parseJsxMode(searchParams.get("jsx")),
@@ -360,6 +363,30 @@ export async function bundleSource(
   code: string,
   options: NormalizedBuildOptions
 ): Promise<{ code: string; map?: string }> {
+  let commonJsExportNames = await analyzeCommonJsExports(
+    packageDirectory,
+    packageJson,
+    packageName,
+    version,
+    filename,
+    code,
+    options
+  );
+  let selectEsmExports =
+    options.exportNames.length > 0 && commonJsExportNames.length === 0 && hasEsmExports(filename, code);
+  let stdin = selectEsmExports
+    ? {
+        contents: `export { ${options.exportNames.join(", ")} } from ${JSON.stringify(filename)};`,
+        loader: "js" as const,
+        resolveDir: "/",
+        sourcefile: "/__unpkg_selected_exports__.js",
+      }
+    : {
+        contents: code,
+        loader: getEsbuildLoader(filename),
+        resolveDir: path.posix.dirname(filename),
+        sourcefile: filename,
+      };
   let result = await esbuild.build({
     bundle: true,
     define: {
@@ -375,12 +402,7 @@ export async function bundleSource(
     minify: options.minify,
     plugins: [createPackageInternalBundlePlugin(packageDirectory, packageJson, packageName, version, options)],
     sourcemap: options.sourcemap ? "inline" : false,
-    stdin: {
-      contents: code,
-      loader: getEsbuildLoader(filename),
-      resolveDir: path.posix.dirname(filename),
-      sourcefile: filename,
-    },
+    stdin,
     platform: options.target === "node" ? "node" : "browser",
     target: getEsbuildTarget(options.target),
     write: false,
@@ -391,10 +413,8 @@ export async function bundleSource(
     throw new Error(`No bundled output generated for ${packageName}@${version}${filename}`);
   }
 
-  let commonJsExportNames = new Set([...collectCommonJsExportNames(code), ...collectCommonJsExportNames(output.text)]);
-
   return {
-    code: addCommonJsNamedExports(output.text, Array.from(commonJsExportNames).sort()),
+    code: addCommonJsNamedExports(output.text, commonJsExportNames),
   };
 }
 
@@ -432,6 +452,18 @@ export function parseAliases(value: string | null): Record<string, string> {
   }
 
   return aliases;
+}
+
+export function parseSelectedExports(value: string | null): string[] {
+  if (value == null || value === "") {
+    return [];
+  }
+
+  let names = value
+    .split(",")
+    .map((name) => name.trim())
+    .filter(isSelectableExportName);
+  return Array.from(new Set(names)).sort();
 }
 
 export function createBuildKey(request: BuildRequest, resolvedFilename: string): string {
@@ -545,7 +577,7 @@ export async function transformSource(
   });
 
   return {
-    code: addCommonJsNamedExports(result.code, collectCommonJsExportNames(code)),
+    code: addCommonJsNamedExports(result.code, analyzeCommonJsSource(filename, code, options.env).exports),
     map: result.map,
   };
 }
@@ -562,69 +594,183 @@ function hasDynamicRequire(code: string): boolean {
   return /\brequire\s*\(\s*[^"'`\s)]/.test(code);
 }
 
-function collectCommonJsExportNames(code: string): string[] {
-  let names = new Set<string>();
-  for (let match of code.matchAll(/\b(?:exports|module\.exports)\.([A-Za-z_$][\w$]*)\s*=/g)) {
-    names.add(match[1]);
-  }
-  for (let objectBody of collectModuleExportsObjectBodies(code)) {
-    for (let property of objectBody.matchAll(/(?:^|,)\s*([A-Za-z_$][\w$]*)\s*(?=\s*(?:[:,]|$))/g)) {
-      names.add(property[1]);
-    }
-  }
-
-  return Array.from(names).sort();
+interface CommonJsAnalysis {
+  exports: string[];
+  reexports: string[];
 }
 
-function collectModuleExportsObjectBodies(code: string): string[] {
-  let bodies: string[] = [];
-  let pattern = /\bmodule\.exports\s*=\s*{/g;
-  let match: RegExpExecArray | null;
+const reservedExportNames = new Set([
+  "await",
+  "break",
+  "case",
+  "catch",
+  "class",
+  "const",
+  "continue",
+  "debugger",
+  "default",
+  "delete",
+  "do",
+  "else",
+  "enum",
+  "export",
+  "extends",
+  "false",
+  "finally",
+  "for",
+  "function",
+  "if",
+  "implements",
+  "import",
+  "in",
+  "instanceof",
+  "interface",
+  "let",
+  "new",
+  "null",
+  "package",
+  "private",
+  "protected",
+  "public",
+  "return",
+  "static",
+  "super",
+  "switch",
+  "this",
+  "throw",
+  "true",
+  "try",
+  "typeof",
+  "var",
+  "void",
+  "while",
+  "with",
+  "yield",
+]);
 
-  while ((match = pattern.exec(code)) != null) {
-    let objectStart = pattern.lastIndex - 1;
-    let objectEnd = findMatchingBrace(code, objectStart);
-    if (objectEnd !== -1) {
-      bodies.push(code.slice(objectStart + 1, objectEnd));
-      pattern.lastIndex = objectEnd + 1;
-    }
+export function analyzeCommonJsSource(
+  filename: string,
+  code: string,
+  nodeEnv: NormalizedBuildOptions["env"],
+  callMode = false
+): CommonJsAnalysis {
+  try {
+    let result = parseCommonJs(filename, code, { callMode, nodeEnv });
+    return {
+      exports: result.exports.filter(isSafeExportName),
+      reexports: result.reexports,
+    };
+  } catch {
+    return { exports: [], reexports: [] };
   }
-
-  return bodies;
 }
 
-function findMatchingBrace(code: string, openIndex: number): number {
-  let depth = 0;
-  let quote: string | null = null;
-  let escaped = false;
+export async function analyzeCommonJsExports(
+  packageDirectory: string,
+  packageJson: PackageJson,
+  packageName: string,
+  version: string,
+  filename: string,
+  code: string,
+  options: NormalizedBuildOptions
+): Promise<string[]> {
+  let exportNames = new Set<string>();
+  let pending = [{ callMode: false, code, filename }];
+  let visited = new Set<string>();
 
-  for (let index = openIndex; index < code.length; index += 1) {
-    let char = code[index];
+  while (pending.length > 0) {
+    let current = pending.pop();
+    if (current == null) continue;
 
-    if (quote != null) {
-      if (escaped) {
-        escaped = false;
-      } else if (char === "\\") {
-        escaped = true;
-      } else if (char === quote) {
-        quote = null;
+    let visitKey = `${current.filename}\0${current.callMode}`;
+    if (visited.has(visitKey)) continue;
+    visited.add(visitKey);
+
+    if (current.filename.endsWith(".json")) {
+      for (let name of readJsonExportNames(current.code)) {
+        exportNames.add(name);
       }
       continue;
     }
 
-    if (char === '"' || char === "'" || char === "`") {
-      quote = char;
-    } else if (char === "{") {
-      depth += 1;
-    } else if (char === "}") {
-      depth -= 1;
-      if (depth === 0) {
-        return index;
+    let analysis = analyzeCommonJsSource(current.filename, current.code, options.env, current.callMode);
+    for (let name of analysis.exports) {
+      exportNames.add(name);
+    }
+
+    for (let reexport of analysis.reexports) {
+      let callMode = reexport.endsWith("()");
+      let specifier = callMode ? reexport.slice(0, -2) : reexport;
+      let resolved = resolveCommonJsReexport(current.filename, specifier, packageJson, packageName, options);
+      if (resolved == null) continue;
+
+      let file = await getFirstExistingSourceFile(packageDirectory, resolved);
+      if (file != null) {
+        pending.push({
+          callMode,
+          code: new TextDecoder().decode(file.body),
+          filename: file.path,
+        });
       }
     }
   }
 
-  return -1;
+  return Array.from(exportNames).sort();
+}
+
+function resolveCommonJsReexport(
+  containingFilename: string,
+  specifier: string,
+  packageJson: PackageJson,
+  packageName: string,
+  options: NormalizedBuildOptions
+): string | null {
+  if (specifier.startsWith(".")) {
+    let resolved = path.posix.normalize(path.posix.join(path.posix.dirname(containingFilename), specifier));
+    return resolved.startsWith("/") ? resolved : `/${resolved}`;
+  }
+
+  let parsed = parseBareSpecifier(specifier);
+  if (parsed?.packageName !== packageName) {
+    return null;
+  }
+
+  let selfReferencePath = parsed.path === "" ? "/" : parsed.path;
+  return resolveBuildFilename(packageJson, selfReferencePath, options) ?? selfReferencePath;
+}
+
+function readJsonExportNames(code: string): string[] {
+  try {
+    let value = JSON.parse(code) as unknown;
+    if (typeof value !== "object" || value == null || Array.isArray(value)) {
+      return [];
+    }
+
+    return Object.keys(value).filter(isSafeExportName);
+  } catch {
+    return [];
+  }
+}
+
+function isSafeExportName(name: string): boolean {
+  return /^[A-Za-z_$][\w$]*$/.test(name) && !reservedExportNames.has(name);
+}
+
+function isSelectableExportName(name: string): boolean {
+  return name === "default" || isSafeExportName(name);
+}
+
+function hasEsmExports(filename: string, code: string): boolean {
+  if (filename.endsWith(".mjs") || filename.endsWith(".mts")) {
+    return true;
+  }
+
+  try {
+    let [, exports] = parse(code);
+    return exports.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function addCommonJsNamedExports(code: string, exportNames: string[]): string {
@@ -641,8 +787,14 @@ function addCommonJsNamedExports(code: string, exportNames: string[]): string {
     return code;
   }
 
-  let namedExports = exportNames.map((name) => `export const ${name} = __unpkg_cjs_default.${name};`).join("\n");
-  return code.slice(0, match.index) + `var __unpkg_cjs_default = ${match[1]};\nexport { __unpkg_cjs_default as default };\n${namedExports}\n`;
+  let namedExportDeclarations = exportNames
+    .map((name, index) => `const __unpkg_cjs_export_${index} = __unpkg_cjs_default[${JSON.stringify(name)}];`)
+    .join("\n");
+  let namedExportSpecifiers = exportNames.map((name, index) => `__unpkg_cjs_export_${index} as ${name}`).join(", ");
+  return (
+    code.slice(0, match.index) +
+    `var __unpkg_cjs_default = ${match[1]};\n${namedExportDeclarations}\nexport { __unpkg_cjs_default as default, ${namedExportSpecifiers} };\n`
+  );
 }
 
 function createPackageInternalBundlePlugin(

@@ -2,7 +2,9 @@
 
 import { readFile } from "node:fs/promises";
 
-type ExpectedBehavior = "module" | "json" | "css" | "redirect" | "diagnostic";
+import { compareFinalPathAndQuery, comparePreservedQueryParamsAcrossRedirects } from "./esm-compat-redirects.ts";
+
+type ExpectedBehavior = "module" | "javascript" | "json" | "css" | "typescript" | "redirect" | "diagnostic";
 type FailureCategory =
   | "content-type-mismatch"
   | "diagnostic"
@@ -10,16 +12,23 @@ type FailureCategory =
   | "ok-mismatch"
   | "redirect-mismatch"
   | "server-error"
+  | "status-mismatch"
+  | "timeout"
+  | "unexpected-failure"
   | "unexpected-success";
 type OutputMode = "json" | "ndjson" | "text";
 
-interface CompatCase {
+export interface CompatCase {
   category?: string;
+  contentParity?: "expected-only";
   description: string;
   expect: ExpectedBehavior;
+  exportParity?: "expected-only";
   features?: string[];
   package?: string;
   path: string;
+  preserveRedirectQuery?: string[];
+  redirectParity?: "final-path-and-query";
 }
 
 interface CompatCorpus {
@@ -34,7 +43,7 @@ interface RedirectHop {
   url: string;
 }
 
-interface FetchSummary {
+export interface FetchSummary {
   contentLength: number;
   contentType: string | null;
   diagnosticCode: string | null;
@@ -147,45 +156,52 @@ const defaultCorpusPath = "scripts/esm-compat-corpus.seed.json";
 const defaultTimeoutMs = 15_000;
 const maxFetchRetries = 1;
 
-let options = parseArgs(process.argv.slice(2));
 let esmShOrigin = stripTrailingSlash(process.env.ESM_SH_ORIGIN ?? "https://esm.sh");
 let esmUnpkgOrigin = stripTrailingSlash(process.env.ESM_UNPKG_ORIGIN ?? "https://esm.unpkg.com");
 let filesOrigin = stripTrailingSlash(process.env.ESM_FILES_ORIGIN ?? "http://localhost:4000");
-let corpus = await loadCorpus(options.corpusPath);
-let reportBase: Omit<CompatReport, "results" | "summary"> = {
-  comparedAt: new Date().toISOString(),
-  corpus: {
-    caseCount: corpus.cases.length,
-    description: corpus.description,
-    name: corpus.name ?? (options.corpusPath == null ? "default" : options.corpusPath),
-  },
-  origins: {
-    esmSh: esmShOrigin,
-    esmUnpkg: esmUnpkgOrigin,
-  },
-};
-let reporter = createReporter(options.outputMode);
-reporter.start(reportBase, corpus.cases.length);
-let results = options.dryRun
-  ? corpus.cases.map((compatCase, index) => createDryRunResult(compatCase, index))
-  : await runCases(corpus.cases, options, reporter);
-if (options.dryRun) {
-  let dryRunSummary = createEmptySummary(results.length);
-  for (let result of results) {
-    addResultToSummary(dryRunSummary, result);
-    reporter.result(result, dryRunSummary);
-  }
+
+if (import.meta.main) {
+  await main();
 }
-let report: CompatReport = {
-  ...reportBase,
-  results,
-  summary: summarizeResults(results),
-};
 
-reporter.summary(report);
+async function main(): Promise<void> {
+  let options = parseArgs(process.argv.slice(2));
+  let corpus = await loadCorpus(options.corpusPath);
+  let reportBase: Omit<CompatReport, "results" | "summary"> = {
+    comparedAt: new Date().toISOString(),
+    corpus: {
+      caseCount: corpus.cases.length,
+      description: corpus.description,
+      name: corpus.name ?? (options.corpusPath == null ? "default" : options.corpusPath),
+    },
+    origins: {
+      esmSh: esmShOrigin,
+      esmUnpkg: esmUnpkgOrigin,
+    },
+  };
+  let reporter = createReporter(options.outputMode);
+  reporter.start(reportBase, corpus.cases.length);
+  let results = options.dryRun
+    ? corpus.cases.map((compatCase, index) => createDryRunResult(compatCase, index))
+    : await runCases(corpus.cases, options, reporter);
+  if (options.dryRun) {
+    let dryRunSummary = createEmptySummary(results.length);
+    for (let result of results) {
+      addResultToSummary(dryRunSummary, result);
+      reporter.result(result, dryRunSummary);
+    }
+  }
+  let report: CompatReport = {
+    ...reportBase,
+    results,
+    summary: summarizeResults(results),
+  };
 
-if (!options.dryRun && report.summary.failed > 0) {
-  process.exitCode = 1;
+  reporter.summary(report);
+
+  if (!options.dryRun && report.summary.failed > 0) {
+    process.exitCode = 1;
+  }
 }
 
 async function loadCorpus(corpusPath: string | null): Promise<CompatCorpus> {
@@ -357,7 +373,7 @@ function withTimeout(
       resolve({
         contentLength: 0,
         contentType: null,
-        diagnosticCode: "FETCH_ERROR",
+        diagnosticCode: "TIMEOUT",
         durationMs: Math.round(performance.now() - startedAt),
         executableModule: false,
         finalUrl: url.toString(),
@@ -400,7 +416,7 @@ async function summarizeResponse(
   };
 }
 
-function compareSummaries(
+export function compareSummaries(
   compatCase: CompatCase,
   esmSh: FetchSummary,
   esmUnpkg: FetchSummary
@@ -412,12 +428,11 @@ function compareSummaries(
     };
   }
 
-  if (esmSh.diagnosticCode === "FETCH_ERROR" || esmSh.status >= 500) {
-    return validateExpectedBehavior(compatCase, esmUnpkg);
-  }
-
-  if (compatCase.expect === "diagnostic") {
-    return validateExpectedBehavior(compatCase, esmUnpkg);
+  if (esmUnpkg.diagnosticCode === "TIMEOUT") {
+    return {
+      failureCategory: "timeout",
+      reason: `request timed out: esm.sh=${esmSh.status}, esm.unpkg.com=${esmUnpkg.status}`,
+    };
   }
 
   if (esmUnpkg.status >= 500) {
@@ -427,6 +442,50 @@ function compareSummaries(
     };
   }
 
+  if (compatCase.preserveRedirectQuery != null) {
+    if (esmUnpkg.redirectChain.length === 0) {
+      return {
+        failureCategory: "redirect-mismatch",
+        reason: "expected esm.unpkg.com redirect chain for query preservation check",
+      };
+    }
+
+    let queryMismatch = comparePreservedQueryParamsAcrossRedirects(
+      new URL(compatCase.path, esmUnpkg.redirectChain[0]?.url ?? esmUnpkg.finalUrl).toString(),
+      esmUnpkg.redirectChain,
+      esmUnpkg.finalUrl,
+      compatCase.preserveRedirectQuery
+    );
+    if (queryMismatch != null) {
+      return { failureCategory: "redirect-mismatch", reason: queryMismatch };
+    }
+  }
+
+  if (esmSh.diagnosticCode === "FETCH_ERROR" || esmSh.diagnosticCode === "TIMEOUT" || esmSh.status >= 500) {
+    return validateExpectedBehavior(compatCase, esmUnpkg);
+  }
+
+  if (compatCase.expect === "diagnostic") {
+    return validateExpectedBehavior(compatCase, esmUnpkg);
+  }
+
+  if (
+    compatCase.redirectParity === "final-path-and-query" &&
+    esmSh.diagnosticCode !== "FETCH_ERROR"
+  ) {
+    if (esmSh.redirectChain.length === 0 || esmUnpkg.redirectChain.length === 0) {
+      return {
+        failureCategory: "redirect-mismatch",
+        reason: `expected redirect chains for final target comparison: esm.sh=${esmSh.redirectChain.length}, esm.unpkg.com=${esmUnpkg.redirectChain.length}`,
+      };
+    }
+
+    let redirectMismatch = compareFinalPathAndQuery(esmSh.finalUrl, esmUnpkg.finalUrl);
+    if (redirectMismatch != null) {
+      return { failureCategory: "redirect-mismatch", reason: redirectMismatch };
+    }
+  }
+
   if (esmSh.ok !== esmUnpkg.ok) {
     return {
       failureCategory: esmUnpkg.diagnosticCode == null ? "ok-mismatch" : "diagnostic",
@@ -434,17 +493,24 @@ function compareSummaries(
     };
   }
 
-  if (!esmSh.ok && !esmUnpkg.ok) {
-    return { failureCategory: null, reason: null };
+  if (esmSh.status !== esmUnpkg.status) {
+    return {
+      failureCategory: "status-mismatch",
+      reason: `status mismatch: esm.sh=${esmSh.status}, esm.unpkg.com=${esmUnpkg.status}`,
+    };
   }
 
-  if (esmSh.ok && isTypeScript(esmSh.contentType)) {
-    return isTypeScript(esmUnpkg.contentType)
-      ? { failureCategory: null, reason: null }
-      : {
-          failureCategory: "content-type-mismatch",
-          reason: `expected TypeScript from esm.unpkg.com, got ${esmUnpkg.contentType ?? "missing content type"}`,
-        };
+  if (!esmSh.ok && !esmUnpkg.ok) {
+    return validateExpectedBehavior(compatCase, esmUnpkg);
+  }
+
+  let esmShContentKind = getContentKind(esmSh.contentType);
+  let esmUnpkgContentKind = getContentKind(esmUnpkg.contentType);
+  if (compatCase.contentParity !== "expected-only" && esmShContentKind !== esmUnpkgContentKind) {
+    return {
+      failureCategory: "content-type-mismatch",
+      reason: `response kind mismatch: esm.sh=${esmShContentKind}, esm.unpkg.com=${esmUnpkgContentKind}`,
+    };
   }
 
   return validateExpectedBehavior(compatCase, esmUnpkg);
@@ -463,6 +529,13 @@ function validateExpectedBehavior(
         };
   }
 
+  if (!esmUnpkg.ok) {
+    return {
+      failureCategory: "unexpected-failure",
+      reason: `expected successful ${compatCase.expect} response from esm.unpkg.com, got ${esmUnpkg.status}`,
+    };
+  }
+
   if (compatCase.expect === "json" && !isJson(esmUnpkg.contentType)) {
     return {
       failureCategory: "content-type-mismatch",
@@ -474,6 +547,20 @@ function validateExpectedBehavior(
     return {
       failureCategory: "content-type-mismatch",
       reason: `expected CSS from esm.unpkg.com, got ${esmUnpkg.contentType ?? "missing content type"}`,
+    };
+  }
+
+  if (compatCase.expect === "typescript" && !isTypeScript(esmUnpkg.contentType)) {
+    return {
+      failureCategory: "content-type-mismatch",
+      reason: `expected TypeScript from esm.unpkg.com, got ${esmUnpkg.contentType ?? "missing content type"}`,
+    };
+  }
+
+  if (compatCase.expect === "javascript" && !isJavaScript(esmUnpkg.contentType)) {
+    return {
+      failureCategory: "content-type-mismatch",
+      reason: `expected JavaScript from esm.unpkg.com, got ${esmUnpkg.contentType ?? "missing content type"}`,
     };
   }
 
@@ -684,18 +771,31 @@ function isCompatCorpus(value: unknown): value is CompatCorpus {
   return Array.isArray(corpus.cases) && corpus.cases.every(isCompatCase);
 }
 
-function isCompatCase(value: unknown): value is CompatCase {
+export function isCompatCase(value: unknown): value is CompatCase {
   if (typeof value !== "object" || value == null) {
     return false;
   }
 
   let compatCase = value as Record<string, unknown>;
+  let preserveRedirectQuery = compatCase.preserveRedirectQuery;
+  let redirectParity = compatCase.redirectParity;
+  let contentParity = compatCase.contentParity;
+  let exportParity = compatCase.exportParity;
   return (
     typeof compatCase.description === "string" &&
     typeof compatCase.path === "string" &&
+    (preserveRedirectQuery == null ||
+      (Array.isArray(preserveRedirectQuery) &&
+        preserveRedirectQuery.length > 0 &&
+        preserveRedirectQuery.every((name) => typeof name === "string" && name !== ""))) &&
+    (redirectParity == null || redirectParity === "final-path-and-query") &&
+    (contentParity == null || contentParity === "expected-only") &&
+    (exportParity == null || exportParity === "expected-only") &&
     (compatCase.expect === "module" ||
+      compatCase.expect === "javascript" ||
       compatCase.expect === "json" ||
       compatCase.expect === "css" ||
+      compatCase.expect === "typescript" ||
       compatCase.expect === "redirect" ||
       compatCase.expect === "diagnostic")
   );
@@ -756,28 +856,39 @@ function isJavaScript(contentType: string | null): boolean {
   return contentType?.includes("javascript") || contentType?.includes("ecmascript") || false;
 }
 
+function getContentKind(contentType: string | null): "css" | "javascript" | "json" | "typescript" | "other" {
+  if (isCss(contentType)) return "css";
+  if (isJavaScript(contentType)) return "javascript";
+  if (isJson(contentType)) return "json";
+  if (isTypeScript(contentType)) return "typescript";
+  return "other";
+}
+
 function stripTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
 
 function createLocalServices(options: RunOptions, reporter: Reporter) {
+  let esmUnpkgService = createManagedService("esm.unpkg", esmUnpkgOrigin, "/_health", [
+    "pnpm",
+    "--filter",
+    "unpkg-esm",
+    "exec",
+    "wrangler",
+    "dev",
+    "--env",
+    "dev",
+    "--port",
+    "3002",
+    "--ip",
+    "127.0.0.1",
+  ]);
   let services = [
     createManagedService("esm.sh", esmShOrigin, "/react@18.3.1", ["pnpm", "vendor:esm-sh"]),
-    createManagedService("esm.unpkg", esmUnpkgOrigin, "/_health", [
-      "pnpm",
-      "--filter",
-      "unpkg-esm",
-      "exec",
-      "wrangler",
-      "dev",
-      "--env",
-      "dev",
-      "--port",
-      "3002",
-      "--ip",
-      "127.0.0.1",
-    ]),
-    createManagedService("unpkg-files", filesOrigin, "/_health", ["pnpm", "--filter", "unpkg-files", "dev"]),
+    esmUnpkgService,
+    esmUnpkgService == null
+      ? null
+      : createManagedService("unpkg-files", filesOrigin, "/_health", ["pnpm", "--filter", "unpkg-files", "dev"]),
   ].filter((service): service is ManagedService => service != null);
   let restarts = new Map<string, Promise<boolean>>();
 

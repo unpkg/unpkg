@@ -11,6 +11,7 @@
     "dist"
   ],
   "dependencies": {
+    "@esm.sh/cjs-module-lexer": "1.1.0",
     "chalk": "^5.4.1",
     "es-module-lexer": "^1.6.0",
     "esbuild": "^0.24.2",

@@ -162,13 +162,29 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   }
 
   if (searchParams.has("raw")) {
-    return serveRawFile(env, packageName, version, packagePath.filename ?? "/package.json");
+    let rawPath = await resolveRawPath(env, packageName, version, packageJson, packagePath.filename);
+    if (packagePath.filename !== rawPath) {
+      let rawSearch = isCssPath(rawPath) ? "" : search;
+      return redirect(`/${packageName}@${version}${rawPath}${rawSearch}`, {
+        status: 301,
+        headers: corsHeaders({
+          "Cache-Control": moduleCacheControl,
+        }),
+      });
+    }
+
+    return serveRawFile(env, packageName, version, rawPath);
   }
 
   let cssPath = resolveCssPath(packageJson, packagePath.filename);
   if (cssPath != null) {
     if (packagePath.filename !== cssPath) {
-      return redirect(`/${packageName}@${version}${cssPath}${search}`, {
+      let cssSearchParams = new URLSearchParams();
+      if (searchParams.has("module")) {
+        cssSearchParams.set("module", searchParams.get("module") ?? "");
+      }
+
+      return redirect(`/${packageName}@${version}${cssPath}${normalizeSearch(cssSearchParams)}`, {
         status: 301,
         headers: corsHeaders({
           "Cache-Control": moduleCacheControl,
@@ -180,6 +196,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       ? serveCssModule(env, packageName, version, cssPath)
       : serveRawFile(env, packageName, version, cssPath);
   }
+
   if (searchParams.has("css")) {
     return jsonError({
       code: "CSS_NOT_FOUND",
@@ -403,6 +420,52 @@ function resolveCssPath(packageJson: PackageJson, filename: string | undefined):
   return null;
 }
 
+async function resolveRawPath(
+  env: Env,
+  packageName: string,
+  version: string,
+  packageJson: PackageJson,
+  filename: string | undefined
+): Promise<string> {
+  let resolved: string;
+  if (filename != null && filename !== "/") {
+    resolved =
+      resolvePackageExport(packageJson, filename, {
+        conditions: ["import", "module", "default"],
+        useBrowserField: false,
+        useModuleField: packageJson.exports == null,
+      }) ?? filename;
+  } else {
+    resolved =
+      resolvePackageExport(packageJson, "/", {
+        conditions: ["import", "module", "default"],
+        useBrowserField: false,
+        useModuleField: packageJson.exports == null,
+      }) ?? "/index.js";
+  }
+
+  if (hasFileExtension(resolved)) {
+    return resolved;
+  }
+
+  for (let candidate of [`${resolved}.js`, `${resolved}.mjs`, `${resolved}.cjs`, `${resolved.replace(/\/+$/, "")}/index.js`]) {
+    if (await rawFileExists(env, packageName, version, candidate)) {
+      return candidate;
+    }
+  }
+
+  return resolved;
+}
+
+async function rawFileExists(env: Env, packageName: string, version: string, filename: string): Promise<boolean> {
+  let response = await fetch(new URL(`/file/${packageName}@${version}${filename}`, env.FILES_ORIGIN));
+  return response.ok;
+}
+
+function hasFileExtension(filename: string): boolean {
+  return /\.[^/]+$/.test(filename);
+}
+
 function getPackageJsonString(packageJson: PackageJson, key: string): string | undefined {
   let value = (packageJson as PackageJson & Record<string, unknown>)[key];
   return typeof value === "string" ? value : undefined;
@@ -443,6 +506,10 @@ export function resolveTypesPath(packageJson: PackageJson, subpath: string): str
     if (resolved != null) {
       return resolved;
     }
+  }
+
+  if (subpath === ".") {
+    return packageJson.types ?? packageJson.typings ?? null;
   }
 
   let typesVersionsPath = resolveTypesVersionsPath(packageJson, subpath);

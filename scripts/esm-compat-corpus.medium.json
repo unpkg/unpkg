@@ -192,7 +192,8 @@
       "expect": "module",
       "features": ["commonjs"],
       "package": "lodash",
-      "path": "/lodash@4.17.21"
+      "path": "/lodash@4.17.21",
+      "exportParity": "expected-only"
     },
     {
       "category": "library",
@@ -536,7 +537,8 @@
       "expect": "css",
       "features": ["css", "subpath"],
       "package": "react-toastify",
-      "path": "/react-toastify@11.0.5/dist/ReactToastify.css"
+      "path": "/react-toastify@11.0.5/dist/ReactToastify.css",
+      "contentParity": "expected-only"
     },
     {
       "category": "css",

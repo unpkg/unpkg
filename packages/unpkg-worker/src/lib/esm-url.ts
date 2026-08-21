@@ -83,7 +83,11 @@ export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmR
     return validationError;
   }
 
-  if (!url.searchParams.has("target") && !url.searchParams.has("raw") && !isCssRequest(packagePath, url.searchParams)) {
+  if (
+    !url.searchParams.has("target") &&
+    !url.searchParams.has("raw") &&
+    !isUntargetedAssetRequest(packagePath, url.searchParams)
+  ) {
     url.searchParams.set("target", "es2022");
   }
 
@@ -99,12 +103,18 @@ export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmR
   };
 }
 
-function isCssRequest(packagePath: EsmPackagePath, searchParams: URLSearchParams): boolean {
+function isUntargetedAssetRequest(packagePath: EsmPackagePath, searchParams: URLSearchParams): boolean {
   return (
     searchParams.has("css") ||
+    packagePath.package.toLowerCase().startsWith("@types/") ||
     packagePath.package.endsWith(".css") ||
-    packagePath.filename?.endsWith(".css") === true
+    packagePath.filename?.endsWith(".css") === true ||
+    isTypeDeclarationPath(packagePath.filename)
   );
+}
+
+function isTypeDeclarationPath(filename: string | undefined): boolean {
+  return filename?.endsWith(".d.ts") || filename?.endsWith(".d.mts") || filename?.endsWith(".d.cts") || false;
 }
 
 export function parseEsmPackagePathname(pathname: string): EsmPackagePath | null {
