@@ -32,7 +32,8 @@
       "expect": "module",
       "features": ["external"],
       "package": "react-dom",
-      "path": "/react-dom@18.3.1/client?external=react"
+      "path": "/react-dom@18.3.1/client?external=react",
+      "preserveRedirectQuery": ["external"]
     },
     {
       "category": "dependency-control",
@@ -40,7 +41,8 @@
       "expect": "module",
       "features": ["deps"],
       "package": "react-dom",
-      "path": "/react-dom@18.3.1/client?deps=react@18.2.0"
+      "path": "/react-dom@18.3.1/client?deps=react@18.2.0",
+      "preserveRedirectQuery": ["deps"]
     },
     {
       "category": "dependency-control",
@@ -48,7 +50,8 @@
       "expect": "module",
       "features": ["alias", "deps"],
       "package": "react-dom",
-      "path": "/react-dom@18.3.1/client?alias=react:preact/compat&deps=preact@10.25.4"
+      "path": "/react-dom@18.3.1/client?alias=react:preact/compat&deps=preact@10.25.4",
+      "preserveRedirectQuery": ["alias", "deps"]
     },
     {
       "category": "bundling",
@@ -56,7 +59,8 @@
       "expect": "module",
       "features": ["no-bundle"],
       "package": "preact",
-      "path": "/preact@10.26.4/hooks?no-bundle"
+      "path": "/preact@10.26.4/hooks?no-bundle",
+      "preserveRedirectQuery": ["no-bundle"]
     },
     {
       "category": "bundling",
@@ -64,7 +68,8 @@
       "expect": "module",
       "features": ["bundle-false"],
       "package": "preact",
-      "path": "/preact@10.26.4/hooks?bundle=false"
+      "path": "/preact@10.26.4/hooks?bundle=false",
+      "preserveRedirectQuery": ["bundle"]
     },
     {
       "category": "bundling",
@@ -72,7 +77,8 @@
       "expect": "module",
       "features": ["bundle"],
       "package": "preact",
-      "path": "/preact@10.26.4/hooks?bundle"
+      "path": "/preact@10.26.4/hooks?bundle",
+      "preserveRedirectQuery": ["bundle"]
     },
     {
       "category": "bundling",
@@ -80,7 +86,8 @@
       "expect": "module",
       "features": ["standalone"],
       "package": "preact",
-      "path": "/preact@10.26.4/hooks?standalone"
+      "path": "/preact@10.26.4/hooks?standalone",
+      "preserveRedirectQuery": ["standalone"]
     },
     {
       "category": "raw",
@@ -88,7 +95,62 @@
       "expect": "json",
       "features": ["raw"],
       "package": "react",
-      "path": "/react@18.3.1/package.json?raw"
+      "path": "/react@18.3.1/package.json?raw",
+      "preserveRedirectQuery": ["raw"]
+    },
+    {
+      "category": "redirect-query",
+      "description": "Raw CommonJS package roots redirect to their entry asset",
+      "expect": "javascript",
+      "features": ["redirect", "query-forwarding", "raw", "package-root", "commonjs"],
+      "package": "react",
+      "path": "/react@18?raw",
+      "redirectParity": "final-path-and-query"
+    },
+    {
+      "category": "redirect-query",
+      "description": "Raw ESM package roots redirect through import exports",
+      "expect": "javascript",
+      "features": ["redirect", "query-forwarding", "raw", "package-root", "exports"],
+      "package": "preact",
+      "path": "/preact@10.26.4?raw",
+      "redirectParity": "final-path-and-query"
+    },
+    {
+      "category": "redirect-query",
+      "description": "Raw exported subpaths redirect to their source asset",
+      "expect": "javascript",
+      "features": ["redirect", "query-forwarding", "raw", "subpath", "exports"],
+      "package": "react",
+      "path": "/react@18.3.1/jsx-runtime?raw",
+      "redirectParity": "final-path-and-query"
+    },
+    {
+      "category": "redirect-query",
+      "description": "Raw scoped package roots redirect through conditional exports",
+      "expect": "javascript",
+      "features": ["redirect", "query-forwarding", "raw", "scoped-package", "exports"],
+      "package": "@tanstack/query-core",
+      "path": "/@tanstack/query-core@5.64.1?raw",
+      "redirectParity": "final-path-and-query"
+    },
+    {
+      "category": "redirect-query",
+      "description": "Raw extensionless scoped subpaths redirect to JavaScript assets",
+      "expect": "javascript",
+      "features": ["redirect", "query-forwarding", "raw", "scoped-package", "subpath", "extensionless"],
+      "package": "@babel/runtime",
+      "path": "/@babel/runtime@7.26.0/helpers/extends?raw",
+      "redirectParity": "final-path-and-query"
+    },
+    {
+      "category": "redirect-query",
+      "description": "Raw package roots prefer module entries over stylesheet metadata",
+      "expect": "javascript",
+      "features": ["redirect", "query-forwarding", "raw", "package-root", "module-field", "css"],
+      "package": "bootstrap",
+      "path": "/bootstrap@5.3.8?raw",
+      "redirectParity": "final-path-and-query"
     },
     {
       "category": "diagnostic",
@@ -104,7 +166,17 @@
       "expect": "module",
       "features": ["dev"],
       "package": "react",
-      "path": "/react@18.3.1?dev"
+      "path": "/react@18.3.1?dev",
+      "preserveRedirectQuery": ["dev"]
+    },
+    {
+      "category": "redirect-query",
+      "description": "Semver redirects preserve build query parameters",
+      "expect": "module",
+      "features": ["redirect", "query-forwarding", "dev", "external", "target"],
+      "package": "react",
+      "path": "/react@18?dev&external=react&target=es2020",
+      "preserveRedirectQuery": ["dev", "external", "target"]
     },
     {
       "category": "build-options",
@@ -112,7 +184,8 @@
       "expect": "module",
       "features": ["env"],
       "package": "react",
-      "path": "/react@18.3.1?env=development"
+      "path": "/react@18.3.1?env=development",
+      "preserveRedirectQuery": ["env"]
     },
     {
       "category": "build-options",
@@ -128,7 +201,8 @@
       "expect": "module",
       "features": ["conditions"],
       "package": "preact",
-      "path": "/preact@10.26.4?conditions=browser,development"
+      "path": "/preact@10.26.4?conditions=browser,development",
+      "preserveRedirectQuery": ["conditions"]
     },
     {
       "category": "build-options",
@@ -136,7 +210,8 @@
       "expect": "module",
       "features": ["keep-names"],
       "package": "preact",
-      "path": "/preact@10.26.4?keep-names"
+      "path": "/preact@10.26.4?keep-names",
+      "preserveRedirectQuery": ["keep-names"]
     },
     {
       "category": "build-options",
@@ -144,7 +219,8 @@
       "expect": "module",
       "features": ["ignore-annotations"],
       "package": "preact",
-      "path": "/preact@10.26.4?ignore-annotations"
+      "path": "/preact@10.26.4?ignore-annotations",
+      "preserveRedirectQuery": ["ignore-annotations"]
     },
     {
       "category": "build-options",
@@ -152,7 +228,8 @@
       "expect": "module",
       "features": ["min"],
       "package": "preact",
-      "path": "/preact@10.26.4?min"
+      "path": "/preact@10.26.4?min",
+      "preserveRedirectQuery": ["min"]
     },
     {
       "category": "build-options",
@@ -160,7 +237,8 @@
       "expect": "module",
       "features": ["sourcemap"],
       "package": "preact",
-      "path": "/preact@10.26.4?sourcemap"
+      "path": "/preact@10.26.4?sourcemap",
+      "preserveRedirectQuery": ["sourcemap"]
     },
     {
       "category": "types",
@@ -168,7 +246,26 @@
       "expect": "module",
       "features": ["no-dts"],
       "package": "preact",
-      "path": "/preact@10.26.4?no-dts"
+      "path": "/preact@10.26.4?no-dts",
+      "preserveRedirectQuery": ["no-dts"]
+    },
+    {
+      "category": "redirect-query",
+      "description": "Types-only package redirects strip build queries from declaration assets",
+      "expect": "typescript",
+      "features": ["redirect", "query-forwarding", "types", "target"],
+      "package": "@types/react",
+      "path": "/@types/react@18.2.0?target=es2020",
+      "redirectParity": "final-path-and-query"
+    },
+    {
+      "category": "redirect-query",
+      "description": "Types-only roots ignore typesVersions wildcard directories",
+      "expect": "typescript",
+      "features": ["redirect", "query-forwarding", "types", "types-versions", "raw"],
+      "package": "@types/node",
+      "path": "/@types/node@22.10.2?raw",
+      "redirectParity": "final-path-and-query"
     },
     {
       "category": "import-map",
@@ -184,7 +281,8 @@
       "expect": "json",
       "features": ["meta"],
       "package": "preact",
-      "path": "/preact@10.26.4?meta"
+      "path": "/preact@10.26.4?meta",
+      "preserveRedirectQuery": ["meta"]
     },
     {
       "category": "worker",
@@ -192,7 +290,8 @@
       "expect": "module",
       "features": ["worker"],
       "package": "preact",
-      "path": "/preact@10.26.4?worker"
+      "path": "/preact@10.26.4?worker",
+      "preserveRedirectQuery": ["worker"]
     },
     {
       "category": "runtime-target",
@@ -219,6 +318,24 @@
       "path": "/normalize.css@8.0.1"
     },
     {
+      "category": "redirect-query",
+      "description": "CSS entry redirects strip irrelevant build queries",
+      "expect": "css",
+      "features": ["redirect", "query-forwarding", "css", "target"],
+      "package": "normalize.css",
+      "path": "/normalize.css@8.0.1?target=es2020",
+      "redirectParity": "final-path-and-query"
+    },
+    {
+      "category": "redirect-query",
+      "description": "Raw CSS package roots redirect to the stylesheet asset",
+      "expect": "css",
+      "features": ["redirect", "query-forwarding", "css", "raw"],
+      "package": "normalize.css",
+      "path": "/normalize.css@8.0.1?raw",
+      "redirectParity": "final-path-and-query"
+    },
+    {
       "category": "css",
       "description": "Direct CSS file",
       "expect": "css",
@@ -232,7 +349,8 @@
       "expect": "module",
       "features": ["css", "css-module"],
       "package": "react-toastify",
-      "path": "/react-toastify@11.0.5/dist/ReactToastify.css?module"
+      "path": "/react-toastify@11.0.5/dist/ReactToastify.css?module",
+      "preserveRedirectQuery": ["module"]
     },
     {
       "category": "css",

@@ -50,6 +50,12 @@ describe("handleRequest", () => {
       let url = new URL(request.url);
 
       if (url.origin === env.FILES_ORIGIN) {
+        if (url.pathname === "/file/@babel/runtime@7.26.0/helpers/extends.js") {
+          return new Response("export default Object.assign;\n", {
+            headers: { "Content-Type": "application/javascript" },
+          });
+        }
+
         if (url.pathname === "/file/normalize.css@8.0.1/normalize.css") {
           return new Response("html { line-height: 1.15; }\n", {
             headers: {
@@ -73,6 +79,34 @@ describe("handleRequest", () => {
                 name: "normalize.css",
                 version: "8.0.1",
                 main: "normalize.css",
+              },
+            },
+          });
+        case "https://registry.npmjs.org/bootstrap":
+          return Response.json({
+            name: "bootstrap",
+            "dist-tags": { latest: "5.3.8" },
+            versions: {
+              "5.3.8": {
+                name: "bootstrap",
+                version: "5.3.8",
+                main: "dist/js/bootstrap.js",
+                module: "dist/js/bootstrap.esm.js",
+                style: "dist/css/bootstrap.css",
+              },
+            },
+          });
+        case "https://registry.npmjs.org/@babel/runtime":
+          return Response.json({
+            name: "@babel/runtime",
+            "dist-tags": { latest: "7.26.0" },
+            versions: {
+              "7.26.0": {
+                name: "@babel/runtime",
+                version: "7.26.0",
+                exports: {
+                  "./helpers/*": "./helpers/*.js",
+                },
               },
             },
           });
@@ -263,11 +297,87 @@ describe("handleRequest", () => {
     expect(await response.text()).toMatch(/"name": "react"/);
   });
 
+  it("redirects raw package roots to their import entry", async () => {
+    let reactResponse = await dispatchFetch("https://esm.unpkg.com/react@18.2.0?raw=", {
+      redirect: "manual",
+    });
+    expect(reactResponse.status).toBe(301);
+    expect(reactResponse.headers.get("Location")).toBe("/react@18.2.0/index.js?raw=");
+
+    let preactResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?raw=", {
+      redirect: "manual",
+    });
+    expect(preactResponse.status).toBe(301);
+    expect(preactResponse.headers.get("Location")).toBe("/preact@10.26.4/dist/preact.mjs?raw=");
+  });
+
+  it("redirects raw exported subpaths to their source asset", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/react@18.2.0/jsx-runtime?raw=", {
+      redirect: "manual",
+    });
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/react@18.2.0/jsx-runtime.js?raw=");
+  });
+
+  it("resolves extensionless raw subpaths when export patterns are unavailable", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/@babel/runtime@7.26.0/helpers/extends?raw=", {
+      redirect: "manual",
+    });
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/@babel/runtime@7.26.0/helpers/extends.js?raw=");
+  });
+
+  it("prefers a package module entry over an unrelated stylesheet for raw requests", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/bootstrap@5.3.8?raw=", {
+      redirect: "manual",
+    });
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/bootstrap@5.3.8/dist/js/bootstrap.esm.js?raw=");
+  });
+
   it("redirects CSS package roots to their stylesheet entry", async () => {
     let response = await dispatchFetch("https://esm.unpkg.com/normalize.css@8.0.1", {
       redirect: "manual",
     });
 
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/normalize.css@8.0.1/normalize.css");
+  });
+
+  it("strips irrelevant build queries when redirecting CSS package roots", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/normalize.css@8.0.1?target=es2020", {
+      redirect: "manual",
+    });
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/normalize.css@8.0.1/normalize.css");
+  });
+
+  it("preserves module mode when redirecting CSS package roots", async () => {
+    let normalizedResponse = await dispatchFetch("https://esm.unpkg.com/normalize.css@8.0.1?module", {
+      redirect: "manual",
+    });
+    expect(normalizedResponse.status).toBe(301);
+
+    let response = await dispatchFetch(`https://esm.unpkg.com${normalizedResponse.headers.get("Location")}`, {
+      redirect: "manual",
+    });
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/normalize.css@8.0.1/normalize.css?module=");
+  });
+
+  it("redirects raw CSS package roots to their stylesheet entry", async () => {
+    let normalizedResponse = await dispatchFetch("https://esm.unpkg.com/normalize.css@8.0.1?raw", {
+      redirect: "manual",
+    });
+    expect(normalizedResponse.status).toBe(301);
+
+    let response = await dispatchFetch(`https://esm.unpkg.com${normalizedResponse.headers.get("Location")}`, {
+      redirect: "manual",
+    });
     expect(response.status).toBe(301);
     expect(response.headers.get("Location")).toBe("/normalize.css@8.0.1/normalize.css");
   });
@@ -304,12 +414,9 @@ describe("handleRequest", () => {
   });
 
   it("serves declaration files without building them", async () => {
-    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4/src/index.d.ts", {
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4/src/index.d.ts", {
       redirect: "manual",
     });
-    expect(redirectResponse.status).toBe(301);
-
-    let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/typescript; charset=utf-8");
     expect(await response.text()).toContain("export as namespace preact");
@@ -327,6 +434,15 @@ describe("handleRequest", () => {
     expect(response.status).toBe(301);
     expect(response.headers.get("Location")).toBe("/@types/react@18.2.0/index.d.ts");
     expect(response.headers.get("Cache-Control")).toBe("public, max-age=60, s-maxage=300");
+  });
+
+  it("strips build queries when redirecting types-only packages to declarations", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/@types/react@18.2.0?target=es2020", {
+      redirect: "manual",
+    });
+
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/@types/react@18.2.0/index.d.ts");
   });
 
   it("returns module worker wrappers", async () => {
@@ -380,6 +496,22 @@ describe("handleRequest", () => {
 });
 
 describe("resolveTypesPath", () => {
+  it("uses the declared root types path instead of applying a typesVersions wildcard to an empty subpath", () => {
+    expect(
+      resolveTypesPath(
+        {
+          types: "index.d.ts",
+          typesVersions: {
+            "<=5.6": {
+              "*": ["ts5.6/*"],
+            },
+          },
+        },
+        "."
+      )
+    ).toBe("index.d.ts");
+  });
+
   it("resolves declaration paths from typesVersions", () => {
     expect(
       resolveTypesPath(

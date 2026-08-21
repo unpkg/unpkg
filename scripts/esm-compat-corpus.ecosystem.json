@@ -8,7 +8,7 @@
     {
       "category": "cjs",
       "description": "Package root for @babel/runtime@7.29.2",
-      "expect": "module",
+      "expect": "diagnostic",
       "features": [
         "package-root"
       ],
@@ -18,7 +18,7 @@
     {
       "category": "cjs",
       "description": "Metadata for @babel/runtime@7.29.2",
-      "expect": "json",
+      "expect": "diagnostic",
       "features": [
         "meta"
       ],
@@ -298,7 +298,7 @@
     {
       "category": "types",
       "description": "Package root for @types/react@19.2.14",
-      "expect": "module",
+      "expect": "typescript",
       "features": [
         "package-root"
       ],
@@ -307,8 +307,8 @@
     },
     {
       "category": "types",
-      "description": "Metadata for @types/react@19.2.14",
-      "expect": "json",
+      "description": "Metadata query redirects for types-only @types/react@19.2.14",
+      "expect": "typescript",
       "features": [
         "meta"
       ],
@@ -3789,7 +3789,8 @@
         "subpath"
       ],
       "package": "react-toastify",
-      "path": "/react-toastify@11.0.5/dist/ReactToastify.css"
+      "path": "/react-toastify@11.0.5/dist/ReactToastify.css",
+      "contentParity": "expected-only"
     },
     {
       "category": "css",

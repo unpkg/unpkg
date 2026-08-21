@@ -3,10 +3,12 @@
 import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
 
+import { compareExportKeys } from "./esm-browser-parity.ts";
+
 interface CompatCase {
   category?: string;
   description: string;
-  expect: "module" | "json" | "css" | "diagnostic";
+  expect: "module" | "javascript" | "json" | "css" | "typescript" | "diagnostic";
   features?: string[];
   package?: string;
   path: string;
@@ -24,6 +26,7 @@ interface CompatCorpus {
 }
 
 interface BrowserSmokeResult {
+  baselineExportKeys?: string[];
   case: CompatCase;
   durationMs: number;
   error: string | null;
@@ -34,6 +37,7 @@ interface BrowserSmokeResult {
 }
 
 interface BrowserSmokeReport {
+  baselineOrigin?: string;
   browser: "chromium";
   corpus: string;
   createdAt: string;
@@ -46,6 +50,7 @@ interface BrowserSmokeReport {
 
 let options = parseArgs(process.argv.slice(2));
 let origin = stripTrailingSlash(options.origin ?? process.env.ESM_BROWSER_ORIGIN ?? "https://esm.sh");
+let baselineOrigin = options.baselineOrigin == null ? null : stripTrailingSlash(options.baselineOrigin);
 let runOrigin = stripTrailingSlash(options.runOrigin ?? process.env.UNPKG_RUN_ORIGIN ?? origin);
 let corpus = await loadCorpus(options.corpusPath);
 let smokeCases = corpus.cases.filter((compatCase) => {
@@ -79,6 +84,7 @@ if (options.dryRun) {
   }));
   let results = [...importResults, ...runtimeResults];
   printReport({
+    baselineOrigin: baselineOrigin ?? undefined,
     browser: "chromium",
     corpus: corpus.name ?? options.corpusPath,
     createdAt: new Date().toISOString(),
@@ -103,8 +109,21 @@ try {
     results.push(await runRuntimeCase(page, runtimeCase, origin));
   }
 
+  if (baselineOrigin != null) {
+    let baselineResults: BrowserSmokeResult[] = [];
+    for (let compatCase of smokeCases) {
+      baselineResults.push(await runCase(page, compatCase, baselineOrigin));
+    }
+    for (let runtimeCase of runtimeCases) {
+      baselineResults.push(await runRuntimeCase(page, runtimeCase, baselineOrigin));
+    }
+
+    results = results.map((result, index) => addBaselineParity(result, baselineResults[index]));
+  }
+
   let failed = results.filter((result) => result.error != null).length;
   printReport({
+    baselineOrigin: baselineOrigin ?? undefined,
     browser: "chromium",
     corpus: corpus.name ?? options.corpusPath,
     createdAt: new Date().toISOString(),
@@ -120,6 +139,24 @@ try {
   }
 } finally {
   await browser.close();
+}
+
+function addBaselineParity(
+  result: BrowserSmokeResult,
+  baseline: BrowserSmokeResult | undefined
+): BrowserSmokeResult {
+  if (baseline == null) {
+    return { ...result, error: result.error ?? "Missing baseline browser result" };
+  }
+
+  let parityError =
+    result.error ??
+    (baseline.error == null ? compareExportKeys(baseline.exportKeys, result.exportKeys) : `Baseline failed: ${baseline.error}`);
+  return {
+    ...result,
+    baselineExportKeys: baseline.exportKeys,
+    error: parityError,
+  };
 }
 
 async function runCase(page: import("playwright").Page, compatCase: CompatCase, origin: string): Promise<BrowserSmokeResult> {
@@ -545,7 +582,8 @@ function printReport(report: BrowserSmokeReport, jsonOutput: boolean): void {
     return;
   }
 
-  console.log(`${report.corpus}: ${report.passed}/${report.total} browser smoke cases passed against ${report.origin}`);
+  let comparison = report.baselineOrigin == null ? "" : ` versus ${report.baselineOrigin}`;
+  console.log(`${report.corpus}: ${report.passed}/${report.total} browser smoke cases passed against ${report.origin}${comparison}`);
   for (let result of report.results) {
     let marker = result.error == null ? "PASS" : "FAIL";
     console.log(`${marker} ${result.case.description}: ${result.requestCount} requests, ${result.transferredBytes} bytes`);
@@ -568,6 +606,7 @@ function isCompatCase(value: unknown): value is CompatCase {
 }
 
 function parseArgs(args: string[]): {
+  baselineOrigin: string | null;
   corpusPath: string;
   dryRun: boolean;
   jsonOutput: boolean;
@@ -576,6 +615,7 @@ function parseArgs(args: string[]): {
   packageName: string | null;
   runOrigin: string | null;
 } {
+  let baselineOrigin: string | null = null;
   let corpusPath = "scripts/esm-compat-corpus.seed.json";
   let dryRun = false;
   let jsonOutput = false;
@@ -591,6 +631,11 @@ function parseArgs(args: string[]): {
       index += 1;
     } else if (arg.startsWith("--corpus=")) {
       corpusPath = arg.slice("--corpus=".length);
+    } else if (arg === "--baseline-origin") {
+      baselineOrigin = args[index + 1] ?? null;
+      index += 1;
+    } else if (arg.startsWith("--baseline-origin=")) {
+      baselineOrigin = arg.slice("--baseline-origin=".length);
     } else if (arg === "--dry-run") {
       dryRun = true;
     } else if (arg === "--json") {
@@ -621,6 +666,7 @@ function parseArgs(args: string[]): {
   }
 
   return {
+    baselineOrigin,
     corpusPath,
     dryRun,
     jsonOutput,

@@ -402,6 +402,31 @@ describe("bundleSource", () => {
     }
   });
 
+  it("does not leak dependency exports when the CommonJS entry declares its own surface", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-bundled-cjs-private-exports-"));
+
+    try {
+      await writeFile(
+        path.join(packageDirectory, "root.js"),
+        "exports.createRoot = () => 'ok'; exports.privateInternal = true;"
+      );
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "bundled-cjs-private-exports-package" },
+        "bundled-cjs-private-exports-package",
+        "1.0.0",
+        "/client.js",
+        "var root = require('./root.js'); exports.createRoot = root.createRoot;",
+        options()
+      );
+
+      expect(result.code).toContain("export const createRoot = __unpkg_cjs_default.createRoot;");
+      expect(result.code).not.toContain("export const privateInternal");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
   it("adds named exports from CommonJS object exports", async () => {
     let result = await transformSource(
       "const camelCase = () => 'ok'; module.exports = { camelCase, forEach: function () { return { nested: true }; } };",

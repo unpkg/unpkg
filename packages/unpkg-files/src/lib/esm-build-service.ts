@@ -391,10 +391,11 @@ export async function bundleSource(
     throw new Error(`No bundled output generated for ${packageName}@${version}${filename}`);
   }
 
-  let commonJsExportNames = new Set([...collectCommonJsExportNames(code), ...collectCommonJsExportNames(output.text)]);
+  let entryExportNames = collectCommonJsExportNames(code);
+  let commonJsExportNames = entryExportNames.length > 0 ? entryExportNames : collectCommonJsExportNames(output.text);
 
   return {
-    code: addCommonJsNamedExports(output.text, Array.from(commonJsExportNames).sort()),
+    code: addCommonJsNamedExports(output.text, commonJsExportNames),
   };
 }
 
