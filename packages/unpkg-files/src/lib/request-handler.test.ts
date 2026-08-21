@@ -121,7 +121,14 @@ describe("handleRequest", () => {
 
     it("survives a timeout while consuming a tarball body", async () => {
       let timeout = AbortSignal.timeout;
-      AbortSignal.timeout = () => timeout(10);
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      AbortSignal.timeout = () => {
+        let controller = new AbortController();
+        timeoutId = setTimeout(() => {
+          controller.abort(new DOMException("The operation timed out.", "TimeoutError"));
+        }, 10);
+        return controller.signal;
+      };
 
       try {
         let response = await dispatchFetch(
@@ -133,6 +140,7 @@ describe("handleRequest", () => {
         expect(healthResponse.status).toBe(200);
         await Bun.sleep(10);
       } finally {
+        clearTimeout(timeoutId);
         AbortSignal.timeout = timeout;
       }
     });
