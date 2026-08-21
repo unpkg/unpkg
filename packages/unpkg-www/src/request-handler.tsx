@@ -236,9 +236,10 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         headers.set("Cache-Control", "public, max-age=31536000");
       }
 
-      // Serve JavaScript files with charset="utf-8"
-      if (headers.get("Content-Type") === "text/javascript") {
-        headers.set("Content-Type", "text/javascript; charset=utf-8");
+      // Serve text files with charset="utf-8"
+      let contentType = headers.get("Content-Type");
+      if (contentType != null && /^text\//i.test(contentType) && !/\bcharset=/i.test(contentType)) {
+        headers.set("Content-Type", `${contentType}; charset=utf-8`);
       }
 
       // Add CORS headers

@@ -13,8 +13,8 @@ import { FilesNav } from "./files-nav.tsx";
 import { Hydrate } from "./hydrate.tsx";
 import { ImageViewer } from "./image-viewer.tsx";
 
-// The maximum number of characters we are willing to show and apply highlighting.
-const maxTextSize = 50_000;
+// The maximum number of characters we are willing to apply syntax highlighting to.
+const maxHighlightedTextSize = 50_000;
 
 export function FileDetail({
   packageInfo,
@@ -37,10 +37,9 @@ export function FileDetail({
     let text = new TextDecoder().decode(file.body);
 
     let html: string;
-    if (text.length <= maxTextSize) {
+    if (text.length <= maxHighlightedTextSize) {
       html = highlightCode(text);
     } else {
-      text = text.slice(0, maxTextSize);
       html = escapeHtml(text);
     }
 

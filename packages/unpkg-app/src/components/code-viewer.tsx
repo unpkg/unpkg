@@ -76,6 +76,11 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
       );
 
       setHighlightedLines(lines);
+
+      let firstLine = lines[0];
+      if (firstLine != null) {
+        document.getElementById(`L${firstLine}`)?.scrollIntoView();
+      }
     } else {
       setHighlightedLines([]);
     }
