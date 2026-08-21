@@ -11,7 +11,6 @@ This repository powers UNPKG, a CDN and web app for serving npm package files di
 - `packages/unpkg-files` is the Bun-based origin file server. Package file reads, tarball handling, and ESM build/transform work live here.
 - `packages/unpkg-worker` contains shared Cloudflare Worker utilities used by the worker packages.
 - `scripts` contains repo-level maintenance and compatibility runners, including the ESM compatibility, browser smoke, readiness, and corpus generation tools.
-- `docs` contains product and implementation specs for larger efforts.
 - `pnpm vendor:esm-sh` starts a pinned upstream esm.sh Docker image for local baseline corpus testing.
 
 ## Runtime And Tooling
