@@ -14,7 +14,7 @@
     "@types/bun": "^1.2.8",
     "@types/node": "^22.10.2",
     "unpkg-files": "workspace:*",
-    "wrangler": "^4.3.0"
+    "wrangler": "catalog:"
   },
   "scripts": {
     "build": "wrangler deploy --dry-run --outdir=dist",
