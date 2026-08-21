@@ -1,6 +1,8 @@
 packages:
   - packages/*
   - scripts
+catalog:
+  wrangler: ^4.125.0
 onlyBuiltDependencies:
   - esbuild
   - sharp
