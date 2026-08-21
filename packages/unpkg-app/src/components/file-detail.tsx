@@ -1,6 +1,6 @@
 import { type VNode } from "preact";
 import prettyBytes from "pretty-bytes";
-import type { PackageInfo, PackageFile } from "unpkg-worker";
+import type { PackageInfo, PackageFile, PackageFileMetadata } from "unpkg-worker";
 
 import { highlightCode } from "../highlight.ts";
 import { useHrefs } from "../hooks.ts";
@@ -16,6 +16,19 @@ import { ImageViewer } from "./image-viewer.tsx";
 // The maximum number of characters we are willing to apply syntax highlighting to.
 const maxHighlightedTextSize = 50_000;
 
+// The maximum number of interactive line links we are willing to render and hydrate.
+const maxInteractiveLineCount = 2_000;
+
+// The maximum number of bytes we are willing to load and show in a text preview.
+export const maxTextPreviewSize = 2 * 1024 * 1024;
+
+// The maximum number of escaped text bytes we are willing to include in the rendered page.
+const maxRenderedTextPreviewSize = 2 * 1024 * 1024;
+
+export function shouldLoadFileBody(file: PackageFileMetadata): boolean {
+  return !isTextFile(file) || file.size <= maxTextPreviewSize;
+}
+
 export function FileDetail({
   packageInfo,
   version,
@@ -25,30 +38,42 @@ export function FileDetail({
   packageInfo: PackageInfo;
   version: string;
   filename: string;
-  file: PackageFile;
+  file: PackageFile | PackageFileMetadata;
 }): VNode {
   let hrefs = useHrefs();
   let rawHref = hrefs.raw(packageInfo.name, version, filename);
 
-  let lines: string[] | undefined;
+  let lineCount: number | undefined;
+  let loc: number | undefined;
 
   let content: VNode;
-  if (file.type.startsWith("text/") || file.type === "application/json") {
-    let text = new TextDecoder().decode(file.body);
+  if (isTextFile(file)) {
+    if ("body" in file) {
+      let text = new TextDecoder().decode(file.body);
+      lineCount = countLines(text);
 
-    let html: string;
-    if (text.length <= maxHighlightedTextSize) {
-      html = highlightCode(text);
+      if (text.length <= maxHighlightedTextSize && lineCount <= maxInteractiveLineCount) {
+        loc = text.split("\n").filter((line) => line.trim() !== "").length;
+        content = (
+          <Hydrate>
+            <CodeViewer html={highlightCode(text)} numLines={lineCount} />
+          </Hydrate>
+        );
+      } else if (isRenderedTextWithinLimit(text)) {
+        content = (
+          <pre
+            class="py-4 px-6 border-b border-x border-slate-300 bg-white font-mono text-sm leading-6 whitespace-pre overflow-x-auto"
+            style={{ tabSize: 2 }}
+          >
+            {text}
+          </pre>
+        );
+      } else {
+        content = <LargeFileNotice rawHref={rawHref} />;
+      }
     } else {
-      html = escapeHtml(text);
+      content = <LargeFileNotice rawHref={rawHref} />;
     }
-
-    lines = text.split("\n");
-    content = (
-      <Hydrate>
-        <CodeViewer html={html} numLines={lines.length} />
-      </Hydrate>
-    );
   } else if (file.type.startsWith("image/")) {
     content = <ImageViewer alt={filename} src={rawHref} />;
   } else {
@@ -67,7 +92,7 @@ export function FileDetail({
 
       <div class="p-3 border border-slate-300 bg-slate-100 text-sm flex justify-between select-none">
         <div class="w-64">
-          {lines == null ? "" : <LineCount lines={lines} />}
+          {lineCount == null ? "" : <LineCount lineCount={lineCount} loc={loc} />}
           <span>{prettyBytes(file.size)}</span>
         </div>
         <div class="hidden flex-grow sm:block text-center">{getLanguageName(file)}</div>
@@ -83,15 +108,71 @@ export function FileDetail({
   );
 }
 
-function LineCount({ lines }: { lines: string[] }): VNode {
-  let loc = lines.filter((line) => line.trim() !== "").length;
-
+function LineCount({ lineCount, loc }: { lineCount: number; loc?: number }): VNode {
   return (
     <span>
-      <span>{formatNumber(lines.length)} lines </span>
-      {lines.length !== loc ? <span>({formatNumber(loc)} loc) </span> : null}
+      <span>{formatNumber(lineCount)} lines </span>
+      {loc != null && lineCount !== loc ? <span>({formatNumber(loc)} loc) </span> : null}
       <span>&bull; </span>
     </span>
+  );
+}
+
+function countLines(text: string): number {
+  let count = 1;
+  let index = -1;
+
+  while ((index = text.indexOf("\n", index + 1)) !== -1) {
+    count++;
+  }
+
+  return count;
+}
+
+function isRenderedTextWithinLimit(text: string): boolean {
+  let size = 0;
+
+  for (let index = 0; index < text.length; index++) {
+    let code = text.charCodeAt(index);
+
+    if (code === 38) {
+      size += 5; // &amp;
+    } else if (code === 60) {
+      size += 4; // &lt;
+    } else if (code === 34) {
+      size += 6; // &quot;
+    } else if (code <= 0x7f) {
+      size += 1;
+    } else if (code <= 0x7ff) {
+      size += 2;
+    } else if (code >= 0xd800 && code <= 0xdbff) {
+      let nextCode = text.charCodeAt(index + 1);
+      if (nextCode >= 0xdc00 && nextCode <= 0xdfff) {
+        size += 4;
+        index++;
+      } else {
+        size += 3;
+      }
+    } else {
+      size += 3;
+    }
+
+    if (size > maxRenderedTextPreviewSize) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function LargeFileNotice({ rawHref }: { rawHref: string }): VNode {
+  return (
+    <div class="py-4 border-b border-x border-slate-300 bg-white text-center">
+      <span>This file is too large to preview. </span>
+      <a href={rawHref} class="text-blue-600 hover:underline">
+        View Raw
+      </a>
+    </div>
   );
 }
 
@@ -99,14 +180,6 @@ function formatNumber(num: number): string {
   return new Intl.NumberFormat("en").format(num);
 }
 
-const htmlEntities: Record<string, string> = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&apos;",
-};
-
-function escapeHtml(unsafe: string) {
-  return unsafe.replace(/[&<>"']/g, (match) => htmlEntities[match]);
+function isTextFile(file: PackageFileMetadata): boolean {
+  return file.type.startsWith("text/") || file.type === "application/json";
 }

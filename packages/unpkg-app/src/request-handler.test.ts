@@ -1,6 +1,7 @@
 import { expect, describe, it, beforeAll, afterAll } from "bun:test";
 
 import { packageInfo } from "../test/fixtures.ts";
+import { maxTextPreviewSize } from "./components/file-detail.tsx";
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
 
@@ -59,6 +60,12 @@ describe("handleRequest", () => {
               path: "/package.json",
               size: 999,
               type: "application/json",
+              integrity: "sha256-test",
+            },
+            {
+              path: "/large.txt",
+              size: maxTextPreviewSize + 1,
+              type: "text/plain",
               integrity: "sha256-test",
             },
           ],
@@ -121,6 +128,14 @@ describe("handleRequest", () => {
 
     expect(html).toContain('<html lang="en" style="background-color:white;">');
     expect(html).toContain('<body style="background-color:white;">');
+  });
+
+  it("does not fetch the body of a text file that is too large to preview", async () => {
+    let response = await dispatchFetch("https://app.unpkg.com/react@18.2.0/files/large.txt");
+    let html = await response.text();
+
+    expect(response.status).toBe(200);
+    expect(html).toContain("This file is too large to preview.");
   });
 
   it("resolves semver range on package root", async () => {

@@ -68,21 +68,12 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
   }
 
   function handleHashChange(): void {
-    let hash = window.location.hash;
-    if (hash.startsWith("#L")) {
-      let lines = parseRanges(hash.slice(2)).reduce(
-        (lines, range) => [...lines, ...getNumbersInRange(range)],
-        [] as number[],
-      );
+    let lines = parseLineHash(window.location.hash, numLines);
+    setHighlightedLines(lines);
 
-      setHighlightedLines(lines);
-
-      let firstLine = lines[0];
-      if (firstLine != null) {
-        document.getElementById(`L${firstLine}`)?.scrollIntoView();
-      }
-    } else {
-      setHighlightedLines([]);
+    let firstLine = lines[0];
+    if (firstLine != null) {
+      document.getElementById(`L${firstLine}`)?.scrollIntoView();
     }
   }
 
@@ -92,6 +83,8 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
+  let highlightedLineSet = new Set(highlightedLines);
+
   return (
     <div class="flex relative bg-white font-mono text-sm leading-6">
       <div class="py-4 border-b border-x border-slate-300 bg-slate-100 text-right select-none">
@@ -100,7 +93,7 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
 
           return (
             <div>
-              {highlightedLines.includes(lineNumber) ? (
+              {highlightedLineSet.has(lineNumber) ? (
                 <div class="w-full h-6 bg-yellow-200 opacity-40 absolute left-0"></div>
               ) : null}
               <div class="relative">
@@ -128,16 +121,32 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
 
 type Range = [number, number];
 
-function parseRanges(rangeString: string): Range[] {
-  return rangeString.split(",").map((range) => {
-    let [start, end] = range.split("-").map((n) => parseInt(n, 10));
+export function parseLineHash(hash: string, numLines: number): number[] {
+  if (!Number.isSafeInteger(numLines) || numLines < 1 || !/^#L\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*$/.test(hash)) {
+    return [];
+  }
 
-    if (end == null) {
-      return [start, start];
+  let lineNumbers = new Set<number>();
+
+  for (let rangeString of hash.slice(2).split(",")) {
+    let [startString, endString = startString] = rangeString.split("-");
+    let start = Number(startString);
+    let end = Number(endString);
+
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || start > end) {
+      return [];
     }
 
-    return [start, end];
-  });
+    if (start > numLines) {
+      continue;
+    }
+
+    for (let lineNumber = start; lineNumber <= Math.min(end, numLines); lineNumber++) {
+      lineNumbers.add(lineNumber);
+    }
+  }
+
+  return [...lineNumbers];
 }
 
 function stringifyRanges(ranges: Range[]): string {
