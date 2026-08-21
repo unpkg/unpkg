@@ -26,6 +26,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Test Cloudflare observability helper
+        run: python3 .agents/skills/unpkg-cf-logs/scripts/test_cf_observe.py
+
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
