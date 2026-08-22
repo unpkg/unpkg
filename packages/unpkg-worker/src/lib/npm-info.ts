@@ -24,7 +24,7 @@ export interface PackageJson {
   dependencies: Record<string, string>;
   description: string;
   devDependencies?: Record<string, string>;
-  exports?: string | ExportConditions;
+  exports?: ExportTarget;
   homepage?: string;
   license?: string;
   main?: string;
@@ -41,8 +41,10 @@ export interface PackageJson {
   version: string;
 }
 
+export type ExportTarget = string | null | ExportConditions;
+
 export interface ExportConditions {
-  [condition: string]: string | ExportConditions;
+  [condition: string]: ExportTarget;
 }
 
 export async function getPackageInfo(

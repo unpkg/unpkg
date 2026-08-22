@@ -17,6 +17,22 @@ const context = {
   waitUntil() {},
 } as unknown as ExecutionContext;
 
+const cesiumPackageInfo = {
+  name: "cesium",
+  "dist-tags": { latest: "1.144.0" },
+  versions: {
+    "1.144.0": {
+      name: "cesium",
+      version: "1.144.0",
+      exports: {
+        ".": "./Source/Cesium.js",
+        "./Build/*": "./Build/*",
+        "./Build/*.js": null,
+      },
+    },
+  },
+};
+
 function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let request = input instanceof Request ? input : new Request(input, init);
   return handleRequest(request, env, context);
@@ -50,6 +66,15 @@ describe("handleRequest", () => {
       let url = new URL(request.url);
 
       if (url.origin === env.FILES_ORIGIN) {
+        if (url.pathname === "/file/cesium@1.144.0/Build/Cesium/Cesium.js") {
+          return new Response("export const Cesium = {};", {
+            headers: { "Content-Type": "application/javascript" },
+          });
+        }
+        if (url.pathname === "/build/cesium@1.144.0/Build/Cesium/Cesium.js") {
+          return new Response("Build input not found", { status: 404 });
+        }
+
         if (url.pathname === "/file/@babel/runtime@7.26.0/helpers/extends.js") {
           return new Response("export default Object.assign;\n", {
             headers: { "Content-Type": "application/javascript" },
@@ -70,6 +95,8 @@ describe("handleRequest", () => {
       }
 
       switch (url.href) {
+        case "https://registry.npmjs.org/cesium":
+          return Response.json(cesiumPackageInfo);
         case "https://registry.npmjs.org/normalize.css":
           return Response.json({
             name: "normalize.css",
@@ -295,6 +322,32 @@ describe("handleRequest", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toMatch(/^application\/json/);
     expect(await response.text()).toMatch(/"name": "react"/);
+  });
+
+  it("serves explicit raw files blocked by null package exports", async () => {
+    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/cesium@1.144.0/Build/Cesium/Cesium.js?raw", {
+      redirect: "manual",
+    });
+    expect(redirectResponse.status).toBe(301);
+
+    let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("export const Cesium = {};");
+  });
+
+  it("does not build explicit files blocked by null package exports", async () => {
+    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/cesium@1.144.0/Build/Cesium/Cesium.js", {
+      redirect: "manual",
+    });
+    expect(redirectResponse.status).toBe(301);
+
+    let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: "BUILD_FAILED",
+      },
+    });
   });
 
   it("redirects raw package roots to their import entry", async () => {

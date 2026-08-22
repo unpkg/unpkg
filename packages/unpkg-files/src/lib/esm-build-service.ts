@@ -6,10 +6,10 @@ import { parse as parseCommonJs } from "@esm.sh/cjs-module-lexer";
 import * as esbuild from "esbuild";
 import { parse } from "es-module-lexer/js";
 import {
-  resolvePackageExport,
+  resolvePackageExportResult,
   resolvePackageVersion,
 } from "unpkg-worker";
-import type { PackageInfo } from "unpkg-worker";
+import type { PackageInfo, PackageJson as WorkerPackageJson } from "unpkg-worker";
 
 import { getFile, withPackageFileDirectory } from "./npm-files.ts";
 
@@ -140,7 +140,7 @@ export interface InlineTransformRequest {
 
 interface PackageJson {
   dependencies?: Record<string, string>;
-  exports?: string | Record<string, unknown>;
+  exports?: string | null | Record<string, unknown>;
   main?: string;
   module?: string;
   name?: string;
@@ -496,22 +496,22 @@ export function resolveBuildFilename(
   options: Pick<NormalizedBuildOptions, "conditions" | "env" | "target">
 ): string | null {
   if (filename != null && filename !== "/") {
-    return (
-      resolvePackageExport(packageJson as Parameters<typeof resolvePackageExport>[0], filename, {
-        conditions: getBuildConditions(options),
-        useBrowserField: !isRuntimeNativeTarget(options.target),
-        useModuleField: packageJson.exports == null,
-      }) ?? filename
-    );
-  }
-
-  return (
-    resolvePackageExport(packageJson as Parameters<typeof resolvePackageExport>[0], "/", {
+    let resolution = resolvePackageExportResult(packageJson as WorkerPackageJson, filename, {
       conditions: getBuildConditions(options),
       useBrowserField: !isRuntimeNativeTarget(options.target),
-      useModuleField: packageJson.exports == null,
-    }) ?? "/index.js"
-  );
+      useModuleField: packageJson.exports === undefined,
+    });
+    if (resolution.status === "blocked") return null;
+    return resolution.status === "resolved" ? resolution.filename : filename;
+  }
+
+  let resolution = resolvePackageExportResult(packageJson as WorkerPackageJson, "/", {
+    conditions: getBuildConditions(options),
+    useBrowserField: !isRuntimeNativeTarget(options.target),
+    useModuleField: packageJson.exports === undefined,
+  });
+  if (resolution.status === "blocked") return null;
+  return resolution.status === "resolved" ? resolution.filename : "/index.js";
 }
 
 function parseConditions(searchParams: URLSearchParams): string[] {
@@ -736,7 +736,7 @@ function resolveCommonJsReexport(
   }
 
   let selfReferencePath = parsed.path === "" ? "/" : parsed.path;
-  return resolveBuildFilename(packageJson, selfReferencePath, options) ?? selfReferencePath;
+  return resolveBuildFilename(packageJson, selfReferencePath, options);
 }
 
 function readJsonExportNames(code: string): string[] {
@@ -827,7 +827,12 @@ function createPackageInternalBundlePlugin(
           let parsed = parseBareSpecifier(args.path);
           if (parsed?.packageName === packageName) {
             let selfReferencePath = parsed.path === "" ? "/" : parsed.path;
-            let resolved = resolveBuildFilename(packageJson, selfReferencePath, options) ?? selfReferencePath;
+            let resolved = resolveBuildFilename(packageJson, selfReferencePath, options);
+            if (resolved == null) {
+              return {
+                errors: [{ text: `Package subpath "${selfReferencePath}" is blocked by its exports map` }],
+              };
+            }
 
             return {
               path: resolved,

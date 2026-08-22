@@ -1,7 +1,7 @@
 import { expect, describe, it } from "bun:test";
 
 import type { PackageJson } from "./npm-info.ts";
-import { resolvePackageExport } from "./pkg-exports.ts";
+import { resolvePackageExport, resolvePackageExportResult } from "./pkg-exports.ts";
 
 describe("resolvePackageExport", () => {
   describe("when package.module is a string", () => {
@@ -218,6 +218,67 @@ describe("resolvePackageExport", () => {
 
     it("uses the matching fallback condition", () => {
       expect(resolvePackageExport(packageJson, "/vanilla", { conditions: ["default"] })).toBe("/vanilla.js");
+    });
+  });
+
+  describe("when package.exports contains null targets", () => {
+    it("blocks a top-level null export", () => {
+      let packageJson = {
+        exports: null,
+        main: "./legacy.js",
+      } as unknown as PackageJson;
+
+      expect(resolvePackageExportResult(packageJson, "/")).toEqual({ status: "blocked" });
+    });
+
+    it("blocks an exact subpath", () => {
+      let packageJson = {
+        exports: {
+          "./blocked": null,
+        },
+      } as unknown as PackageJson;
+
+      expect(resolvePackageExport(packageJson, "/blocked")).toBe(null);
+      expect(resolvePackageExportResult(packageJson, "/blocked")).toEqual({ status: "blocked" });
+    });
+
+    it("does not fall through from a specific null wildcard to a broader wildcard", () => {
+      let packageJson = {
+        exports: {
+          "./Build/*": "./Build/*",
+          "./Build/*.js": null,
+        },
+      } as unknown as PackageJson;
+
+      expect(resolvePackageExportResult(packageJson, "/Build/Cesium/Cesium.js")).toEqual({ status: "blocked" });
+    });
+
+    it("blocks a matching conditional target", () => {
+      let packageJson = {
+        exports: {
+          ".": {
+            browser: null,
+            default: "./index.js",
+          },
+        },
+        main: "./legacy.js",
+      } as unknown as PackageJson;
+
+      expect(resolvePackageExportResult(packageJson, "/", { conditions: ["browser", "default"] })).toEqual({
+        status: "blocked",
+      });
+    });
+
+    it("ignores null targets that do not match", () => {
+      let packageJson = {
+        exports: {
+          "./blocked": null,
+          "./available": "./available.js",
+        },
+      } as unknown as PackageJson;
+
+      expect(resolvePackageExport(packageJson, "/available")).toBe("/available.js");
+      expect(resolvePackageExportResult(packageJson, "/missing")).toEqual({ status: "not-found" });
     });
   });
 

@@ -139,6 +139,53 @@ describe("resolveBuildFilename", () => {
     expect(resolveBuildFilename(packageJson, "/dist/index.js", options())).toBe("/dist/index.js");
   });
 
+  it("does not fall back to explicit filenames blocked by null exports", () => {
+    expect(
+      resolveBuildFilename(
+        {
+          exports: {
+            "./dist/*": "./dist/*",
+            "./dist/*.js": null,
+          },
+        },
+        "/dist/index.js",
+        options()
+      )
+    ).toBe(null);
+  });
+
+  it("does not fall back to legacy entrypoints when a condition is blocked", () => {
+    expect(
+      resolveBuildFilename(
+        {
+          exports: {
+            ".": {
+              browser: null,
+              import: "./index.js",
+            },
+          },
+          main: "./legacy.js",
+        },
+        undefined,
+        options()
+      )
+    ).toBe(null);
+  });
+
+  it("does not fall back to module or main when exports is null", () => {
+    expect(
+      resolveBuildFilename(
+        {
+          exports: null,
+          main: "./legacy.js",
+          module: "./module.js",
+        },
+        undefined,
+        options()
+      )
+    ).toBe(null);
+  });
+
   it("allows extensionless browser entrypoints", () => {
     expect(
       resolveBuildFilename(
