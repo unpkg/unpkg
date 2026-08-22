@@ -2,8 +2,14 @@ import type { PackageJson, ExportConditions } from "./npm-info.ts";
 
 interface ResolvePackageExportOptions {
   conditions?: string[];
+  trace?: ResolvePackageExportTrace;
   useBrowserField?: boolean;
   useModuleField?: boolean;
+}
+
+interface ResolvePackageExportTrace {
+  usedBrowserField?: boolean;
+  usedCondition?: boolean;
 }
 
 export type PackageExportResolution =
@@ -42,6 +48,7 @@ export function resolvePackageExportResult(
   if (options?.useBrowserField) {
     // "browser": "./dist/index.js"
     if (typeof packageJson.browser === "string" && entry === ".") {
+      if (options.trace != null) options.trace.usedBrowserField = true;
       return resolved(pathToFilename(packageJson.browser));
     }
 
@@ -52,6 +59,7 @@ export function resolvePackageExportResult(
           let value = packageJson.browser[key];
 
           if (typeof value === "string") {
+            if (options.trace != null) options.trace.usedBrowserField = true;
             return resolved(pathToFilename(value));
           }
         }
@@ -82,7 +90,7 @@ export function resolvePackageExportResult(
   // "exports": { ... }
   if (typeof packageJson.exports === "object" && packageJson.exports != null) {
     let conditions = options?.conditions ?? ["unpkg", "default"];
-    let target = _resolveExportConditions(packageJson.exports, entry, conditions, entry === ".", null);
+    let target = _resolveExportConditions(packageJson.exports, entry, conditions, entry === ".", null, false, options?.trace);
     if (target === null) {
       return { status: "blocked" };
     }
@@ -135,7 +143,7 @@ export function resolveExportConditions(
   entry: string,
   supportedConditions: string[]
 ): string | null {
-  return _resolveExportConditions(exports, entry, supportedConditions, entry === ".", null) ?? null;
+  return _resolveExportConditions(exports, entry, supportedConditions, entry === ".", null, false) ?? null;
 }
 
 function _resolveExportConditions(
@@ -143,20 +151,24 @@ function _resolveExportConditions(
   entry: string,
   supportedConditions: string[],
   entryWasFound: boolean,
-  wildcardMatch: string | null
+  wildcardMatch: string | null,
+  conditionWasUsed: boolean,
+  trace?: ResolvePackageExportTrace
 ): string | null | undefined {
   for (let key in exports) {
     if (!isSubpath(key) || entry !== normalizeEntryPath(key)) continue;
 
     let value = exports[key];
     if (value === null) {
+      markConditionUsed(trace, conditionWasUsed);
       return null;
     }
     if (typeof value === "string") {
+      markConditionUsed(trace, conditionWasUsed);
       return applyWildcardMatch(value, wildcardMatch);
     }
 
-    return _resolveExportConditions(value, entry, supportedConditions, true, wildcardMatch);
+    return _resolveExportConditions(value, entry, supportedConditions, true, wildcardMatch, conditionWasUsed, trace);
   }
 
   let wildcardEntries = Object.entries(exports)
@@ -170,13 +182,15 @@ function _resolveExportConditions(
 
   for (let { match, value } of wildcardEntries) {
     if (value === null) {
+      markConditionUsed(trace, conditionWasUsed);
       return null;
     }
     if (typeof value === "string") {
+      markConditionUsed(trace, conditionWasUsed);
       return applyWildcardMatch(value, match);
     }
 
-    let resolved = _resolveExportConditions(value, entry, supportedConditions, true, match);
+    let resolved = _resolveExportConditions(value, entry, supportedConditions, true, match, conditionWasUsed, trace);
     if (resolved !== undefined) {
       return resolved;
     }
@@ -187,11 +201,17 @@ function _resolveExportConditions(
 
     if (!isSubpath(key) && supportedConditions.includes(key)) {
       if (value === null) {
-        if (entryWasFound) return null;
+        if (entryWasFound) {
+          markConditionUsed(trace, true);
+          return null;
+        }
       } else if (typeof value === "string") {
-        if (entryWasFound) return applyWildcardMatch(value, wildcardMatch);
+        if (entryWasFound) {
+          markConditionUsed(trace, true);
+          return applyWildcardMatch(value, wildcardMatch);
+        }
       } else {
-        let resolved = _resolveExportConditions(value, entry, supportedConditions, entryWasFound, wildcardMatch);
+        let resolved = _resolveExportConditions(value, entry, supportedConditions, entryWasFound, wildcardMatch, true, trace);
         if (resolved !== undefined) {
           return resolved;
         }
@@ -200,6 +220,10 @@ function _resolveExportConditions(
   }
 
   return undefined;
+}
+
+function markConditionUsed(trace: ResolvePackageExportTrace | undefined, conditionWasUsed: boolean): void {
+  if (trace != null && conditionWasUsed) trace.usedCondition = true;
 }
 
 function matchWildcardExport(pattern: string, entry: string): string | null {

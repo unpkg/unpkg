@@ -156,15 +156,89 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   let wantsBrowser = url.searchParams.has("browser");
   let wantsModule = url.searchParams.has("module");
 
-  let resolvedFilename = resolvePackageExport(packageJson, filename ?? "/", {
+  let resolutionTrace: { usedBrowserField?: boolean; usedCondition?: boolean } = {};
+  let resolveOptions = {
     useBrowserField: wantsBrowser,
     useModuleField: wantsModule,
     conditions,
-  });
+    trace: resolutionTrace,
+  };
+  let resolvedFilename = resolvePackageExport(packageJson, filename ?? "/", resolveOptions);
+  let usedExplicitCondition = conditions != null && resolutionTrace.usedCondition === true;
+  let usesExplicitExportMapping = resolutionTrace.usedBrowserField === true || usedExplicitCondition;
+
+  // Export targets are physical package files, so they must not be fed back through
+  // package export resolution after a redirect. When an explicit request matches an
+  // export, use the file listing to distinguish a real file from an export subpath.
+  let files = filename != null && resolvedFilename != null && resolvedFilename !== filename
+    ? await listFiles(context, env.FILES_ORIGIN, packageName, version)
+    : undefined;
+
+  if (files != null && resolvedFilename != null && filename != null) {
+    let requestedFilename = filename;
+    let resolvedTargetFilename = resolvedFilename;
+    let requestedFile = files.find(
+      (file) => file.path.toLowerCase() === requestedFilename.toLowerCase(),
+    );
+    let resolvedFile = files.find(
+      (file) => file.path.toLowerCase() === resolvedTargetFilename.toLowerCase(),
+    );
+
+    if (requestedFile != null && !usesExplicitExportMapping) {
+      // The request already names the physical export target. Serve it directly.
+      resolvedFilename = filename;
+    } else if (resolvedFile == null) {
+      if (version !== parsed.version) {
+        // Pin the original request before deciding how to handle a missing target.
+        return redirect(`/${packageName}@${version}${requestedFilename}${url.search}`, {
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "public, max-age=60, s-maxage=300",
+            "Cross-Origin-Resource-Policy": "cross-origin",
+          },
+        });
+      }
+
+      // A bad permanent redirect that repeatedly appended a suffix may already be
+      // cached by clients. Recover only that exact shape: X -> X+suffix ->
+      // X+suffix+suffix. Broader reverse export lookup is ambiguous and could serve
+      // the wrong physical file for a legitimate export subpath.
+      let appendedSuffix = !usesExplicitExportMapping && resolvedTargetFilename.startsWith(requestedFilename)
+        ? resolvedTargetFilename.slice(requestedFilename.length)
+        : "";
+      let predecessorPath =
+        appendedSuffix !== "" && requestedFilename.endsWith(appendedSuffix)
+          ? requestedFilename.slice(0, -appendedSuffix.length)
+          : null;
+      let predecessorFiles =
+        predecessorPath == null
+          ? []
+          : files.filter((file) => file.path.toLowerCase() === predecessorPath.toLowerCase());
+      let predecessorFile = predecessorFiles.length === 1 ? predecessorFiles[0] : undefined;
+
+      if (
+        predecessorFile == null ||
+        resolvePackageExport(packageJson, predecessorFile.path, resolveOptions) !== requestedFilename
+      ) {
+        return notFound(`Not found: ${url.pathname}${url.search}`);
+      }
+
+      filename = predecessorFile.path;
+      resolvedFilename = filename;
+    }
+  }
 
   // If the resolved filename is different from the original filename, redirect to the new URL
   if (resolvedFilename != null && resolvedFilename !== filename) {
-    let location = `/${packageName}@${version}${resolvedFilename}${url.search}`;
+    let redirectSearchParams = new URLSearchParams(url.search);
+    // Browser and condition selectors resolve the logical subpath. Do not carry
+    // either one onto the physical target where an initially unused selector could
+    // become active and resolve the target again. `module` remains because it also
+    // controls import rewriting when the physical file is served.
+    redirectSearchParams.delete("browser");
+    redirectSearchParams.delete("conditions");
+    let redirectSearch = redirectSearchParams.size === 0 ? "" : `?${redirectSearchParams}`;
+    let location = `/${packageName}@${version}${resolvedFilename}${redirectSearch}`;
 
     // If the version number is already resolved, we can issue a permanent redirect (301)
     if (version === parsed.version) {
@@ -199,7 +273,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     });
   }
 
-  let files = await listFiles(context, env.FILES_ORIGIN, packageName, version);
+  files ??= await listFiles(context, env.FILES_ORIGIN, packageName, version);
 
   if (filename != null && files.some((file) => file.path.toLowerCase() === filename.toLowerCase())) {
     let response = await fetchFile(context, env.FILES_ORIGIN, packageName, version, filename);
