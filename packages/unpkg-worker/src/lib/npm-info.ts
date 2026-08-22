@@ -1,10 +1,4 @@
-import {
-  createCacheableResponse,
-  readOptionalResponseWithNetworkRetry,
-  readResponseWithNetworkRetry,
-  retryOnNetworkConnectionLost,
-  waitUntilCachePut,
-} from "./cache-utils.ts";
+import { createCacheableResponse } from "./cache-utils.ts";
 
 export interface PackageInfo {
   description?: string;
@@ -62,25 +56,19 @@ export async function getPackageInfo(
     headers: { Accept: "application/json" },
   });
 
-  let cache = await retryOnNetworkConnectionLost(() => caches.open("npm-info"));
-  let result = await readOptionalResponseWithNetworkRetry(() => cache.match(request));
+  let cache = await caches.open("npm-info");
+  let response = await cache.match(request);
 
-  if (result == null) {
-    result = await readResponseWithNetworkRetry(() => fetch(request));
+  if (!response) {
+    response = await fetch(request);
 
-    if (result.response.ok) {
-      waitUntilCachePut(
-        context,
-        cache,
-        request,
-        createCacheableResponse(result.response, result.body),
-        "npm-info"
-      );
+    if (response && response.ok) {
+      context.waitUntil(cache.put(request, createCacheableResponse(response)));
     }
   }
 
-  if (result.response.ok) {
-    return JSON.parse(new TextDecoder().decode(result.body)) as PackageInfo;
+  if (response && response.ok) {
+    return response.json();
   }
 
   return null;
