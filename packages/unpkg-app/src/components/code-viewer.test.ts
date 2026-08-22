@@ -9,6 +9,7 @@ describe("CodeViewer", () => {
     let html = render(h(CodeViewer, { html: '<span class="hljs-keyword">const</span> value', numLines: 1 }));
 
     expect(html).toContain("hljs-listing");
+    expect(html).toContain("hljs-frame");
     expect(html).toContain("focus-visible:outline-blue-600");
   });
 });

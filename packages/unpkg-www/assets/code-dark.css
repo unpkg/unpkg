@@ -2,6 +2,10 @@
   background: #000;
   color: #d5ced9;
 }
+.hljs-frame,
+.hljs-frame > * {
+  border-color: #262626;
+}
 .hljs-comment,
 .hljs-quote {
   color: #a0a1a7cc;

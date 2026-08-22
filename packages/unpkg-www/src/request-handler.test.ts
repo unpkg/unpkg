@@ -115,6 +115,7 @@ describe("handleRequest", () => {
     expect(html).toContain(">Parameter<");
     expect(html).toContain("overflow-x-auto");
     expect(html).toContain("hljs-listing");
+    expect(html).toContain("hljs-frame");
     expect(html).toContain("focus-visible:outline-slate-500");
     expect(html).toContain("focus-visible:after:text-blue-600");
     expect(html).toContain(">esm.unpkg.com/preact<");
