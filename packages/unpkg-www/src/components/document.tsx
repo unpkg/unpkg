@@ -29,7 +29,7 @@ export function Document({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content={description} />
 
-        <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="stylesheet" href={useAsset("assets/styles.css")} />
         <link rel="stylesheet" href={useAsset("assets/code-light.css")} />
 
