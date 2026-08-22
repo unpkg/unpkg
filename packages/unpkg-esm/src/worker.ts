@@ -1,4 +1,4 @@
-import { isCacheableResponse, waitUntilCachePut } from "unpkg-worker";
+import { waitUntilCachePut } from "unpkg-worker";
 
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.ts";
@@ -17,7 +17,7 @@ export default {
       if (!response) {
         response = await handleRequest(request, env, context);
 
-        if (shouldUseCache && isCacheableResponse(request, response)) {
+        if (shouldUseCache && request.method === "GET" && response.status === 200 && response.headers.has("Cache-Control")) {
           waitUntilCachePut(context, cache, request, response.clone(), "unpkg-esm");
         }
       }

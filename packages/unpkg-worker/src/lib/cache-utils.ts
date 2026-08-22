@@ -12,14 +12,6 @@ export function createCacheableResponse(response: Response): Response {
   });
 }
 
-export function isCacheableResponse(request: Request, response: Response): boolean {
-  return (
-    request.method === "GET" &&
-    (response.status === 200 || response.status === 301 || response.status === 302) &&
-    response.headers.has("Cache-Control")
-  );
-}
-
 export function waitUntilCachePut(
   context: ExecutionContext,
   cache: Cache,

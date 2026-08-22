@@ -1,35 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
 
-import {
-  isCacheableResponse,
-  waitUntilCachePut,
-} from "./cache-utils.ts";
-
-describe("isCacheableResponse", () => {
-  let request = new Request("https://unpkg.com/react");
-
-  it.each([200, 301, 302])("caches status %d responses with cache control", (status) => {
-    let response = new Response(null, {
-      status,
-      headers: { "Cache-Control": "public, max-age=60" },
-    });
-
-    expect(isCacheableResponse(request, response)).toBe(true);
-  });
-
-  it("does not cache responses without cache control", () => {
-    expect(isCacheableResponse(request, new Response(null))).toBe(false);
-  });
-
-  it("does not cache non-GET requests", () => {
-    let postRequest = new Request(request, { method: "POST" });
-    let response = new Response(null, {
-      headers: { "Cache-Control": "public, max-age=60" },
-    });
-
-    expect(isCacheableResponse(postRequest, response)).toBe(false);
-  });
-});
+import { waitUntilCachePut } from "./cache-utils.ts";
 
 describe("waitUntilCachePut", () => {
   it("handles transient cache write failures without rejecting the invocation", async () => {

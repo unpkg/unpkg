@@ -48,22 +48,14 @@ describe("worker", () => {
     expect(await response.text()).toContain("×");
   });
 
-  it("caches version redirect responses", async () => {
-    let cachedStatus: number | undefined;
-    let pending: Promise<unknown>[] = [];
-    let redirectContext = {
-      waitUntil(promise: Promise<unknown>) {
-        pending.push(promise);
-      },
-    } as unknown as ExecutionContext;
-
+  it("does not cache version redirect responses", async () => {
     globalThis.caches = {
       default: {
         async match() {
           return undefined;
         },
-        async put(_request, response) {
-          cachedStatus = response.status;
+        async put() {
+          throw new Error("Redirect responses should not be cached");
         },
       },
       async open(cacheName) {
@@ -88,11 +80,9 @@ describe("worker", () => {
       },
     } as unknown as CacheStorage;
 
-    let response = await worker.fetch(new Request("https://unpkg.com/example"), env, redirectContext);
-    await Promise.all(pending);
+    let response = await worker.fetch(new Request("https://unpkg.com/example"), env, context);
 
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe("/example@1.0.0");
-    expect(cachedStatus).toBe(302);
   });
 });

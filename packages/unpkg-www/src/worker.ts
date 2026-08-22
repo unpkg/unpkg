@@ -1,4 +1,4 @@
-import { isCacheableResponse, waitUntilCachePut } from "unpkg-worker";
+import { waitUntilCachePut } from "unpkg-worker";
 
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
@@ -23,7 +23,9 @@ export default {
       if (
         cacheMiss &&
         shouldUseCache &&
-        isCacheableResponse(request, response)
+        request.method === "GET" &&
+        response.status === 200 &&
+        response.headers.has("Cache-Control")
       ) {
         waitUntilCachePut(context, cache, request, response.clone(), "unpkg-www");
       }
