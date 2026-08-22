@@ -41,7 +41,7 @@ section[id] {
     --color-yellow-200: #fde047;
   }
 
-  a {
-    color: #7cb7ff;
+  footer a {
+    color: #fff;
   }
 }

@@ -401,7 +401,7 @@ footer svg {
     color: #d4d4d4;
   }
   footer a {
-    color: #7cb7ff;
+    color: #fff;
   }
   footer a:hover,
   footer a:focus-visible {
