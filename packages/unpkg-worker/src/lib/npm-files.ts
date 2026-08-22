@@ -1,4 +1,4 @@
-import { createCacheableResponse, waitUntilCachePut } from "./cache-utils.ts";
+import { createCacheableResponse, observeIoOperation, waitUntilCachePut } from "./cache-utils.ts";
 
 export interface PackageFile {
   path: string;
@@ -31,10 +31,10 @@ export async function fetchFile(
   let url = new URL(`/file/${packageName.toLowerCase()}@${version}${filename}`, origin);
   let request = new Request(url);
 
-  let cache = await caches.open("npm-files");
-  let response = await cache.match(request);
+  let cache = await observeIoOperation("npm-files:cache-open", () => caches.open("npm-files"));
+  let response = await observeIoOperation("npm-files:cache-match", () => cache.match(request));
   if (!response) {
-    response = await fetch(request);
+    response = await observeIoOperation("npm-files:origin-fetch", () => fetch(request));
 
     if (response.ok) {
       waitUntilCachePut(context, cache, request, createCacheableResponse(response), "npm-files");
@@ -66,7 +66,9 @@ export async function getFile(
   }
 
   let path = filename;
-  let body = new Uint8Array(await response.arrayBuffer());
+  let body = new Uint8Array(
+    await observeIoOperation("npm-files:response-body", () => response.arrayBuffer())
+  );
   let size = body.length;
 
   let type = response.headers.get("Content-Type");
@@ -100,11 +102,11 @@ export async function listFiles(
   let url = new URL(`/list/${packageName.toLowerCase()}@${version}${prefix}`, origin);
   let request = new Request(url);
 
-  let cache = await caches.open("npm-file-listings");
-  let response = await cache.match(request);
+  let cache = await observeIoOperation("npm-file-listings:cache-open", () => caches.open("npm-file-listings"));
+  let response = await observeIoOperation("npm-file-listings:cache-match", () => cache.match(request));
 
   if (!response) {
-    response = await fetch(request);
+    response = await observeIoOperation("npm-file-listings:origin-fetch", () => fetch(request));
 
     if (response.ok) {
       waitUntilCachePut(context, cache, request, createCacheableResponse(response), "npm-file-listings");
@@ -115,7 +117,10 @@ export async function listFiles(
     throw new Error(`Failed to fetch file listing: ${response.status} ${response.statusText}`);
   }
 
-  let json = (await response.json()) as PackageFileListing;
+  let json = await observeIoOperation(
+    "npm-file-listings:response-json",
+    () => response.json() as Promise<PackageFileListing>
+  );
 
   if (json.files == null) {
     throw new Error(`Invalid response format: ${JSON.stringify(json)}`);

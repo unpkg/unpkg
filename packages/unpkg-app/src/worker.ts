@@ -1,4 +1,4 @@
-import { waitUntilCachePut } from "unpkg-worker";
+import { observeIoOperation, waitUntilCachePut } from "unpkg-worker";
 
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
@@ -9,7 +9,7 @@ const cache = caches.default as Cache;
 export default {
   async fetch(request, env, context) {
     try {
-      let response = await cache.match(request);
+      let response = await observeIoOperation("unpkg-app:response-cache-match", () => cache.match(request));
 
       if (!response) {
         response = await handleRequest(request, env, context);

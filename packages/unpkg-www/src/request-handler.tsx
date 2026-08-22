@@ -5,6 +5,7 @@ import {
   createInlineRunner,
   getPackageInfo,
   listFiles,
+  observeIoOperation,
   parsePackagePathname,
   resolvePackageExport,
   resolvePackageVersion,
@@ -285,7 +286,9 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         response.headers.get("Content-Type")!.startsWith("text/javascript") &&
         url.searchParams.has("module")
       ) {
-        let code = new TextDecoder().decode(await response.arrayBuffer());
+        let code = new TextDecoder().decode(
+          await observeIoOperation("unpkg-www:file-response-body", () => response.arrayBuffer())
+        );
         let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies);
         let newCode = rewriteImports(code, url.origin, deps);
 
@@ -318,7 +321,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       headers.set("Access-Control-Expose-Headers", "*");
       headers.set("Cross-Origin-Resource-Policy", "cross-origin");
 
-      let body = await response.arrayBuffer();
+      let body = await observeIoOperation("unpkg-www:file-response-body", () => response.arrayBuffer());
 
       return withUtf8Charset(
         new Response(body, {

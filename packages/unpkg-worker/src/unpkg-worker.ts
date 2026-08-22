@@ -19,4 +19,4 @@ export { getEsmPackageSubpath, normalizeEsmRequestUrl, parseEsmPackagePathname }
 export type { InlineRunnerOptions } from "./lib/inline-runner.ts";
 export { createInlineRunner } from "./lib/inline-runner.ts";
 
-export { waitUntilCachePut } from "./lib/cache-utils.ts";
+export { observeIoOperation, waitUntilCachePut } from "./lib/cache-utils.ts";

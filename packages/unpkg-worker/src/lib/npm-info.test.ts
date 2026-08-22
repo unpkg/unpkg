@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, spyOn } from "bun:test";
 
 import { getPackageInfo } from "./npm-info.ts";
 
@@ -43,5 +43,34 @@ describe("getPackageInfo", () => {
     expect(packageInfo?.name).toBe("example");
     expect(jsonCalls).toBe(1);
     expect(arrayBufferCalls).toBe(0);
+  });
+
+  it("labels cache-match failures without changing the thrown error", async () => {
+    let failure = new Error("Network connection lost.");
+    let caught: unknown;
+    let warn = spyOn(console, "warn").mockImplementation(() => {});
+
+    globalThis.caches = {
+      async open() {
+        return {
+          async match() {
+            throw failure;
+          },
+        };
+      },
+    } as unknown as CacheStorage;
+
+    try {
+      try {
+        await getPackageInfo(context, "https://registry.npmjs.org", "example");
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBe(failure);
+      expect(warn).toHaveBeenCalledWith("Worker I/O failed (npm-info:cache-match): Network connection lost.");
+    } finally {
+      warn.mockRestore();
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { createCacheableResponse, waitUntilCachePut } from "./cache-utils.ts";
+import { createCacheableResponse, observeIoOperation, waitUntilCachePut } from "./cache-utils.ts";
 
 export interface PackageInfo {
   description?: string;
@@ -56,11 +56,11 @@ export async function getPackageInfo(
     headers: { Accept: "application/json" },
   });
 
-  let cache = await caches.open("npm-info");
-  let response = await cache.match(request);
+  let cache = await observeIoOperation("npm-info:cache-open", () => caches.open("npm-info"));
+  let response = await observeIoOperation("npm-info:cache-match", () => cache.match(request));
 
   if (!response) {
-    response = await fetch(request);
+    response = await observeIoOperation("npm-info:registry-fetch", () => fetch(request));
 
     if (response && response.ok) {
       waitUntilCachePut(context, cache, request, createCacheableResponse(response), "npm-info");
@@ -68,7 +68,7 @@ export async function getPackageInfo(
   }
 
   if (response && response.ok) {
-    return response.json();
+    return observeIoOperation("npm-info:response-json", () => response.json());
   }
 
   return null;

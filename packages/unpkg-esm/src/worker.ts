@@ -1,4 +1,4 @@
-import { waitUntilCachePut } from "unpkg-worker";
+import { observeIoOperation, waitUntilCachePut } from "unpkg-worker";
 
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.ts";
@@ -12,7 +12,9 @@ export default {
       let url = new URL(request.url);
       let shouldUseCache =
         env.MODE !== "development" && env.MODE !== "test" && url.pathname !== "/" && url.pathname !== "/index.html";
-      let response = shouldUseCache ? await cache.match(request) : undefined;
+      let response = shouldUseCache
+        ? await observeIoOperation("unpkg-esm:response-cache-match", () => cache.match(request))
+        : undefined;
 
       if (!response) {
         response = await handleRequest(request, env, context);

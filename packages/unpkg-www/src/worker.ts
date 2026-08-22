@@ -1,4 +1,4 @@
-import { waitUntilCachePut } from "unpkg-worker";
+import { observeIoOperation, waitUntilCachePut } from "unpkg-worker";
 
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
@@ -11,7 +11,9 @@ export default {
       let cache = caches.default as Cache;
       let url = new URL(request.url);
       let shouldUseCache = url.pathname !== "/" && url.pathname !== "/index.html";
-      let response = shouldUseCache ? await cache.match(request) : undefined;
+      let response = shouldUseCache
+        ? await observeIoOperation("unpkg-www:response-cache-match", () => cache.match(request))
+        : undefined;
       let cacheMiss = response == null;
 
       if (!response) {

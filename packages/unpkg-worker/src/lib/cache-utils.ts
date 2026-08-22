@@ -30,6 +30,15 @@ export function waitUntilCachePut(
   );
 }
 
+export async function observeIoOperation<T>(operation: string, run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    console.warn(`Worker I/O failed (${operation}): ${getErrorMessage(error)}`);
+    throw error;
+  }
+}
+
 function isNetworkConnectionLostError(error: unknown): boolean {
   return getErrorMessage(error).replace(/\.$/, "") === "Network connection lost";
 }
