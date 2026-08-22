@@ -1,4 +1,4 @@
-import { createCacheableResponse } from "./cache-utils.ts";
+import { createCacheableResponse, waitUntilCachePut } from "./cache-utils.ts";
 
 export interface PackageFile {
   path: string;
@@ -37,7 +37,7 @@ export async function fetchFile(
     response = await fetch(request);
 
     if (response.ok) {
-      context.waitUntil(cache.put(request, createCacheableResponse(response)));
+      waitUntilCachePut(context, cache, request, createCacheableResponse(response), "npm-files");
     }
   }
 
@@ -107,7 +107,7 @@ export async function listFiles(
     response = await fetch(request);
 
     if (response.ok) {
-      context.waitUntil(cache.put(request, createCacheableResponse(response)));
+      waitUntilCachePut(context, cache, request, createCacheableResponse(response), "npm-file-listings");
     }
   }
 

@@ -18,3 +18,5 @@ export { getEsmPackageSubpath, normalizeEsmRequestUrl, parseEsmPackagePathname }
 
 export type { InlineRunnerOptions } from "./lib/inline-runner.ts";
 export { createInlineRunner } from "./lib/inline-runner.ts";
+
+export { isCacheableResponse, retryOnNetworkConnectionLost, waitUntilCachePut } from "./lib/cache-utils.ts";

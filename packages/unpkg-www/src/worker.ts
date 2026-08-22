@@ -1,3 +1,5 @@
+import { isCacheableResponse, retryOnNetworkConnectionLost, waitUntilCachePut } from "unpkg-worker";
+
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
 import { withUtf8Charset } from "./response.ts";
@@ -9,11 +11,14 @@ export default {
       let cache = caches.default as Cache;
       let url = new URL(request.url);
       let shouldUseCache = url.pathname !== "/" && url.pathname !== "/index.html";
-      let response = shouldUseCache ? await cache.match(request) : undefined;
+      let response = shouldUseCache ? await retryOnNetworkConnectionLost(() => cache.match(request)) : undefined;
       let cacheMiss = response == null;
 
       if (!response) {
-        response = await handleRequest(request, env, context);
+        response =
+          request.method === "GET" || request.method === "HEAD"
+            ? await retryOnNetworkConnectionLost(() => handleRequest(request, env, context))
+            : await handleRequest(request, env, context);
       }
 
       response = withUtf8Charset(response);
@@ -21,11 +26,9 @@ export default {
       if (
         cacheMiss &&
         shouldUseCache &&
-        request.method === "GET" &&
-        response.status === 200 &&
-        response.headers.has("Cache-Control")
+        isCacheableResponse(request, response)
       ) {
-        context.waitUntil(cache.put(request, response.clone()));
+        waitUntilCachePut(context, cache, request, response.clone(), "unpkg-www");
       }
 
       if (request.method === "HEAD") {

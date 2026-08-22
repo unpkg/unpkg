@@ -1,3 +1,5 @@
+import { isCacheableResponse, retryOnNetworkConnectionLost, waitUntilCachePut } from "unpkg-worker";
+
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
 
@@ -7,13 +9,16 @@ const cache = caches.default as Cache;
 export default {
   async fetch(request, env, context) {
     try {
-      let response = await cache.match(request);
+      let response = await retryOnNetworkConnectionLost(() => cache.match(request));
 
       if (!response) {
-        response = await handleRequest(request, env, context);
+        response =
+          request.method === "GET" || request.method === "HEAD"
+            ? await retryOnNetworkConnectionLost(() => handleRequest(request, env, context))
+            : await handleRequest(request, env, context);
 
-        if (request.method === "GET" && response.status === 200 && response.headers.has("Cache-Control")) {
-          context.waitUntil(cache.put(request, response.clone()));
+        if (isCacheableResponse(request, response)) {
+          waitUntilCachePut(context, cache, request, response.clone(), "unpkg-app");
         }
       }
 

@@ -1,3 +1,5 @@
+import { isCacheableResponse, retryOnNetworkConnectionLost, waitUntilCachePut } from "unpkg-worker";
+
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.ts";
 
@@ -10,13 +12,16 @@ export default {
       let url = new URL(request.url);
       let shouldUseCache =
         env.MODE !== "development" && env.MODE !== "test" && url.pathname !== "/" && url.pathname !== "/index.html";
-      let response = shouldUseCache ? await cache.match(request) : undefined;
+      let response = shouldUseCache ? await retryOnNetworkConnectionLost(() => cache.match(request)) : undefined;
 
       if (!response) {
-        response = await handleRequest(request, env, context);
+        response =
+          request.method === "GET" || request.method === "HEAD"
+            ? await retryOnNetworkConnectionLost(() => handleRequest(request, env, context))
+            : await handleRequest(request, env, context);
 
-        if (shouldUseCache && request.method === "GET" && response.status === 200 && response.headers.has("Cache-Control")) {
-          context.waitUntil(cache.put(request, response.clone()));
+        if (shouldUseCache && isCacheableResponse(request, response)) {
+          waitUntilCachePut(context, cache, request, response.clone(), "unpkg-esm");
         }
       }
 

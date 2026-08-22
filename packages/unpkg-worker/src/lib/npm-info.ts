@@ -1,4 +1,4 @@
-import { createCacheableResponse } from "./cache-utils.ts";
+import { createCacheableResponse, waitUntilCachePut } from "./cache-utils.ts";
 
 export interface PackageInfo {
   description?: string;
@@ -63,7 +63,7 @@ export async function getPackageInfo(
     response = await fetch(request);
 
     if (response && response.ok) {
-      context.waitUntil(cache.put(request, createCacheableResponse(response)));
+      waitUntilCachePut(context, cache, request, createCacheableResponse(response), "npm-info");
     }
   }
 
