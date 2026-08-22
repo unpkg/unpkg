@@ -5,7 +5,7 @@ import { getFile, getPackageInfo, listFiles, parsePackagePathname, resolvePackag
 import { AssetsContext } from "./assets-context.ts";
 import { loadAssetsManifest } from "./assets-manifest.ts";
 import { Document } from "./components/document.tsx";
-import { FileDetail } from "./components/file-detail.tsx";
+import { FileDetail, shouldLoadFileBody } from "./components/file-detail.tsx";
 import { FileListing } from "./components/file-listing.tsx";
 import { NotFound } from "./components/not-found.tsx";
 import type { Env } from "./env.ts";
@@ -84,11 +84,17 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     let matchingFile = files.find((file) => file.path === remainingFilename);
 
     if (matchingFile != null) {
-      let file = await getFile(context, env.FILES_ORIGIN, packageName, version, remainingFilename);
+      let file = shouldLoadFileBody(matchingFile)
+        ? await getFile(context, env.FILES_ORIGIN, packageName, version, remainingFilename)
+        : matchingFile;
+
+      if (file == null) {
+        return notFound(`Not Found: ${url.pathname}`);
+      }
 
       return renderPage(
         env,
-        <FileDetail packageInfo={packageInfo} version={version} filename={remainingFilename} file={file!} />,
+        <FileDetail packageInfo={packageInfo} version={version} filename={remainingFilename} file={file} />,
         {
           headers: {
             "Cache-Control": "public, max-age=60, s-maxage=300",

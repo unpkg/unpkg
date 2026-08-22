@@ -299,6 +299,12 @@ describe("handleRequest", () => {
       expect(response.headers.get("Content-Type")).toMatch(/^text\/javascript; charset=utf-8/);
     });
 
+    it('serves non-JavaScript text files with "charset=utf-8"', async () => {
+      let response = await dispatchFetch("https://unpkg.com/react@18.2.0/LICENSE");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+    });
+
     it("adds CORS headers to the response", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@18.2.0/index.js");
       expect(response.status).toBe(200);

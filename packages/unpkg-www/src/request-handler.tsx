@@ -14,6 +14,7 @@ import {
 import { AssetsContext } from "./assets-context.ts";
 import { loadAssetsManifest } from "./assets-manifest.ts";
 import type { Env } from "./env.ts";
+import { withUtf8Charset } from "./response.ts";
 import { Document } from "./components/document.tsx";
 import { Home } from "./components/home.tsx";
 
@@ -236,11 +237,6 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         headers.set("Cache-Control", "public, max-age=31536000");
       }
 
-      // Serve JavaScript files with charset="utf-8"
-      if (headers.get("Content-Type") === "text/javascript") {
-        headers.set("Content-Type", "text/javascript; charset=utf-8");
-      }
-
       // Add CORS headers
       headers.set("Access-Control-Allow-Headers", "*");
       headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
@@ -250,11 +246,13 @@ export async function handleRequest(request: Request, env: Env, context: Executi
 
       let body = await response.arrayBuffer();
 
-      return new Response(body, {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
+      return withUtf8Charset(
+        new Response(body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        }),
+      );
     }
   }
 
