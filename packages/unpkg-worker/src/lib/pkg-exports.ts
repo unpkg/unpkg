@@ -6,25 +6,43 @@ interface ResolvePackageExportOptions {
   useModuleField?: boolean;
 }
 
+export type PackageExportResolution =
+  | { status: "resolved"; filename: string }
+  | { status: "blocked" }
+  | { status: "not-found" };
+
 export function resolvePackageExport(
   packageJson: PackageJson,
   filename: string, // The filename in the request URL, e.g. "/path/to/file"
   options?: ResolvePackageExportOptions
 ): string | null {
+  let resolution = resolvePackageExportResult(packageJson, filename, options);
+  return resolution.status === "resolved" ? resolution.filename : null;
+}
+
+/**
+ * Resolves a package export while preserving the distinction between an export
+ * that is explicitly blocked by a null target and one that was not found.
+ */
+export function resolvePackageExportResult(
+  packageJson: PackageJson,
+  filename: string,
+  options?: ResolvePackageExportOptions
+): PackageExportResolution {
   // entry is either "." or "./path"
   let entry = filename === "/" ? "." : `.${filename}`;
 
   if (options?.useModuleField) {
     // "module": "./dist/index.mjs"
     if (typeof packageJson.module === "string" && entry === ".") {
-      return pathToFilename(packageJson.module);
+      return resolved(pathToFilename(packageJson.module));
     }
   }
 
   if (options?.useBrowserField) {
     // "browser": "./dist/index.js"
     if (typeof packageJson.browser === "string" && entry === ".") {
-      return pathToFilename(packageJson.browser);
+      return resolved(pathToFilename(packageJson.browser));
     }
 
     // "browser": { "./server/only.js": "./client/only.js" }
@@ -34,7 +52,7 @@ export function resolvePackageExport(
           let value = packageJson.browser[key];
 
           if (typeof value === "string") {
-            return pathToFilename(value);
+            return resolved(pathToFilename(value));
           }
         }
       }
@@ -49,29 +67,40 @@ export function resolvePackageExport(
     options?.conditions == null &&
     entry === "."
   ) {
-    return pathToFilename(packageJson.unpkg);
+    return resolved(pathToFilename(packageJson.unpkg));
+  }
+
+  if (packageJson.exports === null) {
+    return { status: "blocked" };
   }
 
   // "exports": "./dist/index.js"
   if (typeof packageJson.exports === "string" && entry === ".") {
-    return pathToFilename(packageJson.exports);
+    return resolved(pathToFilename(packageJson.exports));
   }
 
   // "exports": { ... }
   if (typeof packageJson.exports === "object" && packageJson.exports != null) {
     let conditions = options?.conditions ?? ["unpkg", "default"];
-    let resolved = resolveExportConditions(packageJson.exports, entry, conditions);
-    if (resolved != null) {
-      return pathToFilename(resolved);
+    let target = _resolveExportConditions(packageJson.exports, entry, conditions, entry === ".", null);
+    if (target === null) {
+      return { status: "blocked" };
+    }
+    if (target !== undefined) {
+      return resolved(pathToFilename(target));
     }
   }
 
   // "main": "./dist/index.js"
   if (typeof packageJson.main === "string" && entry === ".") {
-    return pathToFilename(packageJson.main);
+    return resolved(pathToFilename(packageJson.main));
   }
 
-  return null;
+  return { status: "not-found" };
+}
+
+function resolved(filename: string): PackageExportResolution {
+  return { status: "resolved", filename };
 }
 
 function pathToFilename(path: string): string {
@@ -106,7 +135,7 @@ export function resolveExportConditions(
   entry: string,
   supportedConditions: string[]
 ): string | null {
-  return _resolveExportConditions(exports, entry, supportedConditions, entry === ".", null);
+  return _resolveExportConditions(exports, entry, supportedConditions, entry === ".", null) ?? null;
 }
 
 function _resolveExportConditions(
@@ -115,11 +144,14 @@ function _resolveExportConditions(
   supportedConditions: string[],
   entryWasFound: boolean,
   wildcardMatch: string | null
-): string | null {
+): string | null | undefined {
   for (let key in exports) {
     if (!isSubpath(key) || entry !== normalizeEntryPath(key)) continue;
 
     let value = exports[key];
+    if (value === null) {
+      return null;
+    }
     if (typeof value === "string") {
       return applyWildcardMatch(value, wildcardMatch);
     }
@@ -137,12 +169,15 @@ function _resolveExportConditions(
     .sort((left, right) => wildcardSpecificity(right.key) - wildcardSpecificity(left.key));
 
   for (let { match, value } of wildcardEntries) {
+    if (value === null) {
+      return null;
+    }
     if (typeof value === "string") {
       return applyWildcardMatch(value, match);
     }
 
     let resolved = _resolveExportConditions(value, entry, supportedConditions, true, match);
-    if (resolved != null) {
+    if (resolved !== undefined) {
       return resolved;
     }
   }
@@ -151,18 +186,20 @@ function _resolveExportConditions(
     let value = exports[key];
 
     if (!isSubpath(key) && supportedConditions.includes(key)) {
-      if (typeof value === "string") {
+      if (value === null) {
+        if (entryWasFound) return null;
+      } else if (typeof value === "string") {
         if (entryWasFound) return applyWildcardMatch(value, wildcardMatch);
       } else {
         let resolved = _resolveExportConditions(value, entry, supportedConditions, entryWasFound, wildcardMatch);
-        if (resolved != null) {
+        if (resolved !== undefined) {
           return resolved;
         }
       }
     }
   }
 
-  return null;
+  return undefined;
 }
 
 function matchWildcardExport(pattern: string, entry: string): string | null {

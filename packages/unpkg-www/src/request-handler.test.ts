@@ -20,6 +20,22 @@ const context = {
   waitUntil() {},
 } as unknown as ExecutionContext;
 
+const cesiumPackageInfo = {
+  name: "cesium",
+  "dist-tags": { latest: "1.144.0" },
+  versions: {
+    "1.144.0": {
+      name: "cesium",
+      version: "1.144.0",
+      exports: {
+        ".": "./Source/Cesium.js",
+        "./Build/*": "./Build/*",
+        "./Build/*.js": null,
+      },
+    },
+  },
+};
+
 function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let request = input instanceof Request ? input : new Request(input, init);
   return handleRequest(request, env, context);
@@ -53,12 +69,38 @@ describe("handleRequest", () => {
       let url = new URL(request.url);
 
       if (url.origin === env.FILES_ORIGIN) {
+        if (url.pathname === "/list/cesium@1.144.0/") {
+          return Response.json({
+            package: "cesium",
+            version: "1.144.0",
+            prefix: "/",
+            files: [
+              {
+                path: "/Build/Cesium/Cesium.js",
+                size: 22,
+                type: "text/javascript",
+                integrity: "sha256-dGVzdA==",
+              },
+            ],
+          });
+        }
+        if (url.pathname === "/file/cesium@1.144.0/Build/Cesium/Cesium.js") {
+          return new Response("export const Cesium = {};", {
+            headers: {
+              "Content-Digest": "sha256=:dGVzdA==:",
+              "Content-Type": "text/javascript",
+            },
+          });
+        }
+
         // Run the request through the file server. This allows us to write integration tests
         // that run without booting the file server.
         return handleFilesRequest(request);
       }
 
       switch (url.href) {
+        case "https://registry.npmjs.org/cesium":
+          return Response.json(cesiumPackageInfo);
         case "https://registry.npmjs.org/lodash":
           return fileResponse(packageInfo.lodash);
         case "https://registry.npmjs.org/preact":
@@ -199,6 +241,19 @@ describe("handleRequest", () => {
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
       expect(location).toMatch(/^\/react@\d+\.\d+\.\d+\/index\.js/);
+    });
+
+    it("serves explicit files blocked by null package exports", async () => {
+      let redirectResponse = await dispatchFetch("https://unpkg.com/cesium@latest/Build/Cesium/Cesium.js", {
+        redirect: "manual",
+      });
+      expect(redirectResponse.status).toBe(302);
+      expect(redirectResponse.headers.get("Location")).toBe("/cesium@1.144.0/Build/Cesium/Cesium.js");
+
+      let response = await dispatchFetch("https://unpkg.com/cesium@1.144.0/Build/Cesium/Cesium.js");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toMatch(/^text\/javascript/);
+      expect(await response.text()).toBe("export const Cesium = {};");
     });
 
     it("resolves npm tag and filename in a single redirect", async () => {
