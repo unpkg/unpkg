@@ -30,4 +30,8 @@ body {
   a {
     color: #7cb7ff;
   }
+
+  body > header a {
+    color: #fff;
+  }
 }
