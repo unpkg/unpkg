@@ -91,16 +91,19 @@ export function createHomePage(env: Env): string {
 
 function Document({ children }: { children: ComponentChildren }): VNode {
   return (
-    <html lang="en" style={{ backgroundColor: "white" }}>
+    <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content="Browser-ready npm package imports from UNPKG." />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
         <link rel="icon" type="image/png" href="/favicon.png" />
         <title>UNPKG ESM</title>
         <style dangerouslySetInnerHTML={{ __html: pageStyles }} />
       </head>
-      <body style={{ backgroundColor: "white" }}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
@@ -306,5 +309,88 @@ footer svg {
   header { padding-top: 5rem; }
   h1 { font-size: 3.5rem; }
   main { padding-top: 3rem; }
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #fff;
+    background: #000;
+  }
+  h1 {
+    color: #fff;
+  }
+  h2 {
+    color: #fff;
+  }
+  a {
+    color: #60a5fa;
+  }
+  code,
+  .callout {
+    background: #111;
+  }
+  .hljs-listing {
+    background: #000;
+    color: #fff;
+  }
+  .hljs-comment,
+  .hljs-quote {
+    color: #858585;
+  }
+  .hljs-doctag,
+  .hljs-keyword,
+  .hljs-link,
+  .hljs-formula {
+    color: #b98acb;
+  }
+  .hljs-section,
+  .hljs-name,
+  .hljs-selector-tag,
+  .hljs-deletion,
+  .hljs-subst {
+    color: #d1787e;
+  }
+  .hljs-literal,
+  .hljs-symbol,
+  .hljs-bullet,
+  .hljs-meta,
+  .hljs-selector-id,
+  .hljs-title {
+    color: #6b9fd3;
+  }
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-addition,
+  .hljs-attribute,
+  .hljs-meta-string {
+    color: #8fb573;
+  }
+  .hljs-built_in,
+  .hljs-class .hljs-title {
+    color: #c78b5e;
+  }
+  .hljs-attr,
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-type,
+  .hljs-selector-class,
+  .hljs-selector-attr,
+  .hljs-selector-pseudo,
+  .hljs-number {
+    color: #c8a66a;
+  }
+  footer {
+    border-color: #262626;
+    color: #d4d4d4;
+  }
+  footer a {
+    color: #d4d4d4;
+  }
+  footer a:hover,
+  footer a:focus-visible {
+    color: #fff;
+  }
+  footer a:focus-visible {
+    outline-color: #a3a3a3;
+  }
 }
 `;

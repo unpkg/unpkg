@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--color-white);
+  color: var(--color-slate-900);
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -11,5 +20,24 @@ section[id] {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-white: #000;
+    --color-black: #fff;
+    --color-slate-50: #0a0a0a;
+    --color-slate-100: #111;
+    --color-slate-200: #262626;
+    --color-slate-300: #404040;
+    --color-slate-500: #a3a3a3;
+    --color-slate-600: #d4d4d4;
+    --color-slate-900: #fff;
+    --color-slate-950: #fff;
+    --color-gray-300: #404040;
+    --color-gray-600: #d4d4d4;
+    --color-blue-600: #60a5fa;
+    --color-yellow-200: #fde047;
   }
 }
