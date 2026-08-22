@@ -96,7 +96,7 @@ function Document({ children }: { children: ComponentChildren }): VNode {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content="Browser-ready npm package imports from UNPKG." />
-        <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
+        <link rel="icon" type="image/png" href="/favicon.png" />
         <title>UNPKG ESM</title>
         <style dangerouslySetInnerHTML={{ __html: pageStyles }} />
       </head>
