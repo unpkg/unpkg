@@ -25,10 +25,10 @@ section[id] {
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-white: #000;
+    --color-white: #111;
     --color-black: #fff;
     --color-slate-50: #0a0a0a;
-    --color-slate-100: #111;
+    --color-slate-100: #000;
     --color-slate-200: #262626;
     --color-slate-300: #404040;
     --color-slate-500: #a3a3a3;

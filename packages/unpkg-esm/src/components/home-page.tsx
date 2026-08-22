@@ -313,7 +313,7 @@ footer svg {
 @media (prefers-color-scheme: dark) {
   body {
     color: #fff;
-    background: #000;
+    background: #111;
   }
   h1 {
     color: #fff;
@@ -330,7 +330,7 @@ footer svg {
   }
   code,
   .callout {
-    background: #111;
+    background: #000;
   }
   .hljs-listing {
     background: #000;
