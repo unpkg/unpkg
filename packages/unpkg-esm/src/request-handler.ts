@@ -2,10 +2,12 @@ import {
   getEsmPackageSubpath,
   getPackageInfo,
   normalizeEsmRequestUrl,
+  readResponseWithNetworkRetry,
+  retryOnNetworkConnectionLost,
   resolvePackageExport,
   resolvePackageVersion,
 } from "unpkg-worker";
-import type { EsmRequestError, PackageJson } from "unpkg-worker";
+import type { BufferedResponse, EsmRequestError, PackageJson } from "unpkg-worker";
 
 import { createHomePage } from "./components/home-page.tsx";
 import type { Env } from "./env.ts";
@@ -207,13 +209,18 @@ export async function handleRequest(request: Request, env: Env, context: Executi
 
   let buildSearchParams = new URLSearchParams(searchParams);
   buildSearchParams.set("origin", normalized.url.origin);
-  let buildResponse = await fetch(
-    new URL(`/build/${packageName}@${version}${packagePath.filename ?? ""}${normalizeSearch(buildSearchParams)}`, env.FILES_ORIGIN)
+  let { body: buildBody, response: buildResponse } = await readResponseWithNetworkRetry(() =>
+    fetch(
+      new URL(
+        `/build/${packageName}@${version}${packagePath.filename ?? ""}${normalizeSearch(buildSearchParams)}`,
+        env.FILES_ORIGIN
+      )
+    )
   );
   if (!buildResponse.ok) {
     return jsonError({
       code: "BUILD_FAILED",
-      message: await buildResponse.text(),
+      message: new TextDecoder().decode(buildBody),
       status: buildResponse.status,
     });
   }
@@ -227,7 +234,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     headers.set("X-TypeScript-Types", types);
   }
 
-  return new Response(await buildResponse.arrayBuffer(), {
+  return new Response(buildBody, {
     status: buildResponse.status,
     statusText: buildResponse.statusText,
     headers,
@@ -309,21 +316,25 @@ async function getBuildIntegrity(
 
   let buildSearchParams = new URLSearchParams(searchParams);
   buildSearchParams.set("origin", origin);
-  let response: Response;
+  let result: BufferedResponse;
   try {
-    response = await fetch(
-      new URL(`/build/${packageName}@${version}${filename ?? ""}${normalizeSearch(buildSearchParams)}`, env.FILES_ORIGIN)
+    result = await readResponseWithNetworkRetry(() =>
+      fetch(
+        new URL(`/build/${packageName}@${version}${filename ?? ""}${normalizeSearch(buildSearchParams)}`, env.FILES_ORIGIN)
+      )
     );
   } catch {
     return { value: null };
   }
+
+  let { body, response } = result;
 
   if (!response.ok) {
     if (response.status === 404) {
       return {
         response: jsonError({
           code: "BUILD_NOT_FOUND",
-          message: await response.text(),
+          message: new TextDecoder().decode(body),
           status: 404,
         }),
       };
@@ -332,17 +343,18 @@ async function getBuildIntegrity(
     return { value: null };
   }
 
-  let bytes = await response.arrayBuffer();
-  let digest = await crypto.subtle.digest("SHA-384", bytes);
+  let digest = await crypto.subtle.digest("SHA-384", body);
   return { value: `sha384-${base64Encode(new Uint8Array(digest))}` };
 }
 
 async function serveRawFile(env: Env, packageName: string, version: string, filename: string): Promise<Response> {
-  let rawResponse = await fetch(new URL(`/file/${packageName}@${version}${filename}`, env.FILES_ORIGIN));
+  let { body, response: rawResponse } = await readResponseWithNetworkRetry(() =>
+    fetch(new URL(`/file/${packageName}@${version}${filename}`, env.FILES_ORIGIN))
+  );
   if (!rawResponse.ok) {
     return jsonError({
       code: "RAW_FILE_NOT_FOUND",
-      message: await rawResponse.text(),
+      message: new TextDecoder().decode(body),
       status: rawResponse.status,
     });
   }
@@ -357,7 +369,7 @@ async function serveRawFile(env: Env, packageName: string, version: string, file
     headers.set(name, value);
   }
 
-  return new Response(await rawResponse.arrayBuffer(), {
+  return new Response(body, {
     status: rawResponse.status,
     statusText: rawResponse.statusText,
     headers,
@@ -458,7 +470,9 @@ async function resolveRawPath(
 }
 
 async function rawFileExists(env: Env, packageName: string, version: string, filename: string): Promise<boolean> {
-  let response = await fetch(new URL(`/file/${packageName}@${version}${filename}`, env.FILES_ORIGIN));
+  let response = await retryOnNetworkConnectionLost(() =>
+    fetch(new URL(`/file/${packageName}@${version}${filename}`, env.FILES_ORIGIN))
+  );
   return response.ok;
 }
 

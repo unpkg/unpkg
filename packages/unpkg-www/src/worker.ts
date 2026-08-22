@@ -1,4 +1,9 @@
-import { isCacheableResponse, retryOnNetworkConnectionLost, waitUntilCachePut } from "unpkg-worker";
+import {
+  isCacheableResponse,
+  isNetworkConnectionLostError,
+  retryOnNetworkConnectionLost,
+  waitUntilCachePut,
+} from "unpkg-worker";
 
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
@@ -15,10 +20,7 @@ export default {
       let cacheMiss = response == null;
 
       if (!response) {
-        response =
-          request.method === "GET" || request.method === "HEAD"
-            ? await retryOnNetworkConnectionLost(() => handleRequest(request, env, context))
-            : await handleRequest(request, env, context);
+        response = await handleRequest(request, env, context);
       }
 
       response = withUtf8Charset(response);
@@ -38,6 +40,13 @@ export default {
       return response;
     } catch (error) {
       console.error(error);
+
+      if (isNetworkConnectionLostError(error)) {
+        return new Response("Service Unavailable", {
+          status: 503,
+          headers: { "Retry-After": "1" },
+        });
+      }
 
       return new Response("Internal Server Error", { status: 500 });
     }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it, spyOn } from "bun:test";
 
 import type { Env } from "./env.ts";
 import worker from "./worker.ts";
@@ -94,5 +94,25 @@ describe("worker", () => {
     expect(response.status).toBe(302);
     expect(response.headers.get("Location")).toBe("/example@1.0.0");
     expect(cachedStatus).toBe(302);
+  });
+
+  it("returns a retryable 503 when the cache connection remains unavailable", async () => {
+    globalThis.caches = {
+      default: {
+        async match() {
+          throw new Error("Network connection lost.");
+        },
+      },
+    } as unknown as CacheStorage;
+    let error = spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      let response = await worker.fetch(new Request("https://unpkg.com/example"), env, context);
+
+      expect(response.status).toBe(503);
+      expect(response.headers.get("Retry-After")).toBe("1");
+    } finally {
+      error.mockRestore();
+    }
   });
 });
