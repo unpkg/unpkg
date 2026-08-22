@@ -1,10 +1,4 @@
-import {
-  createCacheableResponse,
-  readOptionalResponseWithNetworkRetry,
-  readResponseWithNetworkRetry,
-  retryOnNetworkConnectionLost,
-  waitUntilCachePut,
-} from "./cache-utils.ts";
+import { createCacheableResponse } from "./cache-utils.ts";
 
 export interface PackageFile {
   path: string;
@@ -23,11 +17,6 @@ export interface PackageFileListing {
   files: PackageFileMetadata[];
 }
 
-export interface PackageFileResponse {
-  body: ArrayBuffer;
-  response: Response;
-}
-
 export async function fetchFile(
   context: ExecutionContext,
   origin: string,
@@ -35,17 +24,6 @@ export async function fetchFile(
   version: string,
   filename: string
 ): Promise<Response | null> {
-  let result = await fetchFileResponse(context, origin, packageName, version, filename);
-  return result == null ? null : new Response(result.body, result.response);
-}
-
-export async function fetchFileResponse(
-  context: ExecutionContext,
-  origin: string,
-  packageName: string,
-  version: string,
-  filename: string
-): Promise<PackageFileResponse | null> {
   if (filename === "" || filename === "/") {
     return null;
   }
@@ -53,31 +31,25 @@ export async function fetchFileResponse(
   let url = new URL(`/file/${packageName.toLowerCase()}@${version}${filename}`, origin);
   let request = new Request(url);
 
-  let cache = await retryOnNetworkConnectionLost(() => caches.open("npm-files"));
-  let result = await readOptionalResponseWithNetworkRetry(() => cache.match(request));
-  if (result == null) {
-    result = await readResponseWithNetworkRetry(() => fetch(request));
+  let cache = await caches.open("npm-files");
+  let response = await cache.match(request);
+  if (!response) {
+    response = await fetch(request);
 
-    if (result.response.ok) {
-      waitUntilCachePut(
-        context,
-        cache,
-        request,
-        createCacheableResponse(result.response, result.body),
-        "npm-files"
-      );
+    if (response.ok) {
+      context.waitUntil(cache.put(request, createCacheableResponse(response)));
     }
   }
 
-  if (!result.response.ok) {
-    if (result.response.status === 404) {
+  if (!response.ok) {
+    if (response.status === 404) {
       return null;
     }
 
-    throw new Error(`Failed to fetch file: ${result.response.status} ${result.response.statusText}`);
+    throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
   }
 
-  return result;
+  return response;
 }
 
 export async function getFile(
@@ -87,22 +59,22 @@ export async function getFile(
   version: string,
   filename: string
 ): Promise<PackageFile | null> {
-  let result = await fetchFileResponse(context, origin, packageName, version, filename);
+  let response = await fetchFile(context, origin, packageName, version, filename);
 
-  if (result == null) {
+  if (response == null) {
     return null;
   }
 
   let path = filename;
-  let body = new Uint8Array(result.body);
+  let body = new Uint8Array(await response.arrayBuffer());
   let size = body.length;
 
-  let type = result.response.headers.get("Content-Type");
+  let type = response.headers.get("Content-Type");
   if (type == null) {
     throw new Error(`Missing Content-Type header for file: "${filename}"`);
   }
 
-  let digest = result.response.headers.get("Content-Digest");
+  let digest = response.headers.get("Content-Digest");
   if (digest == null) {
     throw new Error(`Missing Content-Digest header for file: "${filename}"`);
   }
@@ -128,28 +100,22 @@ export async function listFiles(
   let url = new URL(`/list/${packageName.toLowerCase()}@${version}${prefix}`, origin);
   let request = new Request(url);
 
-  let cache = await retryOnNetworkConnectionLost(() => caches.open("npm-file-listings"));
-  let result = await readOptionalResponseWithNetworkRetry(() => cache.match(request));
+  let cache = await caches.open("npm-file-listings");
+  let response = await cache.match(request);
 
-  if (result == null) {
-    result = await readResponseWithNetworkRetry(() => fetch(request));
+  if (!response) {
+    response = await fetch(request);
 
-    if (result.response.ok) {
-      waitUntilCachePut(
-        context,
-        cache,
-        request,
-        createCacheableResponse(result.response, result.body),
-        "npm-file-listings"
-      );
+    if (response.ok) {
+      context.waitUntil(cache.put(request, createCacheableResponse(response)));
     }
   }
 
-  if (!result.response.ok) {
-    throw new Error(`Failed to fetch file listing: ${result.response.status} ${result.response.statusText}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file listing: ${response.status} ${response.statusText}`);
   }
 
-  let json = JSON.parse(new TextDecoder().decode(result.body)) as PackageFileListing;
+  let json = (await response.json()) as PackageFileListing;
 
   if (json.files == null) {
     throw new Error(`Invalid response format: ${JSON.stringify(json)}`);
