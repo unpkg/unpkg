@@ -13,33 +13,35 @@ afterEach(() => {
 });
 
 describe("getPackageInfo", () => {
-  it("retries transient named-cache open and read failures", async () => {
-    let openAttempts = 0;
-    let matchAttempts = 0;
-    let cache = {
-      async match() {
-        matchAttempts += 1;
-        if (matchAttempts === 1) throw new Error("Network connection lost.");
-
-        return Response.json({
-          name: "example",
-          time: {},
-        });
+  it("parses cached metadata without pre-buffering the response body", async () => {
+    let jsonCalls = 0;
+    let arrayBufferCalls = 0;
+    let response = {
+      ok: true,
+      async json() {
+        jsonCalls += 1;
+        return { name: "example", time: {} };
       },
-    } as unknown as Cache;
+      async arrayBuffer() {
+        arrayBufferCalls += 1;
+        throw new Error("Package metadata should not be eagerly buffered");
+      },
+    } as unknown as Response;
 
     globalThis.caches = {
       async open() {
-        openAttempts += 1;
-        if (openAttempts === 1) throw new Error("Network connection lost.");
-        return cache;
+        return {
+          async match() {
+            return response;
+          },
+        };
       },
     } as unknown as CacheStorage;
 
     let packageInfo = await getPackageInfo(context, "https://registry.npmjs.org", "example");
 
     expect(packageInfo?.name).toBe("example");
-    expect(openAttempts).toBe(2);
-    expect(matchAttempts).toBe(2);
+    expect(jsonCalls).toBe(1);
+    expect(arrayBufferCalls).toBe(0);
   });
 });

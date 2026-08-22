@@ -1,7 +1,7 @@
 import type { VNode } from "preact";
 import { render } from "preact-render-to-string";
 import {
-  fetchFileResponse,
+  fetchFile,
   createInlineRunner,
   getPackageInfo,
   listFiles,
@@ -276,18 +276,16 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   files ??= await listFiles(context, env.FILES_ORIGIN, packageName, version);
 
   if (filename != null && files.some((file) => file.path.toLowerCase() === filename.toLowerCase())) {
-    let result = await fetchFileResponse(context, env.FILES_ORIGIN, packageName, version, filename);
+    let response = await fetchFile(context, env.FILES_ORIGIN, packageName, version, filename);
 
-    if (result != null) {
-      let { body, response } = result;
-
+    if (response != null) {
       // In ?module requests, rewrite imports to unpkg.com/* URLs in JavaScript modules
       if (
         response.headers.has("Content-Type") &&
         response.headers.get("Content-Type")!.startsWith("text/javascript") &&
         url.searchParams.has("module")
       ) {
-        let code = new TextDecoder().decode(body);
+        let code = new TextDecoder().decode(await response.arrayBuffer());
         let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies);
         let newCode = rewriteImports(code, url.origin, deps);
 
@@ -319,6 +317,8 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       headers.set("Access-Control-Allow-Origin", "*");
       headers.set("Access-Control-Expose-Headers", "*");
       headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+
+      let body = await response.arrayBuffer();
 
       return withUtf8Charset(
         new Response(body, {

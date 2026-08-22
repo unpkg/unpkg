@@ -2,9 +2,6 @@ import { describe, expect, it, spyOn } from "bun:test";
 
 import {
   isCacheableResponse,
-  isNetworkConnectionLostError,
-  readResponseWithNetworkRetry,
-  retryOnNetworkConnectionLost,
   waitUntilCachePut,
 } from "./cache-utils.ts";
 
@@ -64,63 +61,5 @@ describe("waitUntilCachePut", () => {
     } finally {
       warn.mockRestore();
     }
-  });
-});
-
-describe("retryOnNetworkConnectionLost", () => {
-  it("retries one transient connection failure", async () => {
-    let attempts = 0;
-
-    let result = await retryOnNetworkConnectionLost(async () => {
-      attempts += 1;
-      if (attempts === 1) throw new Error("Network connection lost.");
-      return "ok";
-    }, 0);
-
-    expect(result).toBe("ok");
-    expect(attempts).toBe(2);
-  });
-
-  it("does not retry other errors", async () => {
-    let attempts = 0;
-    let operation = async () => {
-      attempts += 1;
-      throw new Error("Invalid response");
-    };
-
-    await expect(retryOnNetworkConnectionLost(operation, 0)).rejects.toThrow("Invalid response");
-    expect(attempts).toBe(1);
-  });
-});
-
-describe("isNetworkConnectionLostError", () => {
-  it("accepts Cloudflare's message with or without punctuation", () => {
-    expect(isNetworkConnectionLostError(new Error("Network connection lost."))).toBe(true);
-    expect(isNetworkConnectionLostError(new Error("Network connection lost"))).toBe(true);
-    expect(isNetworkConnectionLostError(new Error("Connection reset"))).toBe(false);
-  });
-});
-
-describe("readResponseWithNetworkRetry", () => {
-  it("retries when the connection is lost while reading the response body", async () => {
-    let attempts = 0;
-
-    let result = await readResponseWithNetworkRetry(async () => {
-      attempts += 1;
-      if (attempts === 1) {
-        return new Response(
-          new ReadableStream({
-            start(controller) {
-              controller.error(new Error("Network connection lost."));
-            },
-          })
-        );
-      }
-
-      return new Response("ok");
-    });
-
-    expect(new TextDecoder().decode(result.body)).toBe("ok");
-    expect(attempts).toBe(2);
   });
 });

@@ -1,20 +1,15 @@
-export function createCacheableResponse(response: Response, body?: BodyInit | null): Response {
-  let source = body === undefined ? response.clone() : response;
-  let headers = new Headers(source.headers);
+export function createCacheableResponse(response: Response): Response {
+  let clone = response.clone();
+  let headers = new Headers(clone.headers);
 
   // Cloudflare cannot cache responses with Set-Cookie headers
   // See https://developers.cloudflare.com/workers/runtime-apis/cache/
   headers.delete("Set-Cookie");
 
-  return new Response(body === undefined ? source.body : body, {
-    status: source.status,
+  return new Response(clone.body, {
+    status: clone.status,
     headers,
   });
-}
-
-export interface BufferedResponse {
-  body: ArrayBuffer;
-  response: Response;
 }
 
 export function isCacheableResponse(request: Request, response: Response): boolean {
@@ -43,47 +38,7 @@ export function waitUntilCachePut(
   );
 }
 
-export async function retryOnNetworkConnectionLost<T>(
-  operation: () => Promise<T>,
-  retryDelayMs = 25 + Math.floor(Math.random() * 50)
-): Promise<T> {
-  try {
-    return await operation();
-  } catch (error) {
-    if (!isNetworkConnectionLostError(error)) {
-      throw error;
-    }
-  }
-
-  if (retryDelayMs > 0) {
-    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
-  }
-
-  return operation();
-}
-
-export async function readResponseWithNetworkRetry(operation: () => Promise<Response>): Promise<BufferedResponse> {
-  return retryOnNetworkConnectionLost(async () => {
-    let response = await operation();
-    let body = await response.arrayBuffer();
-
-    return { body, response };
-  });
-}
-
-export async function readOptionalResponseWithNetworkRetry(
-  operation: () => Promise<Response | undefined>
-): Promise<BufferedResponse | undefined> {
-  return retryOnNetworkConnectionLost(async () => {
-    let response = await operation();
-    if (response == null) return undefined;
-
-    let body = await response.arrayBuffer();
-    return { body, response };
-  });
-}
-
-export function isNetworkConnectionLostError(error: unknown): boolean {
+function isNetworkConnectionLostError(error: unknown): boolean {
   return getErrorMessage(error).replace(/\.$/, "") === "Network connection lost";
 }
 
