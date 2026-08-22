@@ -324,6 +324,10 @@ footer svg {
   a {
     color: #7cb7ff;
   }
+  main a {
+    text-decoration: underline;
+    text-underline-offset: 0.125em;
+  }
   code,
   .callout {
     background: #111;

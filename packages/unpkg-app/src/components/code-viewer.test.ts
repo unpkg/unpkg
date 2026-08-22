@@ -1,6 +1,17 @@
 import { describe, expect, it } from "bun:test";
+import { h } from "preact";
+import { render } from "preact-render-to-string";
 
-import { parseLineHash } from "./code-viewer.tsx";
+import { CodeViewer, parseLineHash } from "./code-viewer.tsx";
+
+describe("CodeViewer", () => {
+  it("applies the syntax theme and a visible keyboard focus style", () => {
+    let html = render(h(CodeViewer, { html: '<span class="hljs-keyword">const</span> value', numLines: 1 }));
+
+    expect(html).toContain("hljs-listing");
+    expect(html).toContain("focus-visible:outline-blue-600");
+  });
+});
 
 describe("parseLineHash", () => {
   it("parses single lines, ranges, and multiple selections", () => {

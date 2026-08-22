@@ -100,7 +100,7 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
                 <a
                   id={`L${lineNumber}`}
                   href={`#L${lineNumber}`}
-                  class="inline-block w-full pl-4 sm:pl-6 pr-2 text-slate-600 hover:text-slate-950 outline-none"
+                  class="inline-block w-full pl-4 sm:pl-6 pr-2 text-slate-600 hover:text-slate-950 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
                   onClick={handleLineLinkClick}
                 >
                   {lineNumber}
@@ -111,7 +111,7 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
         })}
       </div>
       <div
-        class="py-4 pl-4 pr-6 relative border-b border-r border-slate-300 flex-grow whitespace-pre overflow-x-auto"
+        class="hljs-listing py-4 pl-4 pr-6 relative border-b border-r border-slate-300 flex-grow whitespace-pre overflow-x-auto"
         style={{ tabSize }}
         dangerouslySetInnerHTML={{ __html: html }}
       />
