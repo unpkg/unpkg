@@ -36,6 +36,43 @@ const cesiumPackageInfo = {
   },
 };
 
+const mqttPackageInfo = {
+  name: "mqtt",
+  "dist-tags": { latest: "5.15.2" },
+  versions: {
+    "5.15.2": {
+      name: "mqtt",
+      version: "5.15.2",
+      browser: {
+        "./server.js": "./client.js",
+      },
+      exports: {
+        ".": "./build/index.js",
+        "./alias": "./intermediate.js",
+        "./bar": "./foo",
+        "./foo": "./missing.js",
+        "./intermediate.js": "./final.js",
+        "./legacy": "./missing-target.mjs",
+        "./conditional.js": {
+          browser: "./browser.js",
+          default: "./conditional.js",
+        },
+        "./conditional-wildcard": {
+          browser: "./dist/mqtt.min.js",
+          default: "./dist/mqtt.min.js",
+        },
+        "./conditional-server": {
+          foo: "./server.js",
+        },
+        "./dist/*": "./dist/*.js",
+        "./object-dist/*": {
+          default: "./object-dist/*.js",
+        },
+      },
+    },
+  },
+};
+
 function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let request = input instanceof Request ? input : new Request(input, init);
   return handleRequest(request, env, context);
@@ -43,6 +80,15 @@ function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Re
 
 function fileResponse(path: string): Response {
   return new Response(Bun.file(path));
+}
+
+function fileMetadata(path: string) {
+  return {
+    path,
+    size: 0,
+    type: "text/javascript",
+    integrity: "sha256-dGVzdA==",
+  };
 }
 
 describe("handleRequest", () => {
@@ -92,6 +138,66 @@ describe("handleRequest", () => {
             },
           });
         }
+        if (url.pathname === "/list/mqtt@5.15.2/") {
+          return Response.json({
+            package: "mqtt",
+            version: "5.15.2",
+            prefix: "/",
+            files: [
+              "/bar",
+              "/browser.js",
+              "/build/index.js",
+              "/client.js",
+              "/conditional.js",
+              "/dist/mqtt.min.js",
+              "/final.js",
+              "/intermediate.js",
+              "/legacy.js",
+              "/object-dist/example.js",
+              "/server.js",
+            ].map(fileMetadata),
+          });
+        }
+        if (url.pathname === "/file/mqtt@5.15.2/dist/mqtt.min.js") {
+          return new Response("export const mqtt = {};", {
+            headers: {
+              "Content-Digest": "sha256=:dGVzdA==:",
+              "Content-Type": "text/javascript",
+            },
+          });
+        }
+        if (url.pathname === "/file/mqtt@5.15.2/intermediate.js") {
+          return new Response("export const intermediate = {};", {
+            headers: {
+              "Content-Digest": "sha256=:dGVzdA==:",
+              "Content-Type": "text/javascript",
+            },
+          });
+        }
+        if (url.pathname === "/file/mqtt@5.15.2/object-dist/example.js") {
+          return new Response("export const example = {};", {
+            headers: {
+              "Content-Digest": "sha256=:dGVzdA==:",
+              "Content-Type": "text/javascript",
+            },
+          });
+        }
+        if (url.pathname === "/list/react@19.0.0/") {
+          return Response.json({
+            package: "react",
+            version: "19.0.0",
+            prefix: "/",
+            files: [fileMetadata("/compiler-runtime.js")],
+          });
+        }
+        if (url.pathname === "/list/preact@10.25.4/") {
+          return Response.json({
+            package: "preact",
+            version: "10.25.4",
+            prefix: "/",
+            files: [fileMetadata("/hooks/dist/hooks.mjs")],
+          });
+        }
 
         // Run the request through the file server. This allows us to write integration tests
         // that run without booting the file server.
@@ -103,6 +209,8 @@ describe("handleRequest", () => {
           return Response.json(cesiumPackageInfo);
         case "https://registry.npmjs.org/lodash":
           return fileResponse(packageInfo.lodash);
+        case "https://registry.npmjs.org/mqtt":
+          return Response.json(mqttPackageInfo);
         case "https://registry.npmjs.org/preact":
           return fileResponse(packageInfo.preact);
         case "https://registry.npmjs.org/react":
@@ -256,6 +364,155 @@ describe("handleRequest", () => {
       expect(await response.text()).toBe("export const Cesium = {};");
     });
 
+    it("serves physical files that also match wildcard export subpaths", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/dist/mqtt.min.js?cache-bust", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Location")).toBeNull();
+      expect(await response.text()).toBe("export const mqtt = {};");
+    });
+
+    it("serves physical files that match default conditional wildcard exports", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/object-dist/example.js", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Location")).toBeNull();
+      expect(await response.text()).toBe("export const example = {};");
+    });
+
+    it("pins unversioned physical wildcard export targets without changing the filename", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt/dist/mqtt.min.js?cache-bust", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe("/mqtt@5.15.2/dist/mqtt.min.js?cache-bust");
+
+      let pinnedResponse = await dispatchFetch(
+        new URL(response.headers.get("Location")!, "https://unpkg.com"),
+        { redirect: "manual" },
+      );
+      expect(pinnedResponse.status).toBe(200);
+      expect(pinnedResponse.headers.get("Location")).toBeNull();
+    });
+
+    it("resolves wildcard export subpaths once and then serves their physical target", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt/dist/mqtt.min", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("Location")).toBe("/mqtt@5.15.2/dist/mqtt.min.js");
+
+      let targetResponse = await dispatchFetch(
+        new URL(response.headers.get("Location")!, "https://unpkg.com"),
+        { redirect: "manual" },
+      );
+      expect(targetResponse.status).toBe(200);
+      expect(targetResponse.headers.get("Location")).toBeNull();
+    });
+
+    it("serves the first physical target in a finite export chain", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/alias", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(301);
+      expect(response.headers.get("Location")).toBe("/mqtt@5.15.2/intermediate.js");
+
+      let targetResponse = await dispatchFetch(
+        new URL(response.headers.get("Location")!, "https://unpkg.com"),
+        { redirect: "manual" },
+      );
+      expect(targetResponse.status).toBe(200);
+      expect(targetResponse.headers.get("Location")).toBeNull();
+      expect(await targetResponse.text()).toBe("export const intermediate = {};");
+    });
+
+    it("honors explicit browser mappings for physical files", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/server.js?browser", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(301);
+      expect(response.headers.get("Location")).toBe("/mqtt@5.15.2/client.js");
+    });
+
+    it("honors explicit export conditions for physical files", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/conditional.js?conditions=browser", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(301);
+      expect(response.headers.get("Location")).toBe("/mqtt@5.15.2/browser.js");
+    });
+
+    it("does not re-resolve conditional targets that match wildcard exports", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/conditional-wildcard?conditions=browser", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(301);
+      expect(response.headers.get("Location")).toBe("/mqtt@5.15.2/dist/mqtt.min.js");
+
+      let targetResponse = await dispatchFetch(
+        new URL(response.headers.get("Location")!, "https://unpkg.com"),
+        { redirect: "manual" },
+      );
+      expect(targetResponse.status).toBe(200);
+      expect(targetResponse.headers.get("Location")).toBeNull();
+    });
+
+    it("does not carry unused resolver flags onto physical targets", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/conditional-server?conditions=foo&browser", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(301);
+      expect(response.headers.get("Location")).toBe("/mqtt@5.15.2/server.js");
+    });
+
+    it("serves physical predecessors at stale redirect targets", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/dist/mqtt.min.js.js", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Location")).toBeNull();
+      expect(await response.text()).toBe("export const mqtt = {};");
+    });
+
+    it("does not recover arbitrary reverse export mappings", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/foo", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get("Location")).toBeNull();
+    });
+
+    it("does not redirect repeatedly when a wildcard export target is missing", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/dist/missing", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get("Location")).toBeNull();
+    });
+
+    it("does not use legacy resolution when an export target is missing", async () => {
+      let response = await dispatchFetch("https://unpkg.com/mqtt@5.15.2/legacy", {
+        redirect: "manual",
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get("Location")).toBeNull();
+    });
+
     it("resolves npm tag and filename in a single redirect", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@latest", { redirect: "manual" });
       expect(response.status).toBe(302);
@@ -293,7 +550,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("/react@19.0.0/index.js?conditions=default");
+      expect(location).toBe("/react@19.0.0/index.js");
     });
 
     it('resolves using "exports" field and a custom condition in package.json', async () => {
@@ -303,7 +560,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("/react@19.0.0/react.react-server.js?conditions=react-server");
+      expect(location).toBe("/react@19.0.0/react.react-server.js");
     });
 
     it('resolves using a custom filename with "exports" field in package.json', async () => {
@@ -321,7 +578,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("/preact@10.25.4/hooks/dist/hooks.mjs?conditions=import");
+      expect(location).toBe("/preact@10.25.4/hooks/dist/hooks.mjs");
     });
 
     it('resolves to "main" when "exports" field has no "default" condition', async () => {
@@ -387,7 +644,7 @@ describe("handleRequest", () => {
       expect(response.status).toBe(301);
       let location = response.headers.get("Location");
       expect(location).not.toBeNull();
-      expect(location).toBe("/preact@10.25.4/dist/preact.module.js?conditions=browser");
+      expect(location).toBe("/preact@10.25.4/dist/preact.module.js");
     });
   });
 
