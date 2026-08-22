@@ -2,11 +2,11 @@
 
 :root {
   color-scheme: light dark;
+  background: #fff;
 }
 
 body {
-  background: var(--color-white);
-  color: var(--color-slate-900);
+  background: #fff;
 }
 
 html {
@@ -25,6 +25,7 @@ section[id] {
 
 @media (prefers-color-scheme: dark) {
   :root {
+    background: #111;
     --color-white: #111;
     --color-black: #fff;
     --color-slate-50: #0a0a0a;
@@ -41,6 +42,11 @@ section[id] {
     --color-yellow-200: #404040;
   }
 
+  body {
+    background: var(--color-white);
+    color: var(--color-slate-900);
+  }
+
   a.text-blue-600 {
     text-decoration-line: underline;
     text-underline-offset: 0.125em;
@@ -48,5 +54,10 @@ section[id] {
 
   footer a {
     color: #fff;
+  }
+
+  .section-permalink:focus-visible::after {
+    color: #7cb7ff;
+    opacity: 1;
   }
 }

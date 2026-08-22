@@ -932,7 +932,7 @@ function SectionHeading({ id, children }: { id: string; children: string }): VNo
     <h2 class="mt-16 mb-8 text-lg font-semibold group">
       {children}{" "}
       <a
-        class="outline-none after:content-['#'] after:ml-1 after:text-slate-300 after:opacity-0 group-hover:after:opacity-100 focus-visible:after:opacity-100 focus-visible:after:text-blue-600 after:transition-opacity"
+        class="section-permalink outline-none after:content-['#'] after:ml-1 after:text-slate-300 after:opacity-0 group-hover:after:opacity-100 after:transition-opacity"
         href={`#${id}`}
       />
     </h2>

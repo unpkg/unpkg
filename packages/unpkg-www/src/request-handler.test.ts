@@ -114,10 +114,11 @@ describe("handleRequest", () => {
     expect(html).toContain(">Segment<");
     expect(html).toContain(">Parameter<");
     expect(html).toContain("overflow-x-auto");
-    expect(html).toContain("hljs-listing");
+    expect(html).toContain("hljs-dark-listing");
     expect(html).toContain("hljs-frame");
+    expect(html).not.toContain('class="hljs-listing');
     expect(html).toContain("focus-visible:outline-slate-500");
-    expect(html).toContain("focus-visible:after:text-blue-600");
+    expect(html).toContain("section-permalink");
     expect(html).toContain(">esm.unpkg.com/preact<");
     expect(html).toContain(">esm.unpkg.com/react-dom@18/client<");
     expect(html).toContain('href="https://github.com/unpkg"');

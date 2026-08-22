@@ -5,12 +5,13 @@ import { render } from "preact-render-to-string";
 import { CodeViewer, parseLineHash } from "./code-viewer.tsx";
 
 describe("CodeViewer", () => {
-  it("applies the syntax theme and a visible keyboard focus style", () => {
+  it("applies dark-only syntax and focus hooks without activating the light theme", () => {
     let html = render(h(CodeViewer, { html: '<span class="hljs-keyword">const</span> value', numLines: 1 }));
 
-    expect(html).toContain("hljs-listing");
+    expect(html).toContain("hljs-dark-listing");
     expect(html).toContain("hljs-frame");
-    expect(html).toContain("focus-visible:outline-blue-600");
+    expect(html).toContain("hljs-line-number");
+    expect(html).not.toContain('class="hljs-listing');
   });
 });
 
