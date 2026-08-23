@@ -13,12 +13,12 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250320.0",
-    "@ryanto/esbuild-plugin-tailwind": "^0.0.1",
+    "@ryanto/esbuild-plugin-tailwind": "^0.0.3",
     "@types/bun": "^1.2.8",
     "@types/node": "^22.10.2",
     "@types/semver": "^7.5.8",
     "esbuild": "^0.24.2",
-    "tailwindcss": "4.0.0-beta.9",
+    "tailwindcss": "4.3.3",
     "wrangler": "catalog:"
   },
   "scripts": {
