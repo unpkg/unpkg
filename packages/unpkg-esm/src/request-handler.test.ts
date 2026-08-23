@@ -157,7 +157,7 @@ describe("handleRequest", () => {
     expect(html).toContain("UNPKG ESM");
     expect(html).toContain("esm.unpkg.com is currently in beta.");
     expect(html).toContain("https://unpkg.com/#browser-modules");
-    expect(html).toContain('class="inline-link"');
+    expect(html).toContain('class="inline-link text-blue-600"');
     expect(html).toContain("https://esm.unpkg.com/react@18.3.1");
     expect(html).toContain('href="https://github.com/unpkg"');
     expect(html).toContain('href="https://x.com/unpkg"');
