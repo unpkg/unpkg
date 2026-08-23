@@ -1,10 +1,10 @@
 .hljs-dark-listing {
-  background: #000;
+  background: var(--color-dark-panel);
   color: #d5ced9;
 }
 .hljs-frame,
 .hljs-frame > * {
-  border-color: #262626;
+  border-color: var(--color-dark-border);
 }
 .hljs-comment,
 .hljs-quote {

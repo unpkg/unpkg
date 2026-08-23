@@ -62,7 +62,7 @@ export function FileDetail({
       } else if (isRenderedTextWithinLimit(text)) {
         content = (
           <pre
-            class="py-4 px-6 border-b border-x border-slate-300 bg-white font-mono text-sm leading-6 whitespace-pre overflow-x-auto"
+            class="py-4 px-6 border-b border-x border-slate-300 dark:border-dark-border bg-white dark:bg-dark-page font-mono text-sm leading-6 whitespace-pre overflow-x-auto"
             style={{ tabSize: 2 }}
           >
             {text}
@@ -78,7 +78,7 @@ export function FileDetail({
     content = <ImageViewer alt={filename} src={rawHref} />;
   } else {
     content = (
-      <div class="py-4 border-b border-x border-slate-300 bg-white text-center">
+      <div class="py-4 border-b border-x border-slate-300 dark:border-dark-border bg-white dark:bg-dark-page text-center">
         No preview is available for this file.
       </div>
     );
@@ -90,14 +90,14 @@ export function FileDetail({
 
       <FilesNav packageInfo={packageInfo} version={version} filename={filename} />
 
-      <div class="p-3 border border-slate-300 bg-slate-100 text-sm flex justify-between select-none">
+      <div class="p-3 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel text-sm flex justify-between select-none">
         <div class="w-64">
           {lineCount == null ? "" : <LineCount lineCount={lineCount} loc={loc} />}
           <span>{prettyBytes(file.size)}</span>
         </div>
         <div class="hidden flex-grow sm:block text-center">{getLanguageName(file)}</div>
         <div class="w-64 hidden sm:block text-right">
-          <a href={rawHref} class="py-1 px-2 border border-slate-300 bg-slate-100 hover:bg-slate-200 rounded-sm">
+          <a href={rawHref} class="py-1 px-2 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel hover:bg-slate-200 dark:hover:bg-dark-border rounded-sm">
             View Raw
           </a>
         </div>
@@ -167,9 +167,9 @@ function isRenderedTextWithinLimit(text: string): boolean {
 
 function LargeFileNotice({ rawHref }: { rawHref: string }): VNode {
   return (
-    <div class="py-4 border-b border-x border-slate-300 bg-white text-center">
+    <div class="py-4 border-b border-x border-slate-300 dark:border-dark-border bg-white dark:bg-dark-page text-center">
       <span>This file is too large to preview. </span>
-      <a href={rawHref} class="inline-link text-blue-600 hover:underline">
+      <a href={rawHref} class="inline-link text-blue-600 dark:text-dark-link hover:underline">
         View Raw
       </a>
     </div>

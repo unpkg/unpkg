@@ -7,7 +7,7 @@ export interface ImageViewerProps {
 
 export function ImageViewer({ alt, src }: ImageViewerProps): VNode {
   return (
-    <div class="py-8 border-b border-x border-slate-300 bg-white">
+    <div class="py-8 border-b border-x border-slate-300 dark:border-dark-border bg-white dark:bg-dark-page">
       <img alt={alt} src={src} class="w-3/4 block mx-auto" />
     </div>
   );

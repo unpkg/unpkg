@@ -1,12 +1,18 @@
 @import "tailwindcss";
 
-:root {
-  color-scheme: light dark;
-  background: #fff;
+@theme {
+  --color-dark-page: #111;
+  --color-dark-panel: #000;
+  --color-dark-border: #262626;
+  --color-dark-border-strong: #404040;
+  --color-dark-muted: #a3a3a3;
+  --color-dark-secondary: #d4d4d4;
+  --color-dark-foreground: #fff;
+  --color-dark-link: #7cb7ff;
 }
 
-body {
-  background: #fff;
+:root {
+  color-scheme: light dark;
 }
 
 html {
@@ -24,40 +30,13 @@ section[id] {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    background: #111;
-    --color-white: #111;
-    --color-black: #fff;
-    --color-slate-50: #0a0a0a;
-    --color-slate-100: #000;
-    --color-slate-200: #262626;
-    --color-slate-300: #404040;
-    --color-slate-500: #a3a3a3;
-    --color-slate-600: #d4d4d4;
-    --color-slate-900: #fff;
-    --color-slate-950: #fff;
-    --color-gray-300: #404040;
-    --color-gray-600: #d4d4d4;
-    --color-blue-600: #7cb7ff;
-    --color-yellow-200: #404040;
-  }
-
-  body {
-    background: var(--color-white);
-    color: var(--color-slate-900);
-  }
-
   .inline-link {
     text-decoration-line: underline;
     text-underline-offset: 0.125em;
   }
 
-  footer a {
-    color: #fff;
-  }
-
   .section-permalink:focus-visible::after {
-    color: #7cb7ff;
+    color: var(--color-dark-link);
     opacity: 1;
   }
 }

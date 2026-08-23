@@ -131,7 +131,7 @@ function FileListingContent({
 
   return (
     <Fragment>
-      <header class="py-3 px-4 border border-slate-300 bg-slate-100 text-sm select-none">
+      <header class="py-3 px-4 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel text-sm select-none">
         {folderNames.length > 0 ? (
           <span>
             {folderNames.length} {plural("folder", folderNames.length)},{" "}
@@ -144,9 +144,9 @@ function FileListingContent({
 
       <main>
         {files.length === 0 ? (
-          <p class="p-4 border-x border-b border-slate-200 w-full bg-white">No files found.</p>
+          <p class="p-4 border-x border-b border-slate-200 dark:border-dark-border w-full bg-white dark:bg-dark-page">No files found.</p>
         ) : (
-          <table class="border-x border-b border-slate-300 w-full max-w-full bg-white">
+          <table class="border-x border-b border-slate-300 dark:border-dark-border w-full max-w-full bg-white dark:bg-dark-page">
             <thead class="hidden">
               <tr>
                 <th></th>
@@ -157,33 +157,33 @@ function FileListingContent({
             </thead>
             <tbody>
               {parentHref != null && (
-                <tr class="hover:bg-slate-50">
-                  <td class="pl-4 border-b border-slate-200 text-sm w-12">
-                    <span class="text-slate-600">
+                <tr class="hover:bg-slate-50 dark:hover:bg-dark-hover">
+                  <td class="pl-4 border-b border-slate-200 dark:border-dark-border text-sm w-12">
+                    <span class="text-slate-600 dark:text-dark-secondary">
                       <FolderIcon class="w-6 h-6" />
                     </span>
                   </td>
-                  <td colspan={3} class="pr-2 border-b border-slate-200 text-sm">
-                    <a href={parentHref} class="inline-link py-3 w-full inline-block text-blue-600 hover:underline">
+                  <td colspan={3} class="pr-2 border-b border-slate-200 dark:border-dark-border text-sm">
+                    <a href={parentHref} class="inline-link py-3 w-full inline-block text-blue-600 dark:text-dark-link hover:underline">
                       ../
                     </a>
                   </td>
                 </tr>
               )}
               {rowData.map((row) => (
-                <tr class="hover:bg-slate-50">
-                  <td class="pl-4 border-b border-slate-200 text-sm w-12">
-                    <span class="text-slate-600">{row.icon}</span>
+                <tr class="hover:bg-slate-50 dark:hover:bg-dark-hover">
+                  <td class="pl-4 border-b border-slate-200 dark:border-dark-border text-sm w-12">
+                    <span class="text-slate-600 dark:text-dark-secondary">{row.icon}</span>
                   </td>
-                  <td class="pr-2 border-b border-slate-200 text-sm max-w-60 sm:max-w-xl">
+                  <td class="pr-2 border-b border-slate-200 dark:border-dark-border text-sm max-w-60 sm:max-w-xl">
                     <div class="overflow-hidden whitespace-nowrap text-ellipsis">
-                      <a href={row.href} class="inline-link py-3 w-full inline-block text-blue-600 hover:underline">
+                      <a href={row.href} class="inline-link py-3 w-full inline-block text-blue-600 dark:text-dark-link hover:underline">
                         {row.filename}
                       </a>
                     </div>
                   </td>
-                  <td class="pr-2 border-b border-slate-200 text-sm hidden sm:table-cell">{row.contentType}</td>
-                  <td class="pr-4 border-b border-slate-200 text-sm text-right">{row.size}</td>
+                  <td class="pr-2 border-b border-slate-200 dark:border-dark-border text-sm hidden sm:table-cell">{row.contentType}</td>
+                  <td class="pr-4 border-b border-slate-200 dark:border-dark-border text-sm text-right">{row.size}</td>
                 </tr>
               ))}
             </tbody>
@@ -228,7 +228,7 @@ function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo
 
   return (
     <div>
-      <div class="border-b border-slate-300 pt-2 pb-1 mb-4">
+      <div class="border-b border-slate-300 dark:border-dark-border pt-2 pb-1 mb-4">
         <h2 class="text-lg font-semibold">About</h2>
       </div>
 
@@ -237,7 +237,7 @@ function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo
           <a
             href={websiteUrl.href}
             title={`Visit the ${packageInfo.name} website`}
-            class="inline-flex items-center hover:text-slate-950 hover:underline"
+            class="inline-flex items-center hover:text-slate-950 dark:hover:text-dark-foreground hover:underline"
           >
             <LinkIcon class="w-6 h-6" />
             <span class="ml-1">{websiteText}</span>
@@ -250,7 +250,7 @@ function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo
           <a
             href={githubUrl.href}
             title={`View the ${packageInfo.name} repository on GitHub`}
-            class="inline-flex items-center hover:text-slate-950 hover:underline"
+            class="inline-flex items-center hover:text-slate-950 dark:hover:text-dark-foreground hover:underline"
           >
             <GitHubIcon class="w-6 h-6" />
             <span class="ml-1">{githubText}</span>
@@ -258,7 +258,7 @@ function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo
         </p>
       ) : null}
 
-      <div class="border-b border-slate-300 pt-4 pb-1 mb-4">
+      <div class="border-b border-slate-300 dark:border-dark-border pt-4 pb-1 mb-4">
         <h2 class="text-lg font-semibold">Releases</h2>
       </div>
 
@@ -272,7 +272,7 @@ function FileListingSidebar({ packageInfo, version }: { packageInfo: PackageInfo
         </a>
       </p>
       <p class="text-sm">
-        <span class="text-slate-500">{formatTimeAgo(latestVersionDate)}</span>
+        <span class="text-slate-500 dark:text-dark-muted">{formatTimeAgo(latestVersionDate)}</span>
       </p>
     </div>
   );

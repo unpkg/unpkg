@@ -25,7 +25,7 @@ export function Document({
   };
 
   return (
-    <html lang="en">
+    <html lang="en" class="bg-white dark:bg-dark-page">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -54,7 +54,7 @@ gtag('config', 'UA-140352188-1');`,
           }}
         ></script>
       </head>
-      <body>{children}</body>
+      <body class="bg-white dark:bg-dark-page dark:text-dark-foreground">{children}</body>
     </html>
   );
 }

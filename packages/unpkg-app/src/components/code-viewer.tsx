@@ -86,21 +86,21 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
   let highlightedLineSet = new Set(highlightedLines);
 
   return (
-    <div class="hljs-frame flex relative bg-white font-mono text-sm leading-6">
-      <div class="py-4 border-b border-x border-slate-300 bg-slate-100 text-right select-none">
+    <div class="hljs-frame flex relative bg-white dark:bg-dark-page font-mono text-sm leading-6">
+      <div class="py-4 border-b border-x border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel text-right select-none">
         {Array.from({ length: numLines }, (_, index) => {
           let lineNumber = index + 1;
 
           return (
             <div>
               {highlightedLineSet.has(lineNumber) ? (
-                <div class="w-full h-6 bg-yellow-200 opacity-40 absolute left-0"></div>
+                <div class="w-full h-6 bg-yellow-200 dark:bg-dark-selection opacity-40 absolute left-0"></div>
               ) : null}
               <div class="relative">
                 <a
                   id={`L${lineNumber}`}
                   href={`#L${lineNumber}`}
-                  class="hljs-line-number inline-block w-full pl-4 sm:pl-6 pr-2 text-slate-600 hover:text-slate-950 outline-none"
+                  class="hljs-line-number inline-block w-full pl-4 sm:pl-6 pr-2 text-slate-600 dark:text-dark-secondary hover:text-slate-950 dark:hover:text-dark-foreground outline-none"
                   onClick={handleLineLinkClick}
                 >
                   {lineNumber}
@@ -111,7 +111,7 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
         })}
       </div>
       <div
-        class="hljs-dark-listing py-4 pl-4 pr-6 relative border-b border-r border-slate-300 flex-grow whitespace-pre overflow-x-auto"
+        class="hljs-dark-listing py-4 pl-4 pr-6 relative border-b border-r border-slate-300 dark:border-dark-border flex-grow whitespace-pre overflow-x-auto"
         style={{ tabSize }}
         dangerouslySetInnerHTML={{ __html: html }}
       />

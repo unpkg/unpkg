@@ -8,7 +8,7 @@ export function FilesLayout({ children }: { children: VNode | VNode[] }): VNode 
 
   return (
     <Fragment>
-      <header class="border-b border-slate-300 bg-slate-100 text-slate-950">
+      <header class="border-b border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel text-slate-950 dark:text-dark-foreground">
         <div class="p-4 mx-auto flex justify-between items-center lg:max-w-screen-xl">
           <h1 class="text-2xl font-bold inline-block">
             <a href={hrefs.home()}>UNPKG</a>
