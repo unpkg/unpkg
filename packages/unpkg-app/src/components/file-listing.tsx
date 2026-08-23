@@ -164,7 +164,7 @@ function FileListingContent({
                     </span>
                   </td>
                   <td colspan={3} class="pr-2 border-b border-slate-200 text-sm">
-                    <a href={parentHref} class="py-3 w-full inline-block text-blue-600 hover:underline">
+                    <a href={parentHref} class="inline-link py-3 w-full inline-block text-blue-600 hover:underline">
                       ../
                     </a>
                   </td>
@@ -177,7 +177,7 @@ function FileListingContent({
                   </td>
                   <td class="pr-2 border-b border-slate-200 text-sm max-w-60 sm:max-w-xl">
                     <div class="overflow-hidden whitespace-nowrap text-ellipsis">
-                      <a href={row.href} class="py-3 w-full inline-block text-blue-600 hover:underline">
+                      <a href={row.href} class="inline-link py-3 w-full inline-block text-blue-600 hover:underline">
                         {row.filename}
                       </a>
                     </div>

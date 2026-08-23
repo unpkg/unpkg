@@ -77,8 +77,11 @@ export function createHomePage(env: Env): string {
               <h2>Documentation</h2>
               <p>
                 For official UNPKG documentation, including package URLs, exports, metadata, import maps, and browser
-                module options, visit the <a href={`${wwwOrigin}/`}>main UNPKG home page</a>. The browser modules section
-                is available at <a href={`${wwwOrigin}/#browser-modules`}>{wwwOrigin}/#browser-modules</a>.
+                module options, visit the <a class="inline-link" href={`${wwwOrigin}/`}>main UNPKG home page</a>. The
+                browser modules section is available at{" "}
+                <a class="inline-link" href={`${wwwOrigin}/#browser-modules`}>
+                  {wwwOrigin}/#browser-modules
+                </a>.
               </p>
             </section>
           </div>
@@ -321,10 +324,8 @@ footer svg {
   h2 {
     color: #fff;
   }
-  a {
+  .inline-link {
     color: #7cb7ff;
-  }
-  main a {
     text-decoration: underline;
     text-underline-offset: 0.125em;
   }

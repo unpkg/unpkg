@@ -129,6 +129,7 @@ describe("handleRequest", () => {
     expect(html).toContain('<meta name="color-scheme" content="light dark"/>');
     expect(html).toContain('media="(prefers-color-scheme: dark)"');
     expect(html).toContain('code-dark.css" media="(prefers-color-scheme: dark)"');
+    expect(html).toContain("inline-link");
   });
 
   it("does not fetch the body of a text file that is too large to preview", async () => {

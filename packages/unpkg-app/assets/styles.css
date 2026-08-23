@@ -24,7 +24,6 @@ body {
     --color-slate-950: #fff;
     --color-gray-300: #404040;
     --color-gray-600: #d4d4d4;
-    --color-blue-600: #7cb7ff;
     --color-yellow-200: #404040;
   }
 
@@ -33,7 +32,8 @@ body {
     color: var(--color-slate-900);
   }
 
-  a.text-blue-600 {
+  .inline-link {
+    color: #7cb7ff;
     text-decoration-line: underline;
     text-underline-offset: 0.125em;
   }

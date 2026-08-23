@@ -19,7 +19,7 @@ export function FilesNav({
       <span>{packageInfo.name}</span>
     ) : (
       <span>
-        <a href={hrefs.files(packageInfo.name, version, "/")} class="text-blue-600 hover:underline">
+        <a href={hrefs.files(packageInfo.name, version, "/")} class="inline-link text-blue-600 hover:underline">
           {packageInfo.name}
         </a>
       </span>
@@ -37,7 +37,7 @@ export function FilesNav({
           let href = hrefs.files(packageInfo.name, version, "/" + parts.slice(0, index + 1).join("/"));
           acc.push(
             <span>
-              <a href={href} class="text-blue-600 hover:underline">
+              <a href={href} class="inline-link text-blue-600 hover:underline">
                 {part}
               </a>
             </span>

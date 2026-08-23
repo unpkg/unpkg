@@ -169,7 +169,7 @@ function LargeFileNotice({ rawHref }: { rawHref: string }): VNode {
   return (
     <div class="py-4 border-b border-x border-slate-300 bg-white text-center">
       <span>This file is too large to preview. </span>
-      <a href={rawHref} class="text-blue-600 hover:underline">
+      <a href={rawHref} class="inline-link text-blue-600 hover:underline">
         View Raw
       </a>
     </div>

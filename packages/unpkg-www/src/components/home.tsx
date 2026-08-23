@@ -29,7 +29,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
             <section id="overview">
               <p>
                 UNPKG is a fast, global content delivery network for everything on{" "}
-                <a class="text-blue-600 hover:underline" href="https://www.npmjs.com/">
+                <a class="inline-link text-blue-600 hover:underline" href="https://www.npmjs.com/">
                   npm
                 </a>
                 . Use it to quickly and easily load any file on npm using a URL like:
@@ -77,17 +77,17 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline break-all" href="/preact@10.26.4/dist/preact.min.js">
+                  <a class="inline-link text-blue-600 hover:underline break-all" href="/preact@10.26.4/dist/preact.min.js">
                     unpkg.com/preact@10.26.4/dist/preact.min.js
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline break-all" href="/react@18.3.1/umd/react.production.min.js">
+                  <a class="inline-link text-blue-600 hover:underline break-all" href="/react@18.3.1/umd/react.production.min.js">
                     unpkg.com/react@18.3.1/umd/react.production.min.js
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline break-all" href="/three@0.174.0/build/three.module.min.js">
+                  <a class="inline-link text-blue-600 hover:underline break-all" href="/three@0.174.0/build/three.module.min.js">
                     unpkg.com/three@0.174.0/build/three.module.min.js
                   </a>
                 </li>
@@ -95,11 +95,11 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <p class="mt-4">
                 You can also use any valid{" "}
-                <a class="text-blue-600 hover:underline" href="https://docs.npmjs.com/about-semantic-versioning">
+                <a class="inline-link text-blue-600 hover:underline" href="https://docs.npmjs.com/about-semantic-versioning">
                   semver
                 </a>{" "}
                 range or{" "}
-                <a class="text-blue-600 hover:underline" href="https://docs.npmjs.com/adding-dist-tags-to-packages">
+                <a class="inline-link text-blue-600 hover:underline" href="https://docs.npmjs.com/adding-dist-tags-to-packages">
                   npm tag
                 </a>
                 :
@@ -107,12 +107,12 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline break-all" href="/preact@latest/dist/preact.min.js">
+                  <a class="inline-link text-blue-600 hover:underline break-all" href="/preact@latest/dist/preact.min.js">
                     unpkg.com/preact@latest/dist/preact.min.js
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline break-all" href="/react@^18/umd/react.production.min.js">
+                  <a class="inline-link text-blue-600 hover:underline break-all" href="/react@^18/umd/react.production.min.js">
                     unpkg.com/react@^18/umd/react.production.min.js
                   </a>
                 </li>
@@ -125,12 +125,12 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li>
-                  <a class="text-blue-600 hover:underline break-all" href="/preact/dist/preact.min.js">
+                  <a class="inline-link text-blue-600 hover:underline break-all" href="/preact/dist/preact.min.js">
                     unpkg.com/preact/dist/preact.min.js
                   </a>
                 </li>
                 <li>
-                  <a class="text-blue-600 hover:underline break-all" href="/vue/dist/vue.esm-browser.prod.js">
+                  <a class="inline-link text-blue-600 hover:underline break-all" href="/vue/dist/vue.esm-browser.prod.js">
                     unpkg.com/vue/dist/vue.esm-browser.prod.js
                   </a>
                 </li>
@@ -143,17 +143,17 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/react/">
+                  <a class="inline-link text-blue-600 hover:underline" href="/react/">
                     unpkg.com/react/
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/preact/src/">
+                  <a class="inline-link text-blue-600 hover:underline" href="/preact/src/">
                     unpkg.com/preact/src/
                   </a>
                 </li>
                 <li>
-                  <a class="text-blue-600 hover:underline" href="/react-router/">
+                  <a class="inline-link text-blue-600 hover:underline" href="/react-router/">
                     unpkg.com/react-router/
                   </a>
                 </li>
@@ -165,12 +165,12 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/react@18/">
+                  <a class="inline-link text-blue-600 hover:underline" href="/react@18/">
                     unpkg.com/react@18/
                   </a>
                 </li>
                 <li>
-                  <a class="text-blue-600 hover:underline" href="/react-router@5/">
+                  <a class="inline-link text-blue-600 hover:underline" href="/react-router@5/">
                     unpkg.com/react-router@5/
                   </a>
                 </li>
@@ -179,14 +179,14 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
               <p class="mt-4">
                 If you don't specify a file path, UNPKG will resolve the file based on the package's default{" "}
                 <a
-                  class="text-blue-600 hover:underline"
+                  class="inline-link text-blue-600 hover:underline"
                   href="https://nodejs.org/api/packages.html#package-entry-points"
                 >
                   entry point
                 </a>
                 . In many packages that are meant solely for frontend development, like jQuery and GSAP, this will be
                 the value of{" "}
-                <a class="text-blue-600 hover:underline" href="https://nodejs.org/api/packages.html#main">
+                <a class="inline-link text-blue-600 hover:underline" href="https://nodejs.org/api/packages.html#main">
                   the <code class="text-sm bg-slate-100">main</code> field
                 </a>{" "}
                 in the <code class="text-sm bg-slate-100">package.json</code> file.
@@ -194,12 +194,12 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/jquery">
+                  <a class="inline-link text-blue-600 hover:underline" href="/jquery">
                     unpkg.com/jquery
                   </a>
                 </li>
                 <li class="marker:pr-2">
-                  <a class="text-blue-600 hover:underline" href="/gsap">
+                  <a class="inline-link text-blue-600 hover:underline" href="/gsap">
                     unpkg.com/gsap
                   </a>
                 </li>
@@ -207,12 +207,12 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <p class="mt-4">
                 In modern packages that use{" "}
-                <a class="text-blue-600 hover:underline" href="https://nodejs.org/api/packages.html#exports">
+                <a class="inline-link text-blue-600 hover:underline" href="https://nodejs.org/api/packages.html#exports">
                   the <code class="text-sm bg-slate-100">exports</code> field
                 </a>
                 , UNPKG will resolve the file using the <code class="text-sm bg-slate-100">default</code>{" "}
                 <a
-                  class="text-blue-600 hover:underline"
+                  class="inline-link text-blue-600 hover:underline"
                   href="https://nodejs.org/api/packages.html#conditional-exports"
                 >
                   export condition
@@ -329,14 +329,14 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                 UNPKG is ideal for loading dependencies in apps that run entirely in the browser without a build step.
                 You can load{" "}
                 <a
-                  class="text-blue-600 hover:underline"
+                  class="inline-link text-blue-600 hover:underline"
                   href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules"
                 >
                   JavaScript modules
                 </a>{" "}
                 from UNPKG directly in your HTML using an{" "}
                 <a
-                  class="text-blue-600 hover:underline"
+                  class="inline-link text-blue-600 hover:underline"
                   href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap"
                 >
                   import map
@@ -488,7 +488,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <p class="mt-4">
                 For packages that are not already published as browser-ready ESM files, use{" "}
-                <a class="text-blue-600 hover:underline" href={esmUrl("/")}>
+                <a class="inline-link text-blue-600 hover:underline" href={esmUrl("/")}>
                   esm.unpkg.com
                 </a>
                 . This subdomain resolves npm packages, transforms TypeScript and JSX when needed, bundles package
@@ -532,17 +532,17 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li>
-                  <a class="text-blue-600 hover:underline break-all" href={esmUrl("/preact")}>
+                  <a class="inline-link text-blue-600 hover:underline break-all" href={esmUrl("/preact")}>
                     esm.unpkg.com/preact
                   </a>
                 </li>
                 <li>
-                  <a class="text-blue-600 hover:underline break-all" href={esmUrl("/react-dom@18/client")}>
+                  <a class="inline-link text-blue-600 hover:underline break-all" href={esmUrl("/react-dom@18/client")}>
                     esm.unpkg.com/react-dom@18/client
                   </a>
                 </li>
                 <li>
-                  <a class="text-blue-600 hover:underline break-all" href={esmUrl("/@floating-ui/dom@1")}>
+                  <a class="inline-link text-blue-600 hover:underline break-all" href={esmUrl("/@floating-ui/dom@1")}>
                     esm.unpkg.com/@floating-ui/dom@1
                   </a>
                 </li>
@@ -745,12 +745,12 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <ul class="mt-4 ml-6 list-disc list-outside">
                 <li>
-                  <a class="text-blue-600 hover:underline" href="/react-router@7.3.0/?meta">
+                  <a class="inline-link text-blue-600 hover:underline" href="/react-router@7.3.0/?meta">
                     unpkg.com/react-router@7.3.0/?meta
                   </a>
                 </li>
                 <li>
-                  <a class="text-blue-600 hover:underline" href="/react-router@7.3.0/dist/?meta">
+                  <a class="inline-link text-blue-600 hover:underline" href="/react-router@7.3.0/dist/?meta">
                     unpkg.com/react-router@7.3.0/dist/?meta
                   </a>
                 </li>
@@ -760,7 +760,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                 This will return a JSON object with information about the files in that directory, including path, size,
                 type, and{" "}
                 <a
-                  class="text-blue-600 hover:underline"
+                  class="inline-link text-blue-600 hover:underline"
                   href="https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity"
                 >
                   subresource integrity
@@ -805,11 +805,11 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <p class="mt-2">
                 Additionally, UNPKG runs on{" "}
-                <a class="text-blue-600 hover:underline" href="https://www.cloudflare.com">
+                <a class="inline-link text-blue-600 hover:underline" href="https://www.cloudflare.com">
                   Cloudflare's
                 </a>{" "}
                 global edge network using{" "}
-                <a class="text-blue-600 hover:underline" href="https://workers.cloudflare.com/">
+                <a class="inline-link text-blue-600 hover:underline" href="https://workers.cloudflare.com/">
                   Cloudflare Workers
                 </a>
                 , which allow UNPKG to serve billions of requests every day with low latency from hundreds of locations
@@ -836,7 +836,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <p class="mt-2">
                 For example, a URL like{" "}
-                <a class="text-blue-600 hover:underline" href="/preact@10">
+                <a class="inline-link text-blue-600 hover:underline" href="/preact@10">
                   unpkg.com/preact@10
                 </a>{" "}
                 will not be a direct cache hit because UNPKG needs to resolve the version{" "}
@@ -844,7 +844,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                 that major, plus it needs to figure out which file to serve. So a short URL like this will always cause
                 a redirect to the permanent URL for that resource. If you need to make sure you hit the cache, use a
                 fixed version number and the full file path, like{" "}
-                <a class="text-blue-600 hover:underline break-all" href="/preact@10.5.0/dist/preact.min.js">
+                <a class="inline-link text-blue-600 hover:underline break-all" href="/preact@10.5.0/dist/preact.min.js">
                   unpkg.com/preact@10.5.0/dist/preact.min.js
                 </a>
                 .
@@ -856,16 +856,16 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
               <p class="mt-2">
                 UNPKG is an{" "}
-                <a class="text-blue-600 hover:underline" href="https://github.com/unpkg" title="UNPKG on GitHub">
+                <a class="inline-link text-blue-600 hover:underline" href="https://github.com/unpkg" title="UNPKG on GitHub">
                   open source project
                 </a>{" "}
                 from{" "}
-                <a class="text-blue-600 hover:underline" href="https://x.com/mjackson" title="mjackson on X">
+                <a class="inline-link text-blue-600 hover:underline" href="https://x.com/mjackson" title="mjackson on X">
                   @mjackson
                 </a>
                 . UNPKG is not affiliated with or supported by npm in any way. Please do not contact npm for help with
                 UNPKG. Instead, please reach out to{" "}
-                <a class="text-blue-600 hover:underline" href="https://x.com/unpkg" title="UNPKG on X">
+                <a class="inline-link text-blue-600 hover:underline" href="https://x.com/unpkg" title="UNPKG on X">
                   @unpkg
                 </a>{" "}
                 with any questions or concerns.
