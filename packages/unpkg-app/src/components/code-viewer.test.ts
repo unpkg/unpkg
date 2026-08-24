@@ -1,6 +1,19 @@
 import { describe, expect, it } from "bun:test";
+import { h } from "preact";
+import { render } from "preact-render-to-string";
 
-import { parseLineHash } from "./code-viewer.tsx";
+import { CodeViewer, parseLineHash } from "./code-viewer.tsx";
+
+describe("CodeViewer", () => {
+  it("applies dark-only syntax and focus hooks without activating the light theme", () => {
+    let html = render(h(CodeViewer, { html: '<span class="hljs-keyword">const</span> value', numLines: 1 }));
+
+    expect(html).toContain("hljs-dark-listing");
+    expect(html).toContain("hljs-frame");
+    expect(html).toContain("hljs-line-number");
+    expect(html).not.toContain('class="hljs-listing');
+  });
+});
 
 describe("parseLineHash", () => {
   it("parses single lines, ranges, and multiple selections", () => {

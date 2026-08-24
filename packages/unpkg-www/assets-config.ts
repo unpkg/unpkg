@@ -8,7 +8,7 @@ export function getBuildOptions({ dev = false } = {}): esbuild.BuildOptions {
       "window.__DEV__": JSON.stringify(dev),
     },
     entryNames: dev ? "[dir]/[name]" : "[dir]/[name]-[hash]",
-    entryPoints: ["assets/code-light.css", "assets/scripts.ts", "assets/styles.css"],
+    entryPoints: ["assets/code-dark.css", "assets/code-light.css", "assets/scripts.ts", "assets/styles.css"],
     format: "esm",
     outbase: "assets",
     outdir: "public/_assets",

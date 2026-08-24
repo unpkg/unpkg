@@ -48,11 +48,11 @@ export function HomeNav({ items }: { items: Record<string, string> }): VNode {
   }
 
   return (
-    <nav class="relative border-l-1 border-gray-300 text-slate-600">
-      <div class="absolute w-1 h-6.5 transition-all duration-300 bg-gray-600" style={{ top: markerTop }} />
+    <nav class="relative border-l-1 border-gray-300 dark:border-dark-border-strong text-base text-slate-600 dark:text-dark-secondary">
+      <div class="absolute w-1 h-6.5 transition-all duration-300 bg-gray-600 dark:bg-dark-secondary" style={{ top: markerTop }} />
       <ol>
         {Object.entries(items).map(([id, title]) => (
-          <li id={`${id}-nav-item`} class={id === currentSectionId ? "my-2 pl-8 text-slate-900" : "my-2 pl-8"}>
+          <li id={`${id}-nav-item`} class={id === currentSectionId ? "my-2 pl-8 text-slate-900 dark:text-dark-foreground" : "my-2 pl-8"}>
             <a href={`#${id}`}>{title}</a>
           </li>
         ))}

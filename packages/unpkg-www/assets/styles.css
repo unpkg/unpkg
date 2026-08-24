@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+  --color-dark-page: #1a1a1a;
+  --color-dark-code: #000;
+  --color-dark-panel: #222;
+  --color-dark-border: #262626;
+  --color-dark-border-strong: #404040;
+  --color-dark-muted: rgb(255 255 255 / 52%);
+  --color-dark-secondary: rgb(255 255 255 / 70%);
+  --color-dark-foreground: #fff;
+  --color-dark-link: #7cb7ff;
+}
+
+:root {
+  color-scheme: light dark;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -11,5 +29,17 @@ section[id] {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .inline-link {
+    text-decoration-line: underline;
+    text-underline-offset: 0.125em;
+  }
+
+  .section-permalink:focus-visible::after {
+    color: var(--color-dark-link);
+    opacity: 1;
   }
 }

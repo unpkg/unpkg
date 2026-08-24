@@ -122,12 +122,14 @@ describe("handleRequest", () => {
     expect(location).toBe("/react@18.2.0");
   });
 
-  it("renders package pages with an explicit white background", async () => {
+  it("renders package pages that follow the preferred color scheme", async () => {
     let response = await dispatchFetch("https://app.unpkg.com/react@18.2.0");
     let html = await response.text();
 
-    expect(html).toContain('<html lang="en" style="background-color:white;">');
-    expect(html).toContain('<body style="background-color:white;">');
+    expect(html).toContain('<meta name="color-scheme" content="light dark"/>');
+    expect(html).toContain('media="(prefers-color-scheme: dark)"');
+    expect(html).toContain('code-dark.css" media="(prefers-color-scheme: dark)"');
+    expect(html).toContain("inline-link");
   });
 
   it("does not fetch the body of a text file that is too large to preview", async () => {

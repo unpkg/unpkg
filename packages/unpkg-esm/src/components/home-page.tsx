@@ -77,8 +77,11 @@ export function createHomePage(env: Env): string {
               <h2>Documentation</h2>
               <p>
                 For official UNPKG documentation, including package URLs, exports, metadata, import maps, and browser
-                module options, visit the <a href={`${wwwOrigin}/`}>main UNPKG home page</a>. The browser modules section
-                is available at <a href={`${wwwOrigin}/#browser-modules`}>{wwwOrigin}/#browser-modules</a>.
+                module options, visit the <a class="inline-link text-blue-600" href={`${wwwOrigin}/`}>main UNPKG home
+                page</a>. The browser modules section is available at{" "}
+                <a class="inline-link text-blue-600" href={`${wwwOrigin}/#browser-modules`}>
+                  {wwwOrigin}/#browser-modules
+                </a>.
               </p>
             </section>
           </div>
@@ -91,16 +94,19 @@ export function createHomePage(env: Env): string {
 
 function Document({ children }: { children: ComponentChildren }): VNode {
   return (
-    <html lang="en" style={{ backgroundColor: "white" }}>
+    <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content="Browser-ready npm package imports from UNPKG." />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
         <link rel="icon" type="image/png" href="/favicon.png" />
         <title>UNPKG ESM</title>
         <style dangerouslySetInnerHTML={{ __html: pageStyles }} />
       </head>
-      <body style={{ backgroundColor: "white" }}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }
@@ -306,5 +312,118 @@ footer svg {
   header { padding-top: 5rem; }
   h1 { font-size: 3.5rem; }
   main { padding-top: 3rem; }
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    color: #fff;
+    background: #1a1a1a;
+  }
+  h1 {
+    color: #fff;
+  }
+  h2 {
+    color: #fff;
+  }
+  .text-blue-600 {
+    color: #7cb7ff;
+  }
+  p,
+  li {
+    color: rgb(255 255 255 / 70%);
+  }
+  strong,
+  code {
+    color: #fff;
+  }
+  .inline-link {
+    text-decoration: underline;
+    text-underline-offset: 0.125em;
+  }
+  code,
+  .callout {
+    background: #000;
+  }
+  .hljs-listing {
+    background: #000;
+    color: #d5ced9;
+  }
+  .hljs-comment,
+  .hljs-quote {
+    color: #a0a1a7cc;
+  }
+  .hljs-doctag,
+  .hljs-keyword,
+  .hljs-link,
+  .hljs-formula {
+    color: #c74ded;
+  }
+  .hljs-section {
+    color: #ff00aa;
+  }
+  .hljs-name,
+  .hljs-selector-tag {
+    color: #f92672;
+  }
+  .hljs-deletion {
+    color: #ee5d43;
+  }
+  .hljs-subst {
+    color: #d5ced9;
+  }
+  .hljs-literal {
+    color: #ee5d43;
+  }
+  .hljs-symbol,
+  .hljs-selector-id {
+    color: #ee5d43;
+  }
+  .hljs-bullet,
+  .hljs-title {
+    color: #ffe66d;
+  }
+  .hljs-meta {
+    color: #c74ded;
+  }
+  .hljs-string,
+  .hljs-addition,
+  .hljs-meta-string {
+    color: #96e072;
+  }
+  .hljs-regexp {
+    color: #7cb7ff;
+  }
+  .hljs-attribute {
+    color: #ffe66d;
+  }
+  .hljs-built_in,
+  .hljs-class .hljs-title {
+    color: #ffe66d;
+  }
+  .hljs-attr,
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-type,
+  .hljs-selector-class,
+  .hljs-selector-attr,
+  .hljs-selector-pseudo {
+    color: #00e8c6;
+  }
+  .hljs-number {
+    color: #f39c12;
+  }
+  footer {
+    border-color: #262626;
+    color: rgb(255 255 255 / 70%);
+  }
+  footer a {
+    color: #fff;
+  }
+  footer a:hover,
+  footer a:focus-visible {
+    color: #fff;
+  }
+  footer a:focus-visible {
+    outline-color: #a3a3a3;
+  }
 }
 `;

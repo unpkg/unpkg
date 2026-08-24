@@ -7,3 +7,5 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - workerd
+syncInjectedDepsAfterScripts:
+  - build

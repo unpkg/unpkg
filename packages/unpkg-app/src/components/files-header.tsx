@@ -54,7 +54,7 @@ export function FilesHeader({
   return (
     <header class="pt-6 pb-4 lg:pt-16">
       <div class="mb-6 flex justify-between items-center">
-        <h1 class="text-black text-3xl leading-tight font-semibold">{packageInfo.name}</h1>
+        <h1 class="text-black dark:text-dark-foreground text-3xl leading-tight font-semibold">{packageInfo.name}</h1>
 
         <div class="text-right w-48">
           <span>Version: </span>
@@ -64,14 +64,14 @@ export function FilesHeader({
               availableVersions={availableVersions}
               currentVersion={version}
               pathnameFormat={pathnameFormat}
-              class="w-28 p-1 border border-slate-300 bg-slate-100 text-sm"
+              class="w-28 p-1 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-chrome text-sm"
             />
           </Hydrate>
         </div>
       </div>
 
       <div class="mt-2">
-        <p class="mb-3 leading-tight">
+        <p class="mb-3 leading-tight dark:text-dark-secondary">
           <span>{packageJson.description}</span>
         </p>
 
@@ -81,7 +81,7 @@ export function FilesHeader({
               <a
                 href={websiteUrl.href}
                 title={`Visit the ${packageInfo.name} website`}
-                class="inline-flex items-center hover:text-slate-950 hover:underline"
+                class="inline-flex items-center hover:text-slate-950 dark:hover:text-dark-foreground hover:underline"
               >
                 <LinkIcon class="w-6 h-6" />
                 <span class="ml-1">{websiteText}</span>
@@ -94,7 +94,7 @@ export function FilesHeader({
               <a
                 href={githubUrl.href}
                 title={`View the ${packageInfo.name} repository on GitHub`}
-                class="inline-flex items-center hover:text-slate-950 hover:underline"
+                class="inline-flex items-center hover:text-slate-950 dark:hover:text-dark-foreground hover:underline"
               >
                 <GitHubIcon class="w-6 h-6" />
                 <span class="ml-1">{githubText}</span>

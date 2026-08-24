@@ -25,15 +25,19 @@ export function Document({
   };
 
   return (
-    <html lang="en" style={{ backgroundColor: "white" }}>
+    <html lang="en" class="bg-white dark:bg-dark-page">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content={description} />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 
         <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="stylesheet" href={useAsset("assets/styles.css")} />
         <link rel="stylesheet" href={useAsset("assets/code-light.css")} />
+        <link rel="stylesheet" href={useAsset("assets/code-dark.css")} media="(prefers-color-scheme: dark)" />
 
         <script type="importmap" dangerouslySetInnerHTML={{ __html: JSON.stringify(importMap) }} />
         <script type="module" src={useAsset("assets/scripts.ts")} defer></script>
@@ -50,7 +54,7 @@ gtag('config', 'UA-140352188-1');`,
           }}
         ></script>
       </head>
-      <body style={{ backgroundColor: "white" }}>{children}</body>
+      <body class="bg-white dark:bg-dark-page dark:text-dark-foreground">{children}</body>
     </html>
   );
 }

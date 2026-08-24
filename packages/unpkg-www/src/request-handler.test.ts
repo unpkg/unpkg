@@ -251,8 +251,9 @@ describe("handleRequest", () => {
     let response = await handleRequest(new Request("https://unpkg.dev/"), stagingEnv, context);
     let html = await response.text();
 
-    expect(html).toContain('<html lang="en" style="background-color:white;">');
-    expect(html).toContain('<body style="background-color:white;">');
+    expect(html).toContain('<meta name="color-scheme" content="light dark"/>');
+    expect(html).toContain('media="(prefers-color-scheme: dark)"');
+    expect(html).toContain('code-dark.css" media="(prefers-color-scheme: dark)"');
     expect(html).toContain('href="https://esm.unpkg.dev/"');
     expect(html).toContain('href="https://esm.unpkg.dev/preact"');
     expect(html).toContain('href="https://esm.unpkg.dev/react-dom@18/client"');
@@ -263,7 +264,12 @@ describe("handleRequest", () => {
     expect(html).toContain(">Segment<");
     expect(html).toContain(">Parameter<");
     expect(html).toContain("overflow-x-auto");
+    expect(html).toContain("hljs-dark-listing");
+    expect(html).toContain("hljs-frame");
+    expect(html).not.toContain('class="hljs-listing');
     expect(html).toContain("focus-visible:outline-slate-500");
+    expect(html).toContain("section-permalink");
+    expect(html).toContain("inline-link text-blue-600");
     expect(html).toContain(">esm.unpkg.com/preact<");
     expect(html).toContain(">esm.unpkg.com/react-dom@18/client<");
     expect(html).toContain('href="https://github.com/unpkg"');

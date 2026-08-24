@@ -1,4 +1,5 @@
 {
+  "assets/code-dark.css": "/code-dark.css",
   "assets/code-light.css": "/code-light.css",
   "assets/scripts.ts": "/scripts.js",
   "assets/styles.css": "/styles.css"
