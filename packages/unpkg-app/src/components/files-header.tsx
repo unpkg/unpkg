@@ -56,7 +56,7 @@ export function FilesHeader({
       <div class="mb-6 flex justify-between items-center">
         <h1 class="text-black dark:text-dark-foreground text-3xl leading-tight font-semibold">{packageInfo.name}</h1>
 
-        <div class="text-right w-48">
+        <div class="ml-4 shrink-0 text-right">
           <span>Version: </span>
           <Hydrate container={<span />}>
             <VersionSelector
@@ -64,7 +64,7 @@ export function FilesHeader({
               availableVersions={availableVersions}
               currentVersion={version}
               pathnameFormat={pathnameFormat}
-              class="w-28 p-1 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-chrome text-sm"
+              class="version-selector p-1 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-chrome text-sm"
             />
           </Hydrate>
         </div>
