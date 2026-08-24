@@ -90,7 +90,7 @@ export function FileDetail({
 
       <FilesNav packageInfo={packageInfo} version={version} filename={filename} />
 
-      <div class="p-3 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel text-sm flex justify-between select-none">
+      <div class="p-3 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-chrome text-sm flex justify-between select-none">
         <div class="w-64">
           {lineCount == null ? "" : <LineCount lineCount={lineCount} loc={loc} />}
           <span>{prettyBytes(file.size)}</span>

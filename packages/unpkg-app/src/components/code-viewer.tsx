@@ -87,7 +87,7 @@ export function CodeViewer({ html, numLines }: CodeViewerProps): VNode {
 
   return (
     <div class="hljs-frame flex relative bg-white dark:bg-dark-page font-mono text-sm leading-6">
-      <div class="py-4 border-b border-x border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel text-right select-none">
+      <div class="py-4 border-b border-x border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-chrome text-right select-none">
         {Array.from({ length: numLines }, (_, index) => {
           let lineNumber = index + 1;
 

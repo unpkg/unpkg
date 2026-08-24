@@ -316,7 +316,7 @@ footer svg {
 @media (prefers-color-scheme: dark) {
   body {
     color: #fff;
-    background: #111;
+    background: #1a1a1a;
   }
   h1 {
     color: #fff;
@@ -326,6 +326,14 @@ footer svg {
   }
   .text-blue-600 {
     color: #7cb7ff;
+  }
+  p,
+  li {
+    color: rgb(255 255 255 / 70%);
+  }
+  strong,
+  code {
+    color: #fff;
   }
   .inline-link {
     text-decoration: underline;
@@ -405,7 +413,7 @@ footer svg {
   }
   footer {
     border-color: #262626;
-    color: #d4d4d4;
+    color: rgb(255 255 255 / 70%);
   }
   footer a {
     color: #fff;

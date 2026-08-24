@@ -131,7 +131,7 @@ function FileListingContent({
 
   return (
     <Fragment>
-      <header class="py-3 px-4 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel text-sm select-none">
+      <header class="py-3 px-4 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-chrome text-sm select-none">
         {folderNames.length > 0 ? (
           <span>
             {folderNames.length} {plural("folder", folderNames.length)},{" "}

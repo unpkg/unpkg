@@ -48,7 +48,7 @@ export function HomeNav({ items }: { items: Record<string, string> }): VNode {
   }
 
   return (
-    <nav class="relative border-l-1 border-gray-300 dark:border-dark-border-strong text-slate-600 dark:text-dark-secondary">
+    <nav class="relative border-l-1 border-gray-300 dark:border-dark-border-strong text-base text-slate-600 dark:text-dark-secondary">
       <div class="absolute w-1 h-6.5 transition-all duration-300 bg-gray-600 dark:bg-dark-secondary" style={{ top: markerTop }} />
       <ol>
         {Object.entries(items).map(([id, title]) => (

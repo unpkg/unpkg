@@ -1,5 +1,5 @@
 .hljs-dark-listing {
-  background: var(--color-dark-panel);
+  background: var(--color-dark-code);
   color: #d5ced9;
 }
 .hljs-frame,

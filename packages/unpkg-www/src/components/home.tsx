@@ -23,7 +23,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
         <h1 class="mt-32 text-7xl text-center font-black text-black dark:text-dark-foreground">UNPKG</h1>
       </header>
 
-      <main class="mx-auto lg:max-w-screen-md text-slate-900 dark:text-dark-foreground leading-relaxed max-w-full">
+      <main class="mx-auto lg:max-w-screen-md text-lg text-slate-900 dark:text-dark-secondary leading-relaxed max-w-full">
         <div class="relative mt-16 mb-32 px-8 lg:mt-32">
           <div>
             <section id="overview">
@@ -929,7 +929,7 @@ function XIcon(props: { class?: string }): VNode {
 
 function SectionHeading({ id, children }: { id: string; children: string }): VNode {
   return (
-    <h2 class="mt-16 mb-8 text-lg font-semibold group">
+    <h2 class="mt-24 mb-8 text-xl font-semibold text-slate-900 dark:text-dark-foreground group">
       {children}{" "}
       <a
         class="section-permalink outline-none after:content-['#'] after:ml-1 after:text-slate-300 dark:after:text-dark-border-strong after:opacity-0 group-hover:after:opacity-100 after:transition-opacity"

@@ -64,14 +64,14 @@ export function FilesHeader({
               availableVersions={availableVersions}
               currentVersion={version}
               pathnameFormat={pathnameFormat}
-              class="w-28 p-1 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel text-sm"
+              class="w-28 p-1 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-chrome text-sm"
             />
           </Hydrate>
         </div>
       </div>
 
       <div class="mt-2">
-        <p class="mb-3 leading-tight">
+        <p class="mb-3 leading-tight dark:text-dark-secondary">
           <span>{packageJson.description}</span>
         </p>
 
