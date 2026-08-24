@@ -22,7 +22,7 @@
 
 .version-selector {
   width: 7rem;
-  max-width: min(24rem, 45vw);
+  max-width: min(18rem, 45vw);
 }
 
 @supports (field-sizing: content) {
