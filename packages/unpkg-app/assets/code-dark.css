@@ -1,6 +1,8 @@
 .hljs-dark-listing {
-  background: var(--color-dark-code);
   color: #d5ced9;
+}
+.hljs-frame {
+  background: var(--color-dark-code);
 }
 .hljs-frame,
 .hljs-frame > * {
