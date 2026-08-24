@@ -132,6 +132,13 @@ describe("handleRequest", () => {
     expect(html).toContain("inline-link");
   });
 
+  it("renders a content-sized version selector", async () => {
+    let response = await dispatchFetch("https://app.unpkg.com/react@18.2.0");
+    let html = await response.text();
+
+    expect(html).toContain('class="version-selector ');
+  });
+
   it("does not fetch the body of a text file that is too large to preview", async () => {
     let response = await dispatchFetch("https://app.unpkg.com/react@18.2.0/files/large.txt");
     let html = await response.text();
