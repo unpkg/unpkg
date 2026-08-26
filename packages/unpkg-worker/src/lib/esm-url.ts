@@ -83,6 +83,14 @@ const knownQueryParams = new Set([
 // what the module URL serves would report metadata for the wrong content.
 const metaConflicts = ["css", "module", "worker"];
 
+// Flag params carry no meaningful value; canonicalize any value to "" so
+// ?min, ?min=1, and ?min=true share one cache key.
+const flagQueryParams = ["css", "dev", "meta", "min", "module", "no-dts", "raw", "sourcemap", "worker"];
+
+// Comma-list params whose order and duplicates are semantically irrelevant;
+// canonicalize so equivalent spellings share one cache key.
+const listQueryParams = ["conditions", "exports", "external"];
+
 export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmRequest | EsmRequestError {
   let url = new URL(requestUrl);
   let packagePath = parseEsmPackagePathname(url.pathname);
@@ -102,6 +110,26 @@ export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmR
   for (let name of Array.from(new Set(url.searchParams.keys()))) {
     if (!knownQueryParams.has(name)) {
       url.searchParams.delete(name);
+    }
+  }
+
+  for (let name of flagQueryParams) {
+    if (url.searchParams.has(name)) {
+      url.searchParams.set(name, "");
+    }
+  }
+
+  for (let name of listQueryParams) {
+    if (url.searchParams.has(name)) {
+      let values = url.searchParams
+        .getAll(name)
+        .flatMap((value) => value.split(","))
+        .map((value) => value.trim())
+        .filter(Boolean);
+      url.searchParams.delete(name);
+      if (values.length > 0) {
+        url.searchParams.set(name, Array.from(new Set(values)).sort().join(","));
+      }
     }
   }
 

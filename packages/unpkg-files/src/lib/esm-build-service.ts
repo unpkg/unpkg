@@ -637,6 +637,9 @@ interface CommonJsAnalysis {
 }
 
 const reservedExportNames = new Set([
+  // eval and arguments are not reserved words but cannot be import bindings.
+  "arguments",
+  "eval",
   "await",
   "break",
   "case",
@@ -1011,13 +1014,17 @@ function getSourceFileCandidates(filename: string): string[] {
     filename,
     `${filename}.js`,
     `${filename}.mjs`,
+    `${filename}.cjs`,
     `${filename}.jsx`,
     `${filename}.ts`,
     `${filename}.tsx`,
+    `${filename}.json`,
     `${stripTrailingSlash(filename)}/index.js`,
     `${stripTrailingSlash(filename)}/index.mjs`,
+    `${stripTrailingSlash(filename)}/index.cjs`,
     `${stripTrailingSlash(filename)}/index.ts`,
     `${stripTrailingSlash(filename)}/index.tsx`,
+    `${stripTrailingSlash(filename)}/index.json`,
   ];
 }
 
@@ -1218,6 +1225,10 @@ function parseDependencyVersionSpecifier(
   return { packageName, versionRangeOrTag: requestedVersion };
 }
 
+export function clearPackageInfoCache(): void {
+  packageInfoCache.clear();
+}
+
 const packageInfoTtlMs = 5 * 60 * 1000;
 const packageInfoCacheMaxEntries = 500;
 let packageInfoCache = new Map<string, { expiresAt: number; promise: Promise<PackageInfo | null> }>();
@@ -1281,13 +1292,13 @@ async function resolveDependencyVersion(registry: string, packageName: string, v
   }
 
   // A resolution failure degrades to the raw range (the caller marks the build
-  // as unpinned); it must never fail the whole build.
+  // as unpinned); it must never fail the whole build. Dependency names in
+  // published package.json files already carry the registry's canonical case,
+  // so there is no lowercase fallback here — falling back on a transient error
+  // could pin an unrelated same-named package's version.
   let packageInfo: PackageInfo | null = null;
   try {
     packageInfo = await getCachedPackageInfo(registry, packageName);
-    if (packageInfo == null && packageName !== packageName.toLowerCase()) {
-      packageInfo = await getCachedPackageInfo(registry, packageName.toLowerCase());
-    }
   } catch {
     return versionRangeOrTag;
   }

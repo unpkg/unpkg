@@ -40,6 +40,22 @@ describe("normalizeEsmRequestUrl", () => {
     expect("url" in result && result.url.search).toBe("?target=es2022");
   });
 
+  it("canonicalizes flag and list param values into one cache key", () => {
+    let result = normalizeEsmRequestUrl(
+      "https://esm.unpkg.com/react-dom@18.3.1?min=1&conditions=development&conditions=browser,development&junk=x"
+    );
+
+    expect("url" in result && result.url.search).toBe("?conditions=browser%2Cdevelopment&min=&target=es2022");
+  });
+
+  it("rejects ?meta combined with route-changing params", () => {
+    for (let param of ["css", "module", "worker"]) {
+      let result = normalizeEsmRequestUrl(`https://esm.unpkg.com/react-dom@18.3.1?meta&${param}`);
+
+      expect("code" in result && result.code).toBe("INVALID_QUERY");
+    }
+  });
+
   it("rejects unsupported build params", () => {
     for (let param of ["bundle", "ignore-annotations", "keep-names", "no-bundle", "standalone"]) {
       let result = normalizeEsmRequestUrl(`https://esm.unpkg.com/react-dom@18.3.1?${param}`);

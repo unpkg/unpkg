@@ -54,20 +54,21 @@ export async function getPackageInfo(
 ): Promise<PackageInfo | null> {
   // The npm registry is case-sensitive and legacy packages with uppercase names
   // exist (often alongside an unrelated lowercase package), so try the name as
-  // given first and only fall back to lowercase.
-  let packageInfo = await fetchPackageInfo(context, registry, packageName);
-  if (packageInfo == null && packageName !== packageName.toLowerCase()) {
-    packageInfo = await fetchPackageInfo(context, registry, packageName.toLowerCase());
+  // given first and fall back to lowercase — but only on a definitive 404. A
+  // transient registry error must not silently resolve an unrelated package.
+  let result = await fetchPackageInfo(context, registry, packageName);
+  if (result.packageInfo == null && result.notFound && packageName !== packageName.toLowerCase()) {
+    result = await fetchPackageInfo(context, registry, packageName.toLowerCase());
   }
 
-  return packageInfo;
+  return result.packageInfo;
 }
 
 async function fetchPackageInfo(
   context: ExecutionContext,
   registry: string,
   packageName: string
-): Promise<PackageInfo | null> {
+): Promise<{ packageInfo: PackageInfo | null; notFound: boolean }> {
   let request = new Request(new URL(`/${packageName}`, registry), {
     headers: { Accept: "application/json" },
   });
@@ -84,8 +85,8 @@ async function fetchPackageInfo(
   }
 
   if (response && response.ok) {
-    return response.json();
+    return { packageInfo: await response.json(), notFound: false };
   }
 
-  return null;
+  return { packageInfo: null, notFound: response?.status === 404 };
 }

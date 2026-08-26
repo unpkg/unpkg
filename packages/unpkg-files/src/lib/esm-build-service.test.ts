@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import {
   analyzeCommonJsSource,
   bundleSource,
+  clearPackageInfoCache,
   normalizeBuildOptions,
   parseAliases,
   parseDependencyOverrides,
@@ -244,6 +245,9 @@ describe("rewriteEsmImports", () => {
     if (globalFetch) {
       globalThis.fetch = globalFetch;
     }
+    // The module-level packument cache would otherwise leak mocked registry
+    // documents into later test files in the same process.
+    clearPackageInfoCache();
   });
 
   it("rewrites bare imports to exact esm.unpkg.com versions", async () => {
@@ -625,6 +629,51 @@ describe("bundleSource", () => {
           options()
         )
       ).rejects.toThrow('blocked by its exports map');
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("skips export names that cannot be import bindings", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-eval-export-"));
+
+    try {
+      // `import { eval }` is a SyntaxError in module code; the name is dropped
+      // rather than failing the build.
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "eval-export-package" },
+        "eval-export-package",
+        "1.0.0",
+        "/index.js",
+        "exports.eval = () => 'ok'; exports.parse = () => 'ok';",
+        options()
+      );
+
+      expect(result.code).toContain("as parse");
+      expect(result.code).not.toContain("as eval");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("resolves extensionless internal requires to .cjs files", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-cjs-extension-"));
+
+    try {
+      await writeFile(path.join(packageDirectory, "impl.cjs"), "exports.value = 42;");
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "cjs-extension-package" },
+        "cjs-extension-package",
+        "1.0.0",
+        "/index.js",
+        "module.exports = require('./impl');",
+        options()
+      );
+
+      expect(result.code).toContain("42");
+      expect(result.code).toContain("as value");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import type { ExecutionContext } from "@cloudflare/workers-types";
 import { handleRequest as handleFilesRequest } from "unpkg-files";
 
@@ -192,6 +192,10 @@ describe("handleRequest", () => {
           throw new Error(`Unexpected URL: ${url}`);
       }
     }) as unknown as typeof fetch;
+  });
+
+  beforeEach(() => {
+    defaultCacheStore.clear();
   });
 
   afterAll(() => {
