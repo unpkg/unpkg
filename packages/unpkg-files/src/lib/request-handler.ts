@@ -7,7 +7,6 @@ import {
   normalizeBuildOptions,
   transformInlineEsmModule,
   UnsupportedDynamicRequireError,
-  UnsupportedNodeBuiltinError,
   UnsupportedSourceTypeError,
 } from "./esm-build-service.ts";
 import {
@@ -186,11 +185,6 @@ async function handleRequest_(request: Request): Promise<Response> {
     if (error instanceof TarballFetchTimeoutError) {
       return new Response(`Timed out fetching package: ${error.packageName}@${error.version}`, {
         status: 504,
-      });
-    }
-    if (error instanceof UnsupportedNodeBuiltinError) {
-      return new Response(error.message, {
-        status: 422,
       });
     }
     if (error instanceof UnsupportedSourceTypeError) {

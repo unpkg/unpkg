@@ -38,37 +38,61 @@ const browserTargets = new Set([
   "es2024",
   "esnext",
   "deno",
-  "denonext",
   "node",
 ]);
 
 const rawModeConflicts = new Set([
-  "bundle",
   "dev",
   "env",
   "exports",
-  "ignore-annotations",
   "jsx",
   "jsxImportSource",
-  "keep-names",
   "min",
-  "no-bundle",
   "sourcemap",
-  "standalone",
   "target",
 ]);
 
+// Build params that were copied from esm.sh but are not part of this service's API.
+const unsupportedQueryParams = new Set(["bundle", "ignore-annotations", "keep-names", "no-bundle", "standalone"]);
+
+// The full set of params this service understands. Anything else is stripped
+// during normalization so unknown params can't multiply cache keys (and, with
+// immutable artifact caching, year-long cache entries) or force extra builds.
+const knownQueryParams = new Set([
+  "alias",
+  "conditions",
+  "css",
+  "deps",
+  "dev",
+  "env",
+  "exports",
+  "external",
+  "jsx",
+  "jsxImportSource",
+  "meta",
+  "min",
+  "module",
+  "no-dts",
+  "raw",
+  "sourcemap",
+  "target",
+  "worker",
+]);
+
+// ?meta describes the plain module build; combining it with params that change
+// what the module URL serves would report metadata for the wrong content.
+const metaConflicts = ["css", "module", "worker"];
+
+// Flag params carry no meaningful value; canonicalize any value to "" so
+// ?min, ?min=1, and ?min=true share one cache key.
+const flagQueryParams = ["css", "dev", "meta", "min", "module", "no-dts", "raw", "sourcemap", "worker"];
+
+// Comma-list params whose order and duplicates are semantically irrelevant;
+// canonicalize so equivalent spellings share one cache key.
+const listQueryParams = ["conditions", "exports", "external"];
+
 export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmRequest | EsmRequestError {
   let url = new URL(requestUrl);
-  let pathQuery = extractPathQuery(url.pathname);
-
-  if (pathQuery != null) {
-    url.pathname = pathQuery.pathname;
-    for (let [name, value] of pathQuery.searchParams) {
-      url.searchParams.append(name, value);
-    }
-  }
-
   let packagePath = parseEsmPackagePathname(url.pathname);
   if (packagePath == null) {
     return {
@@ -83,12 +107,39 @@ export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmR
     return validationError;
   }
 
-  if (
-    !url.searchParams.has("target") &&
-    !url.searchParams.has("raw") &&
-    !isUntargetedAssetRequest(packagePath, url.searchParams)
-  ) {
-    url.searchParams.set("target", "es2022");
+  for (let name of Array.from(new Set(url.searchParams.keys()))) {
+    if (!knownQueryParams.has(name)) {
+      url.searchParams.delete(name);
+    }
+  }
+
+  for (let name of flagQueryParams) {
+    if (url.searchParams.has(name)) {
+      url.searchParams.set(name, "");
+    }
+  }
+
+  for (let name of listQueryParams) {
+    if (url.searchParams.has(name)) {
+      let values = url.searchParams
+        .getAll(name)
+        .flatMap((value) => value.split(","))
+        .map((value) => value.trim())
+        .filter(Boolean);
+      url.searchParams.delete(name);
+      if (values.length > 0) {
+        url.searchParams.set(name, Array.from(new Set(values)).sort().join(","));
+      }
+    }
+  }
+
+  // The default target is implicit: canonical URLs never carry target=es2022.
+  // This keeps the bare module URL directly servable (no redirect), which
+  // matters because browsers key the module map by request URL — if the bare
+  // URL redirected to a ?target= variant while rewritten dependency imports
+  // used the variant directly, the same module would load twice.
+  if (url.searchParams.get("target") === "es2022") {
+    url.searchParams.delete("target");
   }
 
   let search = normalizeSearchParams(url.searchParams);
@@ -98,23 +149,9 @@ export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmR
     packagePath,
     search,
     searchParams: new URLSearchParams(url.searchParams),
-    target: url.searchParams.get("target") ?? "raw",
+    target: url.searchParams.get("target") ?? "es2022",
     url,
   };
-}
-
-function isUntargetedAssetRequest(packagePath: EsmPackagePath, searchParams: URLSearchParams): boolean {
-  return (
-    searchParams.has("css") ||
-    packagePath.package.toLowerCase().startsWith("@types/") ||
-    packagePath.package.endsWith(".css") ||
-    packagePath.filename?.endsWith(".css") === true ||
-    isTypeDeclarationPath(packagePath.filename)
-  );
-}
-
-function isTypeDeclarationPath(filename: string | undefined): boolean {
-  return filename?.endsWith(".d.ts") || filename?.endsWith(".d.mts") || filename?.endsWith(".d.cts") || false;
 }
 
 export function parseEsmPackagePathname(pathname: string): EsmPackagePath | null {
@@ -145,6 +182,16 @@ export function getEsmPackageSubpath(filename: string | undefined): string {
 }
 
 function validateEsmSearchParams(searchParams: URLSearchParams): EsmRequestError | null {
+  for (let name of unsupportedQueryParams) {
+    if (searchParams.has(name)) {
+      return {
+        code: "INVALID_QUERY",
+        message: `?${name} is not supported`,
+        status: 400,
+      };
+    }
+  }
+
   let target = searchParams.get("target");
   if (target != null && !browserTargets.has(target)) {
     return {
@@ -183,38 +230,27 @@ function validateEsmSearchParams(searchParams: URLSearchParams): EsmRequestError
     }
   }
 
-  return null;
-}
-
-function extractPathQuery(pathname: string): { pathname: string; searchParams: URLSearchParams } | null {
-  let ampersandIndex = pathname.indexOf("&");
-  if (ampersandIndex === -1) return null;
-
-  let before = pathname.slice(0, ampersandIndex);
-  let after = pathname.slice(ampersandIndex + 1);
-  let slashIndex = after.indexOf("/");
-  let pathQuery = slashIndex === -1 ? after : after.slice(0, slashIndex);
-  let pathSuffix = slashIndex === -1 ? "" : after.slice(slashIndex);
-  let searchParams = new URLSearchParams();
-
-  for (let part of pathQuery.split("&")) {
-    if (part === "") continue;
-
-    let equalsIndex = part.indexOf("=");
-    if (equalsIndex === -1) {
-      searchParams.append(part, "");
-    } else {
-      searchParams.append(part.slice(0, equalsIndex), part.slice(equalsIndex + 1));
+  if (searchParams.has("meta")) {
+    for (let name of metaConflicts) {
+      if (searchParams.has(name)) {
+        return {
+          code: "INVALID_QUERY",
+          message: `?meta cannot be combined with ?${name}`,
+          status: 400,
+        };
+      }
     }
   }
 
-  return {
-    pathname: before + pathSuffix,
-    searchParams,
-  };
+  return null;
 }
 
-function normalizeSearchParams(searchParams: URLSearchParams): string {
+/**
+ * Renders search params in the canonical order used across the ESM service.
+ * Every emitter of module URLs (redirects, dependency rewriting) must use this
+ * so emitted URLs never redirect.
+ */
+export function normalizeSearchParams(searchParams: URLSearchParams): string {
   let entries = Array.from(searchParams.entries()).sort(([leftName, leftValue], [rightName, rightValue]) => {
     if (leftName === rightName) {
       return leftValue.localeCompare(rightValue);

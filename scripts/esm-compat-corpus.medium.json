@@ -76,30 +76,6 @@
     },
     {
       "category": "preact",
-      "description": "Preact hooks no-bundle mode",
-      "expect": "module",
-      "features": ["no-bundle"],
-      "package": "preact",
-      "path": "/preact@10.26.4/hooks?no-bundle"
-    },
-    {
-      "category": "preact",
-      "description": "Preact hooks explicit bundle mode",
-      "expect": "module",
-      "features": ["bundle"],
-      "package": "preact",
-      "path": "/preact@10.26.4/hooks?bundle"
-    },
-    {
-      "category": "preact",
-      "description": "Preact hooks standalone bundle mode",
-      "expect": "module",
-      "features": ["standalone"],
-      "package": "preact",
-      "path": "/preact@10.26.4/hooks?standalone"
-    },
-    {
-      "category": "preact",
       "description": "Preact custom development conditions",
       "expect": "module",
       "features": ["conditions"],

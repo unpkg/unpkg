@@ -35,23 +35,51 @@ describe("parseEsmPackagePathname", () => {
 });
 
 describe("normalizeEsmRequestUrl", () => {
-  it("adds the default target", () => {
+  it("keeps the default target implicit", () => {
     let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react@18");
-    expect("url" in result && result.url.search).toBe("?target=es2022");
+    expect("url" in result && result.url.search).toBe("");
+    expect("target" in result && result.target).toBe("es2022");
   });
 
-  it("normalizes import-map-friendly path query syntax", () => {
-    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react-dom@18.3.1&dev/client");
-
-    expect("url" in result && result.url.pathname).toBe("/react-dom@18.3.1/client");
-    expect("url" in result && result.url.search).toBe("?dev=&target=es2022");
+  it("strips an explicit default target", () => {
+    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react@18?target=es2022");
+    expect("url" in result && result.url.search).toBe("");
   });
 
-  it("normalizes import-map-friendly trailing slash query syntax", () => {
-    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react-dom@18.3.1&dev/");
+  it("keeps non-default targets in the canonical URL", () => {
+    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react@18?target=es2017");
+    expect("url" in result && result.url.search).toBe("?target=es2017");
+  });
 
-    expect("url" in result && result.url.pathname).toBe("/react-dom@18.3.1/");
-    expect("url" in result && result.url.search).toBe("?dev=&target=es2022");
+  it("canonicalizes flag and list param values into one cache key", () => {
+    let result = normalizeEsmRequestUrl(
+      "https://esm.unpkg.com/react-dom@18.3.1?min=1&conditions=development&conditions=browser,development&junk=x"
+    );
+
+    expect("url" in result && result.url.search).toBe("?conditions=browser%2Cdevelopment&min=");
+  });
+
+  it("rejects ?meta combined with route-changing params", () => {
+    for (let param of ["css", "module", "worker"]) {
+      let result = normalizeEsmRequestUrl(`https://esm.unpkg.com/react-dom@18.3.1?meta&${param}`);
+
+      expect("code" in result && result.code).toBe("INVALID_QUERY");
+    }
+  });
+
+  it("rejects unsupported build params", () => {
+    for (let param of ["bundle", "ignore-annotations", "keep-names", "no-bundle", "standalone"]) {
+      let result = normalizeEsmRequestUrl(`https://esm.unpkg.com/react-dom@18.3.1?${param}`);
+
+      expect("code" in result && result.code).toBe("INVALID_QUERY");
+      expect("status" in result && result.status).toBe(400);
+    }
+  });
+
+  it("rejects the denonext target", () => {
+    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react-dom@18.3.1?target=denonext");
+
+    expect("code" in result && result.code).toBe("UNSUPPORTED_TARGET");
   });
 
   it("accepts runtime-native esm.sh compatibility targets", () => {

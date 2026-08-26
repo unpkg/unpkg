@@ -143,6 +143,25 @@ async function fetchAndParsePackage(
   version: string,
   options: EntryHandlerOptions,
 ): Promise<void> {
+  try {
+    return await fetchAndParsePackageExact(registry, packageName, version, options);
+  } catch (error) {
+    // Tarball URLs are case-sensitive; fall back to the lowercase name for
+    // requests that spell a lowercase package with different casing.
+    if (error instanceof PackageNotFoundError && packageName !== packageName.toLowerCase()) {
+      return fetchAndParsePackageExact(registry, packageName.toLowerCase(), version, options);
+    }
+
+    throw error;
+  }
+}
+
+async function fetchAndParsePackageExact(
+  registry: string,
+  packageName: string,
+  version: string,
+  options: EntryHandlerOptions,
+): Promise<void> {
   let tarballUrl = createTarballUrl(registry, packageName, version);
   // Keep tarball work within the upstream request budget.
   let signal = AbortSignal.timeout(TARBALL_FETCH_TIMEOUT_MS);
@@ -300,8 +319,9 @@ async function fetchAndParsePackage(
 }
 
 function createTarballUrl(registry: string, packageName: string, version: string): URL {
-  let basename = packageName.split("/").pop()!.toLowerCase();
-  return new URL(`/${packageName.toLowerCase()}/-/${basename}-${version}.tgz`, registry);
+  // Tarball URLs are case-sensitive; legacy uppercase package names keep their case.
+  let basename = packageName.split("/").pop()!;
+  return new URL(`/${packageName}/-/${basename}-${version}.tgz`, registry);
 }
 
 function isTimeoutError(error: unknown, signal: AbortSignal): boolean {

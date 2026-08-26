@@ -65,9 +65,6 @@ export function createHomePage(env: Env): string {
                   Add <code>?dev</code> for development builds.
                 </li>
                 <li>
-                  Add <code>?bundle</code>, <code>?standalone</code>, or <code>?no-bundle</code> to control bundling.
-                </li>
-                <li>
                   Add <code>?meta</code> to inspect resolved module metadata.
                 </li>
               </ul>

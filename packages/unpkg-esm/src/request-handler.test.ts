@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import type { ExecutionContext } from "@cloudflare/workers-types";
 import { handleRequest as handleFilesRequest } from "unpkg-files";
 
@@ -42,6 +42,8 @@ function fileResponse(path: string): Response {
   return new Response(Bun.file(path));
 }
 
+const defaultCacheStore = new Map<string, Response>();
+
 describe("handleRequest", () => {
   let globalCaches: CacheStorage | undefined;
   let globalFetch: typeof fetch | undefined;
@@ -51,6 +53,14 @@ describe("handleRequest", () => {
     globalFetch = globalThis.fetch;
 
     globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          return defaultCacheStore.get(request.url)?.clone();
+        },
+        async put(request: Request, response: Response) {
+          defaultCacheStore.set(request.url, response);
+        },
+      },
       async open() {
         return {
           async match() {
@@ -151,10 +161,36 @@ describe("handleRequest", () => {
           });
         case "https://registry.npmjs.org/preact":
           return fileResponse(packageInfo.preact);
+        case "https://registry.npmjs.org/@jspm/core":
+          return Response.json({
+            name: "@jspm/core",
+            "dist-tags": { latest: "2.1.0" },
+            versions: {
+              "2.1.0": { name: "@jspm/core", version: "2.1.0" },
+            },
+          });
         case "https://registry.npmjs.org/react":
           return fileResponse(packageInfo.react);
         case "https://registry.npmjs.org/run":
         case "https://registry.npmjs.org/tsx":
+          return new Response("Not found", { status: 404 });
+        case "https://registry.npmjs.org/JSONStream":
+          return Response.json({
+            name: "JSONStream",
+            "dist-tags": { latest: "1.3.5" },
+            versions: {
+              "1.3.5": { name: "JSONStream", version: "1.3.5", main: "index.js" },
+            },
+          });
+        case "https://registry.npmjs.org/jsonstream":
+          return Response.json({
+            name: "jsonstream",
+            "dist-tags": { latest: "1.0.3" },
+            versions: {
+              "1.0.3": { name: "jsonstream", version: "1.0.3", main: "index.js" },
+            },
+          });
+        case "https://registry.npmjs.org/React":
           return new Response("Not found", { status: 404 });
         case "https://registry.npmjs.org/preact/-/preact-10.26.4.tgz":
           return fileResponse(packageTarballs.preact["10.26.4"]);
@@ -164,6 +200,10 @@ describe("handleRequest", () => {
           throw new Error(`Unexpected URL: ${url}`);
       }
     }) as unknown as typeof fetch;
+  });
+
+  beforeEach(() => {
+    defaultCacheStore.clear();
   });
 
   afterAll(() => {
@@ -214,15 +254,74 @@ describe("handleRequest", () => {
     expect(response.status).toBe(302);
     let location = response.headers.get("Location");
     expect(location).not.toBeNull();
-    expect(location).toMatch(/^\/react@18\.\d+\.\d+\?meta=&target=es2022$/);
+    expect(location).toMatch(/^\/react@18\.\d+\.\d+\?meta=$/);
   });
 
-  it("normalizes import-map-friendly path query syntax", async () => {
-    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4&dev/hooks?meta", {
+  it("serves legacy uppercase package names without falling back to lowercase", async () => {
+    // JSONStream and jsonstream are different packages; the uppercase request
+    // must resolve the uppercase package, not redirect to the lowercase one.
+    let response = await dispatchFetch("https://esm.unpkg.com/JSONStream", { redirect: "manual" });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe("/JSONStream@1.3.5");
+  });
+
+  it("redirects mixed-case requests to the canonical package name", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/React@18.2.0", { redirect: "manual" });
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/react@18.2.0");
+  });
+
+  it("rejects ?meta combined with params that change the module route", async () => {
+    for (let param of ["css", "module", "worker"]) {
+      let response = await dispatchFetch(`https://esm.unpkg.com/preact@10.26.4?meta&${param}`);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: {
+          code: "INVALID_QUERY",
+          message: `?meta cannot be combined with ?${param}`,
+        },
+      });
+    }
+  });
+
+  it("strips unknown query params during normalization", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?junk=1&dev", {
       redirect: "manual",
     });
     expect(response.status).toBe(301);
-    expect(response.headers.get("Location")).toBe("/preact@10.26.4/hooks?dev=&meta=&target=es2022");
+    expect(response.headers.get("Location")).toBe("/preact@10.26.4?dev=");
+  });
+
+  it("rejects unsupported build params with a JSON diagnostic", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?standalone");
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        code: "INVALID_QUERY",
+        message: "?standalone is not supported",
+      },
+    });
+  });
+
+  it("hashes and caches the exact artifact bytes for ?meta integrity", async () => {
+    defaultCacheStore.clear();
+
+    // The integrity cache is only active outside development/test modes.
+    let request = new Request("https://esm.unpkg.com/react@18.2.0?meta=");
+    let response = await handleRequest(request, { ...env, MODE: "production" }, context);
+    expect(response.status).toBe(200);
+    let json = (await response.json()) as any;
+
+    // The integrity hash must be computed from the artifact cached under the
+    // module URL, so a later module request serves exactly the hashed bytes.
+    await Bun.sleep(0);
+    let cached = defaultCacheStore.get("https://esm.unpkg.com/react@18.2.0");
+    expect(cached).toBeDefined();
+
+    let bytes = await cached!.clone().arrayBuffer();
+    let digest = await crypto.subtle.digest("SHA-384", bytes);
+    let expected = `sha384-${btoa(String.fromCharCode(...new Uint8Array(digest)))}`;
+    expect(json.integrity).toBe(expected);
   });
 
   it("returns build metadata for exact package URLs", async () => {
@@ -239,7 +338,7 @@ describe("handleRequest", () => {
     expect(json.version).toBe("18.2.0");
     expect(json.subpath).toBe(".");
     expect(json.target).toBe("es2022");
-    expect(json.module).toBe("https://esm.unpkg.com/react@18.2.0?target=es2022");
+    expect(json.module).toBe("https://esm.unpkg.com/react@18.2.0");
     expect(json.types).toBeNull();
     expect(json.integrity).toMatch(/^sha384-/);
   });
@@ -276,27 +375,17 @@ describe("handleRequest", () => {
   });
 
   it("proxies build artifacts from the files origin", async () => {
-    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4/src/component.js?no-bundle", {
-      redirect: "manual",
-    });
-    expect(redirectResponse.status).toBe(301);
-
-    let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
+    // Default-target module URLs are canonical as-is; no redirect.
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4/src/component.js");
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/javascript; charset=utf-8");
-    expect(response.headers.get("Cache-Control")).toBe("public, max-age=60, s-maxage=300");
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.has("X-UNPKG-Build-Key")).toBe(true);
-    expect(await response.text()).toContain('from "./util?target=es2022";');
   });
 
   it("adds TypeScript declaration headers to build artifacts", async () => {
-    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?no-bundle", {
-      redirect: "manual",
-    });
-    expect(redirectResponse.status).toBe(301);
-
-    let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4");
     expect(response.status).toBe(200);
     expect(response.headers.get("X-TypeScript-Types")).toBe("https://esm.unpkg.com/preact@10.26.4/src/index.d.ts");
   });
@@ -337,12 +426,7 @@ describe("handleRequest", () => {
   });
 
   it("does not build explicit files blocked by null package exports", async () => {
-    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/cesium@1.144.0/Build/Cesium/Cesium.js", {
-      redirect: "manual",
-    });
-    expect(redirectResponse.status).toBe(301);
-
-    let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
+    let response = await dispatchFetch("https://esm.unpkg.com/cesium@1.144.0/Build/Cesium/Cesium.js");
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
       error: {
@@ -508,9 +592,9 @@ describe("handleRequest", () => {
     let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/javascript; charset=utf-8");
-    expect(response.headers.get("Cache-Control")).toBe("public, max-age=60, s-maxage=300");
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
     expect(await response.text()).toContain(
-      'return new Worker("https://esm.unpkg.com/preact@10.26.4/src/component.js?target=es2022", { type: "module", ...options });'
+      'return new Worker("https://esm.unpkg.com/preact@10.26.4/src/component.js", { type: "module", ...options });'
     );
   });
 

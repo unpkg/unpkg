@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import {
   analyzeCommonJsSource,
   bundleSource,
+  clearPackageInfoCache,
   normalizeBuildOptions,
   parseAliases,
   parseDependencyOverrides,
@@ -18,6 +19,17 @@ import {
 } from "./esm-build-service.ts";
 
 const registry = "https://registry.npmjs.org";
+
+async function importBundledCode(code: string): Promise<Record<string, unknown>> {
+  let directory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-import-"));
+  let modulePath = path.join(directory, "bundle.mjs");
+  try {
+    await writeFile(modulePath, code);
+    return await import(modulePath);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+}
 
 describe("parseDependencyOverrides", () => {
   it("parses package version overrides", () => {
@@ -219,6 +231,10 @@ describe("rewriteEsmImports", () => {
           return Response.json(packageInfo("react", ["18.2.0", "18.3.1"], "18.3.1"));
         case "https://registry.npmjs.org/preact":
           return Response.json(packageInfo("preact", ["10.25.4", "10.26.4"], "10.26.4"));
+        case "https://registry.npmjs.org/@jspm/core":
+          return Response.json(packageInfo("@jspm/core", ["2.0.9", "2.1.0"], "2.1.0"));
+        case "https://registry.npmjs.org/string-width":
+          return Response.json(packageInfo("string-width", ["4.2.3", "5.1.2"], "5.1.2"));
         default:
           throw new Error(`Unexpected URL: ${url}`);
       }
@@ -229,6 +245,9 @@ describe("rewriteEsmImports", () => {
     if (globalFetch) {
       globalThis.fetch = globalFetch;
     }
+    // The module-level packument cache would otherwise leak mocked registry
+    // documents into later test files in the same process.
+    clearPackageInfoCache();
   });
 
   it("rewrites bare imports to exact esm.unpkg.com versions", async () => {
@@ -256,7 +275,7 @@ describe("rewriteEsmImports", () => {
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/preact@10.25.4/compat?deps=preact%4010.25.4&alias=react%3Apreact%2Fcompat";'
+      'import React from "https://esm.unpkg.com/preact@10.25.4/compat?alias=react%3Apreact%2Fcompat&deps=preact%4010.25.4";'
     );
   });
 
@@ -274,11 +293,11 @@ describe("rewriteEsmImports", () => {
       registry,
       "https://esm.unpkg.com",
       { react: "^18" },
-      options("bundle&deps=react@18.2.0&alias=react:preact/compat&external=react-dom")
+      options("deps=react@18.2.0&alias=react:preact/compat&external=react-dom")
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/preact@10.26.4/compat?bundle=&external=react-dom&deps=react%4018.2.0&alias=react%3Apreact%2Fcompat";'
+      'import React from "https://esm.unpkg.com/preact@10.26.4/compat?alias=react%3Apreact%2Fcompat&deps=react%4018.2.0&external=react-dom";'
     );
   });
 
@@ -289,48 +308,77 @@ describe("rewriteEsmImports", () => {
       registry,
       "https://esm.unpkg.com",
       { react: "^18" },
-      options("dev&target=es2017&conditions=browser,development&keep-names&ignore-annotations&min&sourcemap")
+      options("dev&target=es2017&conditions=browser,development&min&sourcemap")
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/react@18.3.1?dev=&target=es2017&conditions=browser%2Cdevelopment&ignore-annotations=&keep-names=&min=&sourcemap=";'
+      'import React from "https://esm.unpkg.com/react@18.3.1?conditions=browser%2Cdevelopment&dev=&min=&sourcemap=&target=es2017";'
     );
   });
 
-  it("propagates standalone mode to rewritten dependencies", async () => {
-    let code = 'import React from "react";';
-    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { react: "^18" }, options("standalone"));
+  it("resolves npm: alias dependencies to the aliased package", async () => {
+    let code = 'import stringWidth from "string-width-cjs";';
+    let result = await rewriteEsmImports(
+      code,
+      registry,
+      "https://esm.unpkg.com",
+      { "string-width-cjs": "npm:string-width@^4.2.0" },
+      options()
+    );
 
-    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.3.1?standalone=";');
+    expect(result).toBe('import stringWidth from "https://esm.unpkg.com/string-width@4.2.3";');
+  });
+
+  it("resolves git and workspace dependency specifiers to published versions", async () => {
+    let code = 'import React from "react";\nimport Preact from "preact";';
+    let result = await rewriteEsmImports(
+      code,
+      registry,
+      "https://esm.unpkg.com",
+      { react: "github:facebook/react", preact: "workspace:^" },
+      options()
+    );
+
+    expect(result).toContain('from "https://esm.unpkg.com/react@18.3.1"');
+    expect(result).toContain('from "https://esm.unpkg.com/preact@10.26.4"');
+  });
+
+  it("pins exact dependency versions without a registry lookup", async () => {
+    // "self-pkg" is not mocked in the registry fetch above; an exact version must
+    // resolve without any network request.
+    let code = 'import self from "self-pkg";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "self-pkg": "1.2.3" }, options());
+
+    expect(result).toBe('import self from "https://esm.unpkg.com/self-pkg@1.2.3";');
   });
 
   it("rewrites local imports with the active target", async () => {
     let code = 'import util from "./util";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import util from "./util?target=es2022";');
+    expect(result).toBe('import util from "./util";');
   });
 
   it("rewrites common Node builtins to browser polyfills", async () => {
     let code = 'import process from "node:process";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import process from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/process";');
+    expect(result).toBe('import process from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/process";');
   });
 
   it("rewrites additional browser-compatible Node builtins to polyfills", async () => {
     let code = 'import crypto from "node:crypto";\nimport os from "os";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/crypto"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/os"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/crypto"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/os"');
   });
 
   it("rewrites Node-only builtins to browser polyfills", async () => {
     let code = 'import fs from "node:fs";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import fs from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/fs";');
+    expect(result).toBe('import fs from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/fs";');
   });
 
   it("rewrites additional Node-only builtins to browser polyfills", async () => {
@@ -338,7 +386,7 @@ describe("rewriteEsmImports", () => {
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
     expect(result).toBe(
-      'import workerThreads from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/worker_threads";'
+      'import workerThreads from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/worker_threads";'
     );
   });
 
@@ -347,6 +395,67 @@ describe("rewriteEsmImports", () => {
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options("target=node"));
 
     expect(result).toBe(code);
+  });
+
+  it("polyfills bare builtins instead of resolving same-named npm packages", async () => {
+    // querystring, vm, tty, and constants all have unrelated npm packages squatting
+    // their names; the builtin must win. None of them are mocked in the registry
+    // fetch above, so resolving them as npm packages would throw.
+    let code = [
+      'import qs from "querystring";',
+      'import vm from "vm";',
+      'import tty from "tty";',
+      'import constants from "constants";',
+      'import promises from "fs/promises";',
+    ].join("\n");
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
+
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/querystring"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/vm"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/tty"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/constants"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/fs/promises"');
+  });
+
+  it("stubs node: builtins that have no browser polyfill", async () => {
+    let code = 'import sqlite from "node:sqlite";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
+
+    expect(result).toBe('import sqlite from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/@empty";');
+  });
+
+  it("stubs bare builtins that have no browser polyfill", async () => {
+    let code = 'import traceEvents from "trace_events";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
+
+    expect(result).toBe('import traceEvents from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/@empty";');
+  });
+
+  it("does not treat Object.prototype names as builtins", async () => {
+    // "constructor" is a real npm package; an inherited Object.prototype key
+    // must not shadow it.
+    let code = 'import ctor from "constructor";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { constructor: "1.0.0" }, options());
+
+    expect(result).toBe('import ctor from "https://esm.unpkg.com/constructor@1.0.0";');
+  });
+
+  it("cleans loose exact versions before emitting URLs", async () => {
+    let code = 'import x from "loose-pkg";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "loose-pkg": "v1.2.3" }, options());
+
+    expect(result).toBe('import x from "https://esm.unpkg.com/loose-pkg@1.2.3";');
+  });
+
+  it("marks builds unpinned when dependency resolution fails", async () => {
+    let code = 'import missing from "unmocked-package";';
+    let diagnostics = { unpinnedSpecifiers: [] as string[] };
+    // "unmocked-package" is not in the registry mock; the fetch throws, the
+    // rewrite degrades to the raw range, and the build is flagged unpinned.
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "unmocked-package": "^2" }, options(), diagnostics);
+
+    expect(result).toBe('import missing from "https://esm.unpkg.com/unmocked-package@^2";');
+    expect(diagnostics.unpinnedSpecifiers).toEqual(["unmocked-package"]);
   });
 });
 
@@ -448,25 +557,11 @@ describe("bundleSource", () => {
     }
   });
 
-  it("bundles package self-references as package-internal imports", async () => {
+  it("keeps package self-references external so subpaths share one module instance", async () => {
     let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-self-reference-"));
 
     try {
-      await writeFile(
-        path.join(packageDirectory, "package.json"),
-        JSON.stringify({
-          name: "self-referencing-package",
-          exports: {
-            ".": "./index.js",
-            "./client": "./client.js",
-          },
-        })
-      );
       await writeFile(path.join(packageDirectory, "index.js"), "exports.createRoot = () => 'ok';");
-      await writeFile(
-        path.join(packageDirectory, "client.js"),
-        "var root = require('self-referencing-package'); exports.createRoot = root.createRoot;"
-      );
 
       let result = await bundleSource(
         packageDirectory,
@@ -485,10 +580,123 @@ describe("bundleSource", () => {
       );
 
       expect(result.code).not.toContain('Dynamic require of "self-referencing-package"');
-      expect(result.code).toContain("createRoot");
-      expect(result.code).toContain("__unpkg_cjs_default as default");
-      expect(result.code).toContain('__unpkg_cjs_default["createRoot"]');
+      // The root module must not be bundled into the subpath build.
+      expect(result.code).toContain('from "self-referencing-package"');
+      expect(result.code).not.toContain("'ok'");
       expect(result.code).toContain("as createRoot");
+      expect(result.code).toContain("as default");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("bundles self-references that resolve to the entry being built", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-root-self-reference-"));
+
+    try {
+      let code = "exports.helper = () => 'ok';\nvar self = require('root-self-package');\nexports.viaSelf = () => self.helper();";
+      // Externalizing a self-reference to the entry itself would make the
+      // module import its own URL mid-evaluation.
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "root-self-package", exports: { ".": "./index.js" } },
+        "root-self-package",
+        "1.0.0",
+        "/index.js",
+        code,
+        options()
+      );
+
+      expect(result.code).not.toContain('from "root-self-package"');
+      expect(result.code).toContain("as helper");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("fails builds for self-references blocked by the exports map", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-blocked-self-reference-"));
+
+    try {
+      await expect(
+        bundleSource(
+          packageDirectory,
+          { name: "blocked-self-package", exports: { ".": "./index.js", "./internal/*": null } },
+          "blocked-self-package",
+          "1.0.0",
+          "/index.js",
+          "var util = require('blocked-self-package/internal/util');\nexports.util = util;",
+          options()
+        )
+      ).rejects.toThrow('blocked by its exports map');
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("skips export names that cannot be import bindings", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-eval-export-"));
+
+    try {
+      // `import { eval }` is a SyntaxError in module code; the name is dropped
+      // rather than failing the build.
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "eval-export-package" },
+        "eval-export-package",
+        "1.0.0",
+        "/index.js",
+        "exports.eval = () => 'ok'; exports.parse = () => 'ok';",
+        options()
+      );
+
+      expect(result.code).toContain("as parse");
+      expect(result.code).not.toContain("as eval");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("resolves extensionless internal requires to .cjs files", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-cjs-extension-"));
+
+    try {
+      await writeFile(path.join(packageDirectory, "impl.cjs"), "exports.value = 42;");
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "cjs-extension-package" },
+        "cjs-extension-package",
+        "1.0.0",
+        "/index.js",
+        "module.exports = require('./impl');",
+        options()
+      );
+
+      expect(result.code).toContain("42");
+      expect(result.code).toContain("as value");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps ESM package self-references external", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-esm-self-reference-"));
+
+    try {
+      await writeFile(path.join(packageDirectory, "index.js"), "export const h = () => 'h';");
+
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "esm-self-package" },
+        "esm-self-package",
+        "1.0.0",
+        "/hooks.js",
+        "import { h } from 'esm-self-package';\nexport const useThing = () => h();",
+        options()
+      );
+
+      expect(result.code).toContain('from "esm-self-package"');
+      expect(result.code).not.toContain("'h'");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }
@@ -530,8 +738,133 @@ describe("bundleSource", () => {
         options()
       );
 
-      expect(result.code).toContain('__unpkg_cjs_default["createContext"]');
       expect(result.code).toContain("as createContext");
+      expect(result.code).toContain("as default");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps CommonJS named exports when minifying", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-minified-cjs-exports-"));
+
+    try {
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "minified-cjs-package" },
+        "minified-cjs-package",
+        "1.0.0",
+        "/index.js",
+        "exports.foo = 1; exports.bar = function bar() { return 2; };",
+        options("min")
+      );
+
+      expect(result.code).toContain("as foo");
+      expect(result.code).toContain("as bar");
+      expect(result.code).toContain("as default");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("unwraps the default export of __esModule CommonJS modules", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-esmodule-default-"));
+
+    try {
+      let code = [
+        "Object.defineProperty(exports, '__esModule', { value: true });",
+        "exports.default = function main() { return 'main'; };",
+        "exports.helper = function helper() { return 'helper'; };",
+      ].join("\n");
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "esmodule-default-package" },
+        "esmodule-default-package",
+        "1.0.0",
+        "/index.js",
+        code,
+        options()
+      );
+
+      // esbuild's __toESM interop resolves the default binding to exports.default for
+      // __esModule modules; the raw exports object must not be the default export.
+      expect(result.code).toContain("__toESM");
+      expect(result.code).toContain(".default;");
+      expect(result.code).toContain("as helper");
+      expect(result.code).toContain("as default");
+
+      let namespace = await importBundledCode(result.code);
+      expect(typeof namespace.default).toBe("function");
+      expect((namespace.default as () => string)()).toBe("main");
+      expect((namespace.helper as () => string)()).toBe("helper");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps the exports object as default for CommonJS modules without __esModule", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-plain-cjs-default-"));
+
+    try {
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "plain-cjs-package" },
+        "plain-cjs-package",
+        "1.0.0",
+        "/index.js",
+        "exports.foo = 1;",
+        options()
+      );
+
+      let namespace = await importBundledCode(result.code);
+      expect(namespace.foo).toBe(1);
+      expect((namespace.default as { foo: number }).foo).toBe(1);
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("reexports other packages with export * so named exports resolve at runtime", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-external-reexport-"));
+
+    try {
+      let code = [
+        "module.exports = require('buffer');",
+        "exports.extra = true;",
+      ].join("\n");
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "external-reexport-package" },
+        "external-reexport-package",
+        "1.0.0",
+        "/index.js",
+        code,
+        options()
+      );
+
+      expect(result.code).toContain('export * from "buffer"');
+      expect(result.code).toContain("as extra");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps inline sourcemaps on CommonJS builds with named exports", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-cjs-sourcemap-"));
+
+    try {
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "cjs-sourcemap-package" },
+        "cjs-sourcemap-package",
+        "1.0.0",
+        "/index.js",
+        "exports.foo = 1;",
+        options("sourcemap")
+      );
+
+      expect(result.code).toContain("as foo");
+      expect(result.code).toContain("//# sourceMappingURL=data:application/json");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }
@@ -555,9 +888,8 @@ describe("bundleSource", () => {
         options()
       );
 
-      expect(result.code).toContain('__unpkg_cjs_default["createRoot"]');
       expect(result.code).toContain("as createRoot");
-      expect(result.code).not.toContain('unpkg_cjs_default["privateInternal"]');
+      expect(result.code).not.toContain("privateInternal as");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }

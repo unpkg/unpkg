@@ -12,7 +12,6 @@ interface PackageSeed {
 
 type ScenarioName =
   | "browser-target"
-  | "bundle"
   | "css-module"
   | "css-missing"
   | "css-subpath"
@@ -21,15 +20,12 @@ type ScenarioName =
   | "external-all"
   | "external-react"
   | "jsx-runtime"
-  | "keep-names"
   | "meta"
   | "min"
-  | "no-bundle"
   | "node-target"
   | "raw-package-json"
   | "root"
   | "sourcemap"
-  | "standalone"
   | "worker";
 
 interface CompatCase {
@@ -68,10 +64,10 @@ const packageSeeds: PackageSeed[] = [
   { name: "copy-to-clipboard", category: "browser" },
   { name: "core-js", category: "large-graph" },
   { name: "cross-fetch", category: "browser" },
-  { name: "d3", category: "large-graph", scenarios: ["bundle", "no-bundle", "standalone"] },
+  { name: "d3", category: "large-graph" },
   { name: "d3-array", category: "large-graph" },
   { name: "d3-scale", category: "large-graph" },
-  { name: "date-fns", category: "browser", scenarios: ["no-bundle"] },
+  { name: "date-fns", category: "browser" },
   { name: "dayjs", category: "cjs" },
   { name: "debug", category: "cjs" },
   { name: "decimal.js", category: "browser" },
@@ -91,9 +87,9 @@ const packageSeeds: PackageSeed[] = [
   { name: "js-cookie", category: "browser" },
   { name: "js-yaml", category: "cjs" },
   { name: "jszip", category: "browser" },
-  { name: "lit", category: "framework", scenarios: ["no-bundle"] },
+  { name: "lit", category: "framework" },
   { name: "lodash", category: "cjs" },
-  { name: "lodash-es", category: "browser", scenarios: ["no-bundle"] },
+  { name: "lodash-es", category: "browser" },
   { name: "marked", category: "browser" },
   { name: "memoize-one", category: "cjs" },
   { name: "mime", category: "cjs" },
@@ -103,7 +99,7 @@ const packageSeeds: PackageSeed[] = [
   { name: "nanoid", category: "browser", scenarios: ["browser-target", "node-target"] },
   { name: "normalize.css", category: "css", cssRoot: true },
   { name: "path-browserify", category: "node-builtin" },
-  { name: "preact", category: "framework", scenarios: ["jsx-runtime", "no-bundle", "worker"] },
+  { name: "preact", category: "framework", scenarios: ["jsx-runtime", "worker"] },
   { name: "prop-types", category: "framework-peer" },
   { name: "qs", category: "cjs" },
   { name: "query-string", category: "browser" },
@@ -120,11 +116,11 @@ const packageSeeds: PackageSeed[] = [
   { name: "recharts", category: "framework-peer", scenarios: ["deps-react", "external-react"] },
   { name: "redux", category: "browser" },
   { name: "resolve", category: "cjs" },
-  { name: "rxjs", category: "browser", scenarios: ["no-bundle"] },
+  { name: "rxjs", category: "browser" },
   { name: "scheduler", category: "framework-peer" },
   { name: "semver", category: "cjs" },
   { name: "shallowequal", category: "cjs" },
-  { name: "solid-js", category: "framework", scenarios: ["jsx-runtime", "no-bundle"] },
+  { name: "solid-js", category: "framework", scenarios: ["jsx-runtime"] },
   { name: "stream-browserify", category: "node-builtin" },
   { name: "string-width", category: "cjs" },
   { name: "styled-components", category: "framework-peer", scenarios: ["deps-react", "external-react"] },
@@ -137,18 +133,18 @@ const packageSeeds: PackageSeed[] = [
   { name: "uuid", category: "browser", scenarios: ["browser-target", "node-target"] },
   { name: "valtio", category: "framework-peer", scenarios: ["deps-react", "external-react"] },
   { name: "vite", category: "node-only", scenarios: ["node-target"] },
-  { name: "vue", category: "framework", scenarios: ["dev", "no-bundle"] },
+  { name: "vue", category: "framework", scenarios: ["dev"] },
   { name: "vue-router", category: "framework-peer" },
   { name: "yallist", category: "cjs" },
   { name: "yaml", category: "browser" },
   { name: "yup", category: "browser" },
   { name: "zod", category: "browser" },
   { name: "zustand", category: "framework-peer", scenarios: ["deps-react", "external-react"] },
-  { name: "three", category: "large-graph", scenarios: ["bundle", "no-bundle", "standalone"] },
-  { name: "monaco-editor", category: "large-graph", scenarios: ["bundle", "no-bundle"] },
+  { name: "three", category: "large-graph" },
+  { name: "monaco-editor", category: "large-graph" },
   { name: "lucide-react", category: "framework-peer", scenarios: ["deps-react", "external-react"] },
   { name: "react-window", category: "framework-peer", scenarios: ["deps-react", "external-react"] },
-  { name: "ag-grid-community", category: "large-graph", scenarios: ["bundle", "no-bundle"] },
+  { name: "ag-grid-community", category: "large-graph" },
   { name: "xstate", category: "browser" },
   { name: "jotai", category: "framework-peer", scenarios: ["deps-react", "external-react"] },
   { name: "es-toolkit", category: "browser" },
@@ -205,8 +201,6 @@ function createCase(seed: PackageSeed, version: string, scenario: ScenarioName):
   switch (scenario) {
     case "browser-target":
       return moduleCase(seed, `Browser target for ${packageSpecifier}`, `${base}?target=es2020`, ["target"]);
-    case "bundle":
-      return moduleCase(seed, `Explicit bundle for ${packageSpecifier}`, `${base}?bundle`, ["bundle"]);
     case "css-module":
       return moduleCase(
         seed,
@@ -231,14 +225,10 @@ function createCase(seed: PackageSeed, version: string, scenario: ScenarioName):
       return moduleCase(seed, `External React for ${packageSpecifier}`, `${base}?external=react,react-dom`, ["external"]);
     case "jsx-runtime":
       return moduleCase(seed, `JSX runtime subpath for ${packageSpecifier}`, `${base}/jsx-runtime`, ["subpath", "jsx-runtime"]);
-    case "keep-names":
-      return moduleCase(seed, `Keep names for ${packageSpecifier}`, `${base}?keep-names`, ["keep-names"]);
     case "meta":
       return jsonCase(seed, `Metadata for ${packageSpecifier}`, `${base}?meta`, ["meta"]);
     case "min":
       return moduleCase(seed, `Minified output for ${packageSpecifier}`, `${base}?min`, ["min"]);
-    case "no-bundle":
-      return moduleCase(seed, `No-bundle output for ${packageSpecifier}`, `${base}?no-bundle`, ["no-bundle"]);
     case "node-target":
       return moduleCase(seed, `Node target for ${packageSpecifier}`, `${base}?target=node`, ["target-node"]);
     case "raw-package-json":
@@ -249,8 +239,6 @@ function createCase(seed: PackageSeed, version: string, scenario: ScenarioName):
         : moduleCase(seed, `Package root for ${packageSpecifier}`, base, ["package-root"]);
     case "sourcemap":
       return moduleCase(seed, `Source map output for ${packageSpecifier}`, `${base}?sourcemap`, ["sourcemap"]);
-    case "standalone":
-      return moduleCase(seed, `Standalone output for ${packageSpecifier}`, `${base}?standalone`, ["standalone"]);
     case "worker":
       return moduleCase(seed, `Worker wrapper for ${packageSpecifier}`, `${base}?worker`, ["worker"]);
   }

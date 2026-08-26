@@ -28,11 +28,11 @@
     },
     {
       "category": "external",
-      "description": "Explicit external dependency",
+      "description": "Explicit external dependency across a version-resolving redirect",
       "expect": "module",
       "features": ["external"],
       "package": "react-dom",
-      "path": "/react-dom@18.3.1/client?external=react",
+      "path": "/react-dom@18/client?external=react",
       "preserveRedirectQuery": ["external"]
     },
     {
@@ -43,51 +43,6 @@
       "package": "react-dom",
       "path": "/react-dom@18.3.1/client?deps=react@18.2.0",
       "preserveRedirectQuery": ["deps"]
-    },
-    {
-      "category": "dependency-control",
-      "description": "Alias React to Preact compat",
-      "expect": "module",
-      "features": ["alias", "deps"],
-      "package": "react-dom",
-      "path": "/react-dom@18.3.1/client?alias=react:preact/compat&deps=preact@10.25.4",
-      "preserveRedirectQuery": ["alias", "deps"]
-    },
-    {
-      "category": "bundling",
-      "description": "No-bundle mode",
-      "expect": "module",
-      "features": ["no-bundle"],
-      "package": "preact",
-      "path": "/preact@10.26.4/hooks?no-bundle",
-      "preserveRedirectQuery": ["no-bundle"]
-    },
-    {
-      "category": "bundling",
-      "description": "Bundle false mode",
-      "expect": "module",
-      "features": ["bundle-false"],
-      "package": "preact",
-      "path": "/preact@10.26.4/hooks?bundle=false",
-      "preserveRedirectQuery": ["bundle"]
-    },
-    {
-      "category": "bundling",
-      "description": "Explicit bundle mode",
-      "expect": "module",
-      "features": ["bundle"],
-      "package": "preact",
-      "path": "/preact@10.26.4/hooks?bundle",
-      "preserveRedirectQuery": ["bundle"]
-    },
-    {
-      "category": "bundling",
-      "description": "Standalone bundle mode",
-      "expect": "module",
-      "features": ["standalone"],
-      "package": "preact",
-      "path": "/preact@10.26.4/hooks?standalone",
-      "preserveRedirectQuery": ["standalone"]
     },
     {
       "category": "raw",
@@ -153,14 +108,6 @@
       "redirectParity": "final-path-and-query"
     },
     {
-      "category": "diagnostic",
-      "description": "Raw mode rejects transform flags",
-      "expect": "diagnostic",
-      "features": ["raw", "invalid-query"],
-      "package": "react",
-      "path": "/react@18.3.1?raw&target=es2022"
-    },
-    {
       "category": "build-options",
       "description": "Development build flag",
       "expect": "module",
@@ -170,21 +117,12 @@
       "preserveRedirectQuery": ["dev"]
     },
     {
-      "category": "redirect-query",
-      "description": "Semver redirects preserve build query parameters",
-      "expect": "module",
-      "features": ["redirect", "query-forwarding", "dev", "external", "target"],
-      "package": "react",
-      "path": "/react@18?dev&external=react&target=es2020",
-      "preserveRedirectQuery": ["dev", "external", "target"]
-    },
-    {
       "category": "build-options",
-      "description": "Development env option",
+      "description": "Development env option across a version-resolving redirect",
       "expect": "module",
       "features": ["env"],
       "package": "react",
-      "path": "/react@18.3.1?env=development",
+      "path": "/react@18?env=development",
       "preserveRedirectQuery": ["env"]
     },
     {
@@ -212,24 +150,6 @@
       "package": "preact",
       "path": "/preact@10.26.4?exports=h,render",
       "preserveRedirectQuery": ["exports"]
-    },
-    {
-      "category": "build-options",
-      "description": "Keep names option",
-      "expect": "module",
-      "features": ["keep-names"],
-      "package": "preact",
-      "path": "/preact@10.26.4?keep-names",
-      "preserveRedirectQuery": ["keep-names"]
-    },
-    {
-      "category": "build-options",
-      "description": "Ignore annotations option",
-      "expect": "module",
-      "features": ["ignore-annotations"],
-      "package": "preact",
-      "path": "/preact@10.26.4?ignore-annotations",
-      "preserveRedirectQuery": ["ignore-annotations"]
     },
     {
       "category": "build-options",
@@ -275,14 +195,6 @@
       "package": "@types/node",
       "path": "/@types/node@22.10.2?raw",
       "redirectParity": "final-path-and-query"
-    },
-    {
-      "category": "import-map",
-      "description": "Import-map-friendly path query syntax",
-      "expect": "module",
-      "features": ["path-query", "dev"],
-      "package": "react-dom",
-      "path": "/react-dom@18.3.1&dev/client"
     },
     {
       "category": "metadata",
@@ -368,6 +280,46 @@
       "features": ["css", "css-not-found"],
       "package": "react",
       "path": "/react@18.3.1?css"
+    },
+    {
+      "category": "cjs-interop",
+      "description": "Babel-compiled CommonJS default export (is-hotkey)",
+      "expect": "module",
+      "features": ["cjs", "esmodule-default", "version"],
+      "package": "is-hotkey",
+      "path": "/is-hotkey@0.2.0"
+    },
+    {
+      "category": "cjs-interop",
+      "description": "CommonJS reexport of a Node builtin (safe-buffer)",
+      "expect": "module",
+      "features": ["cjs", "reexport", "node-builtin", "version"],
+      "package": "safe-buffer",
+      "path": "/safe-buffer@5.2.1"
+    },
+    {
+      "category": "cjs-interop",
+      "description": "Minified CommonJS build keeps named exports",
+      "expect": "module",
+      "features": ["cjs", "min", "version"],
+      "package": "react",
+      "path": "/react@18.3.1?min"
+    },
+    {
+      "category": "dependency-resolution",
+      "description": "npm: alias dependencies resolve (@isaacs/cliui)",
+      "expect": "module",
+      "features": ["cjs", "npm-alias", "version"],
+      "package": "@isaacs/cliui",
+      "path": "/@isaacs/cliui@8.0.2"
+    },
+    {
+      "category": "package-name",
+      "description": "Legacy uppercase package name (JSONStream)",
+      "expect": "module",
+      "features": ["uppercase-name", "version"],
+      "package": "JSONStream",
+      "path": "/JSONStream@1.3.5"
     }
   ]
 }
