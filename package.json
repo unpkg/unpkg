@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "pnpm -r run build",
+    "build:social-cards": "bun scripts/build-social-cards.ts",
     "clean": "git clean -fdX .",
     "clean:reports": "node -e \"fs.rmSync('.reports', { recursive: true, force: true }); fs.mkdirSync('.reports', { recursive: true });\"",
     "deploy:app": "pnpm --filter unpkg-app run deploy",

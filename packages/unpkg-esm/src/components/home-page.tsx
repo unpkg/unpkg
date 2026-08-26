@@ -24,7 +24,7 @@ export function createHomePage(env: Env): string {
   return (
     "<!DOCTYPE html>" +
     render(
-      <Document>
+      <Document origin={esmOrigin}>
         <Header />
         <main>
           <div class="content">
@@ -89,7 +89,7 @@ export function createHomePage(env: Env): string {
   );
 }
 
-function Document({ children }: { children: ComponentChildren }): VNode {
+function Document({ children, origin }: { children: ComponentChildren; origin: string }): VNode {
   return (
     <html lang="en">
       <head>
@@ -97,6 +97,17 @@ function Document({ children }: { children: ComponentChildren }): VNode {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content="Browser-ready npm package imports from UNPKG." />
         <meta name="color-scheme" content="light dark" />
+
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="UNPKG" />
+        <meta property="og:title" content="UNPKG ESM" />
+        <meta property="og:description" content="Browser-ready npm package imports from UNPKG." />
+        <meta property="og:image" content={new URL("/social-card.png", origin).href} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Browser-ready npm package imports from UNPKG." />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@unpkg" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
         <link rel="icon" type="image/png" href="/favicon.png" />
