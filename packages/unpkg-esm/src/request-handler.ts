@@ -2,6 +2,7 @@ import {
   getEsmPackageSubpath,
   getPackageInfo,
   normalizeEsmRequestUrl,
+  normalizeSearchParams,
   resolvePackageExport,
   resolvePackageVersion,
 } from "unpkg-worker";
@@ -73,7 +74,12 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   }
 
   // Canonical name from the registry; may differ from the request in case.
-  let packageName = packageInfo.name;
+  // Only trust it when it is a case variant of what was requested, so a
+  // malformed registry document cannot produce foreign redirects or loops.
+  let packageName =
+    typeof packageInfo.name === "string" && packageInfo.name.toLowerCase() === packagePath.package.toLowerCase()
+      ? packageInfo.name
+      : packagePath.package;
 
   let version = resolvePackageVersion(packageInfo, packagePath.version ?? "latest");
   if (version == null || packageInfo.versions == null || packageInfo.versions[version] == null) {
@@ -89,7 +95,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     searchParams.set("external", "*");
   }
 
-  let search = normalizeSearch(searchParams);
+  let search = normalizeSearchParams(searchParams);
   let pathname = `/${packageName}@${version}${packagePath.filename ?? ""}`;
   let shouldRedirect =
     packagePath.externalAll ||
@@ -154,7 +160,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     let workerSearchParams = new URLSearchParams(searchParams);
     workerSearchParams.delete("worker");
     let workerUrl = new URL(
-      `/${packageName}@${version}${packagePath.filename ?? ""}${normalizeSearch(workerSearchParams)}`,
+      `/${packageName}@${version}${packagePath.filename ?? ""}${normalizeSearchParams(workerSearchParams)}`,
       normalized.url.origin
     );
     let code = `export default function createWorker(options) {\n  return new Worker(${JSON.stringify(workerUrl.toString())}, { type: "module", ...options });\n}\n`;
@@ -190,7 +196,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         cssSearchParams.set("module", searchParams.get("module") ?? "");
       }
 
-      return redirect(`/${packageName}@${version}${cssPath}${normalizeSearch(cssSearchParams)}`, {
+      return redirect(`/${packageName}@${version}${cssPath}${normalizeSearchParams(cssSearchParams)}`, {
         status: 301,
         headers: corsHeaders({
           "Cache-Control": shortCacheControl,
@@ -231,7 +237,7 @@ async function createBuildResponse(
   let buildSearchParams = new URLSearchParams(searchParams);
   buildSearchParams.set("origin", origin);
   let buildResponse = await fetch(
-    new URL(`/build/${packageName}@${version}${filename ?? ""}${normalizeSearch(buildSearchParams)}`, env.FILES_ORIGIN)
+    new URL(`/build/${packageName}@${version}${filename ?? ""}${normalizeSearchParams(buildSearchParams)}`, env.FILES_ORIGIN)
   );
   if (!buildResponse.ok) {
     return jsonError({
@@ -250,7 +256,7 @@ async function createBuildResponse(
     headers.set("X-TypeScript-Types", types);
   }
 
-  return new Response(await buildResponse.arrayBuffer(), {
+  return new Response(buildResponse.body, {
     status: buildResponse.status,
     statusText: buildResponse.statusText,
     headers,
@@ -289,7 +295,7 @@ async function createMetadata(
   let target = searchParams.get("target") ?? "es2022";
   let artifactSearchParams = new URLSearchParams(searchParams);
   artifactSearchParams.delete("meta");
-  let artifactSearch = normalizeSearch(artifactSearchParams);
+  let artifactSearch = normalizeSearchParams(artifactSearchParams);
   let modulePath = `/${packageName}@${version}${filename ?? ""}${artifactSearch}`;
   let module = new URL(modulePath, origin).toString();
   let types = getPackageTypesUrl(origin, packageName, version, filename, packageJson);
@@ -335,9 +341,9 @@ async function getBuildIntegrity(
   // and cache what we build here under the module URL so the subsequent module
   // request in this colo serves exactly the hashed bytes.
   let moduleRequest = new Request(
-    new URL(`/${packageName}@${version}${filename ?? ""}${normalizeSearch(searchParams)}`, origin)
+    new URL(`/${packageName}@${version}${filename ?? ""}${normalizeSearchParams(searchParams)}`, origin)
   );
-  let cache = getDefaultCache();
+  let cache = env.MODE === "development" || env.MODE === "test" ? undefined : getDefaultCache();
   let response = cache != null ? await cache.match(moduleRequest) : undefined;
 
   if (response == null) {
@@ -395,7 +401,7 @@ async function serveRawFile(env: Env, packageName: string, version: string, file
     headers.set(name, value);
   }
 
-  return new Response(await rawResponse.arrayBuffer(), {
+  return new Response(rawResponse.body, {
     status: rawResponse.status,
     statusText: rawResponse.statusText,
     headers,
@@ -661,24 +667,6 @@ function listExportSubpaths(packageJson: PackageJson): string[] {
   return Object.keys(packageJson.exports).filter((key) => key.startsWith("."));
 }
 
-function normalizeSearch(searchParams: URLSearchParams): string {
-  let entries = Array.from(searchParams.entries()).sort(([leftName, leftValue], [rightName, rightValue]) => {
-    if (leftName === rightName) {
-      return leftValue.localeCompare(rightValue);
-    }
-
-    return leftName.localeCompare(rightName);
-  });
-  let normalized = new URLSearchParams();
-
-  for (let [name, value] of entries) {
-    normalized.append(name, value);
-  }
-
-  let search = normalized.toString();
-  return search === "" ? "" : `?${search}`;
-}
-
 function jsonError(error: EsmRequestError | { code: string; message: string; status: number }): Response {
   return Response.json(
     {
@@ -742,7 +730,7 @@ async function handleInlineTransformRequest(request: Request, env: Env): Promise
     headers.set(name, value);
   }
 
-  return new Response(await sourceResponse.arrayBuffer(), {
+  return new Response(sourceResponse.body, {
     status: sourceResponse.status,
     statusText: sourceResponse.statusText,
     headers,

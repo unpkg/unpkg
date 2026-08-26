@@ -7,18 +7,22 @@ import * as esbuild from "esbuild";
 import { parse } from "es-module-lexer/js";
 import * as semver from "semver";
 import {
+  normalizeSearchParams,
   resolvePackageExportResult,
   resolvePackageVersion,
 } from "unpkg-worker";
 import type { PackageInfo, PackageJson as WorkerPackageJson } from "unpkg-worker";
 
-import { getFile, withPackageFileDirectory } from "./npm-files.ts";
+import { withPackageFileDirectory } from "./npm-files.ts";
 
 const defaultEsmOrigin = "https://esm.unpkg.com";
 const moduleCacheControl = "public, max-age=60, s-maxage=300";
 // Build artifacts are only served at exact-version canonical URLs, so they can
 // be cached like immutable content.
 const immutableCacheControl = "public, max-age=31536000, immutable";
+// The @jspm/core major used for Node builtin polyfills. Emitted URLs pin the
+// resolved exact version; this range is the fallback when resolution fails.
+const jspmCorePolyfillRange = "2";
 // Node builtins with a browser implementation in @jspm/core. The bare subpath
 // (without /browser/) resolves through @jspm/core's own exports map, which picks
 // the browser variant via the default condition. inspector maps to an empty stub.
@@ -76,16 +80,18 @@ const polyfilledNodeBuiltins = [
   "worker_threads",
   "zlib",
 ];
-const browserBuiltinPolyfills: Record<string, string> = Object.fromEntries(
-  polyfilledNodeBuiltins.flatMap((builtin) => {
-    let polyfill = `@jspm/core@2/nodelibs/${builtin}`;
-    return [
-      [builtin, polyfill],
-      [`node:${builtin}`, polyfill],
-    ];
-  })
+// Maps builtin specifiers (bare and node:-prefixed) to their @jspm/core nodelibs
+// subpath. A Map avoids Object.prototype key collisions for specifiers like
+// "constructor" that are real npm package names.
+const browserBuiltinPolyfills = new Map<string, string>(
+  polyfilledNodeBuiltins.flatMap((builtin): [string, string][] => [
+    [builtin, builtin],
+    [`node:${builtin}`, builtin],
+  ])
 );
-// Builtins with no browser implementation; also requireable without the node: prefix.
+// Builtins with no browser implementation; also requireable without the node:
+// prefix. These (and unknown node:* specifiers) map to @jspm/core's empty-module
+// stub so packages that merely probe for them still build and run.
 const unpolyfilledNodeBuiltins = new Set(["readline/promises", "trace_events"]);
 
 export interface BuildRequest {
@@ -142,16 +148,6 @@ interface PackageJson {
   version?: string;
 }
 
-export class UnsupportedNodeBuiltinError extends Error {
-  builtin: string;
-
-  constructor(builtin: string) {
-    super(`Node builtin is not available in browser builds: ${builtin}`);
-    this.name = "UnsupportedNodeBuiltinError";
-    this.builtin = builtin;
-  }
-}
-
 export class UnsupportedSourceTypeError extends Error {
   filename: string;
 
@@ -173,84 +169,78 @@ export class UnsupportedDynamicRequireError extends Error {
 }
 
 export async function buildEsmModule(registry: string, request: BuildRequest): Promise<BuildResult | null> {
-  let packageJsonFile = await getFile(registry, request.packageName, request.version, "/package.json");
-  if (packageJsonFile == null) {
-    return null;
-  }
-
-  let packageJson = JSON.parse(new TextDecoder().decode(packageJsonFile.body)) as PackageJson;
-  let filename = resolveBuildFilename(packageJson, request.filename, request.options);
-  if (filename == null) {
-    return null;
-  }
-  if (isUnsupportedSourceFile(filename)) {
-    throw new UnsupportedSourceTypeError(filename);
-  }
-
-  filename = await resolveExistingSourceFilename(registry, request.packageName, request.version, filename);
-  if (filename == null) {
-    return null;
-  }
-
-  let file = await getFile(registry, request.packageName, request.version, filename);
-  if (file == null || !isSupportedSourceFile(filename)) {
-    return null;
-  }
-
-  let code = new TextDecoder().decode(file.body);
-  // Bare self-references stay external in the bundle; pin them to the version
-  // being built so every subpath shares one module instance.
-  let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies, {
-    [request.packageName]: request.version,
-  });
-  let transformed = await withPackageFileDirectory(registry, request.packageName, request.version, (packageDirectory) =>
-    bundleSource(packageDirectory, packageJson, request.packageName, request.version, filename, code, request.options)
-  );
-  let rewritten = await rewriteEsmImports(transformed.code, registry, request.options.origin, deps, request.options);
-  let buildKey = createBuildKey(request, filename);
-  let metadata: BuildMetadata = {
-    buildKey,
-    input: filename,
-    output: `/${request.packageName}@${request.version}${request.filename ?? ""}`,
-    packageName: request.packageName,
-    target: request.options.target,
-    version: request.version,
-  };
-
-  return {
-    code: rewritten,
-    headers: {
-      "Cache-Control": immutableCacheControl,
-      "Content-Type": "application/javascript; charset=utf-8",
-      "X-UNPKG-Build-Key": buildKey,
-      "X-UNPKG-Build-Input": filename,
-      "X-UNPKG-Transformer": "esbuild",
-    },
-    metadata,
-  };
-}
-
-async function resolveExistingSourceFilename(
-  registry: string,
-  packageName: string,
-  version: string,
-  filename: string
-): Promise<string | null> {
-  if ((await getFile(registry, packageName, version, filename)) != null) {
-    return filename;
-  }
-
-  if (path.posix.extname(filename) !== "") {
-    return null;
-  }
-
-  for (let candidate of [`${filename}.js`, `${filename}.mjs`, `${filename}.cjs`, path.posix.join(filename, "index.js")]) {
-    if ((await getFile(registry, packageName, version, candidate)) != null) {
-      return candidate;
+  // Extract the tarball once and serve every read from the extracted directory;
+  // each getFile call would otherwise be a fresh tarball download.
+  return withPackageFileDirectory(registry, request.packageName, request.version, async (packageDirectory) => {
+    let packageJsonBody = await readPackageFile(packageDirectory, "/package.json");
+    if (packageJsonBody == null) {
+      return null;
     }
-  }
 
-  return null;
+    let packageJson = JSON.parse(new TextDecoder().decode(packageJsonBody)) as PackageJson;
+    let resolvedFilename = resolveBuildFilename(packageJson, request.filename, request.options);
+    if (resolvedFilename == null) {
+      return null;
+    }
+    if (isUnsupportedSourceFile(resolvedFilename)) {
+      throw new UnsupportedSourceTypeError(resolvedFilename);
+    }
+
+    let file = await getFirstExistingSourceFile(packageDirectory, resolvedFilename);
+    if (file == null) {
+      return null;
+    }
+
+    let filename = file.path;
+    let code = new TextDecoder().decode(file.body);
+    // Bare self-references stay external in the bundle; pin them to the version
+    // being built so every subpath shares one module instance.
+    let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies, {
+      [request.packageName]: request.version,
+    });
+    let transformed = await bundleSource(
+      packageDirectory,
+      packageJson,
+      request.packageName,
+      request.version,
+      filename,
+      code,
+      request.options
+    );
+    let diagnostics: RewriteDiagnostics = { unpinnedSpecifiers: [] };
+    let rewritten = await rewriteEsmImports(
+      transformed.code,
+      registry,
+      request.options.origin,
+      deps,
+      request.options,
+      diagnostics
+    );
+    let buildKey = createBuildKey(request, filename);
+    let metadata: BuildMetadata = {
+      buildKey,
+      input: filename,
+      output: `/${request.packageName}@${request.version}${request.filename ?? ""}`,
+      packageName: request.packageName,
+      target: request.options.target,
+      version: request.version,
+    };
+
+    return {
+      code: rewritten,
+      headers: {
+        // Artifacts whose dependency URLs could not all be pinned to exact
+        // versions (e.g. a transient registry failure) stay short-lived so
+        // they heal; fully-pinned artifacts are immutable.
+        "Cache-Control": diagnostics.unpinnedSpecifiers.length > 0 ? moduleCacheControl : immutableCacheControl,
+        "Content-Type": "application/javascript; charset=utf-8",
+        "X-UNPKG-Build-Key": buildKey,
+        "X-UNPKG-Build-Input": filename,
+        "X-UNPKG-Transformer": "esbuild",
+      },
+      metadata,
+    };
+  });
 }
 
 export async function transformInlineEsmModule(registry: string, request: InlineTransformRequest): Promise<BuildResult> {
@@ -298,8 +288,37 @@ export function normalizeBuildOptions(searchParams: URLSearchParams): Normalized
     minify: searchParams.has("min"),
     origin: searchParams.get("origin") ?? defaultEsmOrigin,
     sourcemap: searchParams.has("sourcemap"),
-    target: searchParams.get("target") ?? "es2022",
+    target: parseBuildTarget(searchParams.get("target")),
   };
+}
+
+const buildTargets = new Set([
+  "es2015",
+  "es2016",
+  "es2017",
+  "es2018",
+  "es2019",
+  "es2020",
+  "es2021",
+  "es2022",
+  "es2023",
+  "es2024",
+  "esnext",
+  "deno",
+  "node",
+]);
+
+function parseBuildTarget(target: string | null): string {
+  // The edge worker validates targets for public URLs; this guards direct
+  // requests so an unknown target degrades instead of crashing esbuild.
+  return target != null && buildTargets.has(target) ? target : "es2022";
+}
+
+export interface RewriteDiagnostics {
+  // Bare specifiers whose emitted URL could not be pinned to an exact version
+  // (registry failure or an unresolvable range); such builds must not be
+  // cached as immutable.
+  unpinnedSpecifiers: string[];
 }
 
 export async function rewriteEsmImports(
@@ -307,7 +326,8 @@ export async function rewriteEsmImports(
   registry: string,
   origin: string,
   dependencies: Record<string, string>,
-  options: NormalizedBuildOptions
+  options: NormalizedBuildOptions,
+  diagnostics?: RewriteDiagnostics
 ): Promise<string> {
   let [imports] = parse(code);
   let rewrites = (
@@ -324,9 +344,10 @@ export async function rewriteEsmImports(
           let match = /^(["'])([^"']*)\1$/.exec(specifier);
           if (match === null) return null;
 
-          rewriteValue = match[1] + (await rewriteEsmSpecifier(match[2], registry, origin, dependencies, options)) + match[1];
+          rewriteValue =
+            match[1] + (await rewriteEsmSpecifier(match[2], registry, origin, dependencies, options, diagnostics)) + match[1];
         } else {
-          rewriteValue = await rewriteEsmSpecifier(specifier, registry, origin, dependencies, options);
+          rewriteValue = await rewriteEsmSpecifier(specifier, registry, origin, dependencies, options, diagnostics);
         }
 
         return rewriteValue === specifier ? null : { start: imp.s, end: imp.e, value: rewriteValue };
@@ -394,7 +415,7 @@ export async function bundleSource(
     jsxImportSource: options.jsxImportSource,
     minify: options.minify,
     plugins: [
-      createPackageInternalBundlePlugin(packageDirectory, {
+      createPackageInternalBundlePlugin(packageDirectory, packageJson, packageName, options, {
         code,
         filename,
       }),
@@ -814,6 +835,9 @@ function addCommonJsNamedExports(code: string, exportNames: string[]): string {
 
 function createPackageInternalBundlePlugin(
   packageDirectory: string,
+  packageJson: PackageJson,
+  packageName: string,
+  options: NormalizedBuildOptions,
   entry?: { code: string; filename: string }
 ): esbuild.Plugin {
   return {
@@ -836,9 +860,34 @@ function createPackageInternalBundlePlugin(
         }
 
         if (isBareSpecifier(args.path)) {
-          // Bare self-references stay external so every subpath shares one module
-          // instance at runtime; bundling a private copy would duplicate module
-          // state (e.g. preact/hooks bundling its own preact core).
+          let parsed = parseBareSpecifier(args.path);
+          if (parsed?.packageName === packageName) {
+            let selfReferencePath = parsed.path === "" ? "/" : parsed.path;
+            let resolved = resolveBuildFilename(packageJson, selfReferencePath, options);
+            if (resolved == null) {
+              return {
+                errors: [{ text: `Package subpath "${selfReferencePath}" is blocked by its exports map` }],
+              };
+            }
+
+            // A self-reference that resolves back to the entry being built must
+            // be bundled — externalizing it would make the module import its
+            // own URL mid-evaluation.
+            if (
+              entry != null &&
+              (resolved === entry.filename || getSourceFileCandidates(resolved).includes(entry.filename))
+            ) {
+              return {
+                path: entry.filename,
+                namespace: "unpkg-package",
+              };
+            }
+          }
+
+          // Other bare specifiers (dependencies and cross-subpath
+          // self-references) stay external so every module URL is shared: a
+          // bundled private copy would duplicate module state (e.g.
+          // preact/hooks bundling its own preact core).
           if (args.kind !== "require-call") {
             return { path: args.path, external: true };
           }
@@ -880,6 +929,17 @@ function createPackageInternalBundlePlugin(
           };
         }
 
+        // An extensionless spelling of the entry (e.g. require('./index') for
+        // the /index.js entry) resolves here; serve the in-memory entry code so
+        // both spellings carry identical content.
+        if (entry != null && file.path === entry.filename) {
+          return {
+            contents: entry.code,
+            loader: getEsbuildLoader(entry.filename),
+            resolveDir: path.posix.dirname(entry.filename),
+          };
+        }
+
         return {
           contents: new TextDecoder().decode(file.body),
           loader: getEsbuildLoader(file.path),
@@ -898,7 +958,11 @@ function createPackageInternalBundlePlugin(
         return {
           contents: [
             `import * as namespace from ${specifier};`,
-            "module.exports = namespace.default ?? namespace;",
+            // For __esModule modules the built artifact's default export is the
+            // unwrapped exports.default, so the namespace (named exports plus
+            // default) is the closest shape to the original module.exports;
+            // otherwise the default export IS module.exports.
+            "module.exports = namespace.__esModule ? namespace : namespace.default ?? namespace;",
           ].join("\n"),
           loader: "js",
         };
@@ -978,7 +1042,7 @@ function isRuntimeNativeTarget(target: string): boolean {
 }
 
 function isNodeBuiltinSpecifier(specifier: string): boolean {
-  return specifier.startsWith("node:") || specifier in browserBuiltinPolyfills || unpolyfilledNodeBuiltins.has(specifier);
+  return specifier.startsWith("node:") || browserBuiltinPolyfills.has(specifier) || unpolyfilledNodeBuiltins.has(specifier);
 }
 
 function parseJsxMode(value: string | null): NormalizedBuildOptions["jsx"] {
@@ -994,22 +1058,27 @@ async function rewriteEsmSpecifier(
   registry: string,
   origin: string,
   dependencies: Record<string, string>,
-  options: NormalizedBuildOptions
+  options: NormalizedBuildOptions,
+  diagnostics?: RewriteDiagnostics
 ): Promise<string> {
   if (isRuntimeNativeTarget(options.target) && isNodeBuiltinSpecifier(specifier)) {
     return specifier;
   }
 
-  if (specifier in browserBuiltinPolyfills) {
+  if (isNodeBuiltinSpecifier(specifier)) {
+    // Builtins without a browser implementation (and unknown node:* specifiers)
+    // map to @jspm/core's empty-module stub so packages that merely probe for
+    // them still build; passing them through would reach the browser as an
+    // unresolvable specifier.
+    let polyfillSubpath = browserBuiltinPolyfills.get(specifier) ?? "@empty";
     // Pin the polyfill package so builds are deterministic and the emitted URL
     // is canonical (no version-resolution redirect on every polyfill import).
-    let polyfillVersion = await resolveDependencyVersion(registry, "@jspm/core", "2");
-    return `${origin}/${browserBuiltinPolyfills[specifier].replace("@jspm/core@2/", `@jspm/core@${polyfillVersion}/`)}?target=${options.target}`;
-  }
-  if (isNodeBuiltinSpecifier(specifier)) {
-    // Includes any node:-prefixed specifier without a polyfill; passing it through
-    // would reach the browser as an unresolvable specifier.
-    throw new UnsupportedNodeBuiltinError(specifier);
+    let polyfillVersion = await resolveDependencyVersion(registry, "@jspm/core", jspmCorePolyfillRange);
+    if (semver.valid(polyfillVersion) == null) {
+      diagnostics?.unpinnedSpecifiers.push(specifier);
+    }
+
+    return `${origin}/@jspm/core@${polyfillVersion}/nodelibs/${polyfillSubpath}?target=${options.target}`;
   }
 
   if (specifier === "" || isValidUrl(specifier)) {
@@ -1026,11 +1095,15 @@ async function rewriteEsmSpecifier(
     }
 
     let requestedVersion =
-      options.dependencyOverrides[aliased.packageName] ??
-      dependencies[aliased.packageName] ??
+      getOwnProperty(options.dependencyOverrides, aliased.packageName) ??
+      getOwnProperty(dependencies, aliased.packageName) ??
       "latest";
     let dependency = parseDependencyVersionSpecifier(aliased.packageName, requestedVersion);
     let version = await resolveDependencyVersion(registry, dependency.packageName, dependency.versionRangeOrTag);
+    if (semver.valid(version) == null) {
+      diagnostics?.unpinnedSpecifiers.push(specifier);
+    }
+
     let search = createDependencySearch(options);
 
     return `${origin}/${dependency.packageName}@${version}${stripTrailingSlash(aliased.path)}${search}`;
@@ -1074,16 +1147,19 @@ function createDependencySearch(options: NormalizedBuildOptions): string {
     searchParams.set("alias", aliases.join(","));
   }
 
-  // Match the canonical param order the esm worker normalizes to, so the URL
-  // never redirects.
-  searchParams.sort();
-
-  let search = searchParams.toString();
-  return search === "" ? "" : `?${search}`;
+  // Render in the exact canonical order the esm worker normalizes to, so the
+  // emitted URL never redirects.
+  return normalizeSearchParams(searchParams);
 }
 
 function shouldExternalize(packageName: string, external: string[]): boolean {
   return external.includes("*") || external.includes(packageName);
+}
+
+// Package names come from arbitrary code, so record lookups must never see
+// inherited Object.prototype members (e.g. a dependency named "constructor").
+function getOwnProperty(record: Record<string, string>, key: string): string | undefined {
+  return Object.hasOwn(record, key) ? record[key] : undefined;
 }
 
 function applyAlias(
@@ -1091,7 +1167,7 @@ function applyAlias(
   path: string,
   aliases: Record<string, string>
 ): { packageName: string; path: string } {
-  let alias = aliases[packageName];
+  let alias = getOwnProperty(aliases, packageName);
   if (alias == null) {
     return { packageName, path };
   }
@@ -1153,43 +1229,67 @@ function getCachedPackageInfo(registry: string, packageName: string): Promise<Pa
     return cached.promise;
   }
 
-  let promise = (async (): Promise<PackageInfo | null> => {
-    let response = await fetch(new URL(`/${packageName}`, registry), {
-      headers: { Accept: "application/json" },
-    });
-    if (!response.ok) {
-      // Don't cache failures; a transient registry error should not stick.
+  // Failure cleanup must only evict its own entry — by the time a stale fetch
+  // settles, a fresh entry may already occupy the key.
+  let evictOwnEntry = () => {
+    if (packageInfoCache.get(key) === entry) {
       packageInfoCache.delete(key);
-      return null;
     }
+  };
+  let entry = {
+    expiresAt: Date.now() + packageInfoTtlMs,
+    promise: (async (): Promise<PackageInfo | null> => {
+      // The abbreviated packument has dist-tags plus version keys — everything
+      // version resolution needs — at a fraction of the full document's size.
+      let response = await fetch(new URL(`/${packageName}`, registry), {
+        headers: { Accept: "application/vnd.npm.install-v1+json" },
+      });
+      if (!response.ok) {
+        // Don't cache failures; a transient registry error should not stick.
+        evictOwnEntry();
+        return null;
+      }
 
-    return (await response.json()) as PackageInfo;
-  })();
-  promise.catch(() => packageInfoCache.delete(key));
+      return (await response.json()) as PackageInfo;
+    })(),
+  };
+  entry.promise.catch(evictOwnEntry);
 
   if (packageInfoCache.size >= packageInfoCacheMaxEntries) {
     let now = Date.now();
-    for (let [entryKey, entry] of packageInfoCache) {
-      if (entry.expiresAt <= now) packageInfoCache.delete(entryKey);
+    for (let [entryKey, existing] of packageInfoCache) {
+      if (existing.expiresAt <= now) packageInfoCache.delete(entryKey);
     }
-    if (packageInfoCache.size >= packageInfoCacheMaxEntries) {
-      packageInfoCache.clear();
+    // Maps iterate in insertion order; evict oldest-inserted entries rather
+    // than dropping the whole (mostly hot) cache.
+    for (let entryKey of packageInfoCache.keys()) {
+      if (packageInfoCache.size < packageInfoCacheMaxEntries) break;
+      packageInfoCache.delete(entryKey);
     }
   }
-  packageInfoCache.set(key, { expiresAt: Date.now() + packageInfoTtlMs, promise });
+  packageInfoCache.set(key, entry);
 
-  return promise;
+  return entry.promise;
 }
 
 async function resolveDependencyVersion(registry: string, packageName: string, versionRangeOrTag: string): Promise<string> {
   // Exact versions (including pinned self-references) need no registry lookup.
-  if (semver.valid(versionRangeOrTag) != null) {
-    return versionRangeOrTag;
+  // semver.valid returns the cleaned form (strips a leading v, whitespace).
+  let exactVersion = semver.valid(versionRangeOrTag);
+  if (exactVersion != null) {
+    return exactVersion;
   }
 
-  let packageInfo = await getCachedPackageInfo(registry, packageName);
-  if (packageInfo == null && packageName !== packageName.toLowerCase()) {
-    packageInfo = await getCachedPackageInfo(registry, packageName.toLowerCase());
+  // A resolution failure degrades to the raw range (the caller marks the build
+  // as unpinned); it must never fail the whole build.
+  let packageInfo: PackageInfo | null = null;
+  try {
+    packageInfo = await getCachedPackageInfo(registry, packageName);
+    if (packageInfo == null && packageName !== packageName.toLowerCase()) {
+      packageInfo = await getCachedPackageInfo(registry, packageName.toLowerCase());
+    }
+  } catch {
+    return versionRangeOrTag;
   }
   if (packageInfo == null) {
     return versionRangeOrTag;

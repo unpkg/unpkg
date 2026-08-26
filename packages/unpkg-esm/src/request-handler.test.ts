@@ -259,6 +259,27 @@ describe("handleRequest", () => {
     expect(response.headers.get("Location")).toBe("/react@18.2.0?target=es2022");
   });
 
+  it("rejects ?meta combined with params that change the module route", async () => {
+    for (let param of ["css", "module", "worker"]) {
+      let response = await dispatchFetch(`https://esm.unpkg.com/preact@10.26.4?meta&${param}`);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: {
+          code: "INVALID_QUERY",
+          message: `?meta cannot be combined with ?${param}`,
+        },
+      });
+    }
+  });
+
+  it("strips unknown query params during normalization", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?junk=1&target=es2022", {
+      redirect: "manual",
+    });
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/preact@10.26.4?target=es2022");
+  });
+
   it("rejects unsupported build params with a JSON diagnostic", async () => {
     let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?standalone");
     expect(response.status).toBe(400);
@@ -273,7 +294,9 @@ describe("handleRequest", () => {
   it("hashes and caches the exact artifact bytes for ?meta integrity", async () => {
     defaultCacheStore.clear();
 
-    let response = await dispatchFetch("https://esm.unpkg.com/react@18.2.0?meta=&target=es2022");
+    // The integrity cache is only active outside development/test modes.
+    let request = new Request("https://esm.unpkg.com/react@18.2.0?meta=&target=es2022");
+    let response = await handleRequest(request, { ...env, MODE: "production" }, context);
     expect(response.status).toBe(200);
     let json = (await response.json()) as any;
 

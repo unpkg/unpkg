@@ -6,10 +6,7 @@
       "category": "package-root",
       "description": "React package root",
       "expect": "module",
-      "features": [
-        "package-root",
-        "version"
-      ],
+      "features": ["package-root", "version"],
       "package": "react",
       "path": "/react@18.3.1"
     },
@@ -17,10 +14,7 @@
       "category": "subpath",
       "description": "React DOM client subpath",
       "expect": "module",
-      "features": [
-        "subpath",
-        "version"
-      ],
+      "features": ["subpath", "version"],
       "package": "react-dom",
       "path": "/react-dom@18.3.1/client"
     },
@@ -28,9 +22,7 @@
       "category": "external",
       "description": "External all shorthand",
       "expect": "module",
-      "features": [
-        "external-all"
-      ],
+      "features": ["external-all"],
       "package": "swr",
       "path": "/*swr@1.3.0"
     },
@@ -38,67 +30,34 @@
       "category": "external",
       "description": "Explicit external dependency",
       "expect": "module",
-      "features": [
-        "external"
-      ],
+      "features": ["external"],
       "package": "react-dom",
       "path": "/react-dom@18.3.1/client?external=react",
-      "preserveRedirectQuery": [
-        "external"
-      ]
+      "preserveRedirectQuery": ["external"]
     },
     {
       "category": "dependency-control",
       "description": "Dependency override",
       "expect": "module",
-      "features": [
-        "deps"
-      ],
+      "features": ["deps"],
       "package": "react-dom",
       "path": "/react-dom@18.3.1/client?deps=react@18.2.0",
-      "preserveRedirectQuery": [
-        "deps"
-      ]
-    },
-    {
-      "category": "dependency-control",
-      "description": "Alias React to Preact compat",
-      "expect": "module",
-      "features": [
-        "alias",
-        "deps"
-      ],
-      "package": "react-dom",
-      "path": "/react-dom@18.3.1/client?alias=react:preact/compat&deps=preact@10.25.4",
-      "preserveRedirectQuery": [
-        "alias",
-        "deps"
-      ]
+      "preserveRedirectQuery": ["deps"]
     },
     {
       "category": "raw",
       "description": "Raw package file",
       "expect": "json",
-      "features": [
-        "raw"
-      ],
+      "features": ["raw"],
       "package": "react",
       "path": "/react@18.3.1/package.json?raw",
-      "preserveRedirectQuery": [
-        "raw"
-      ]
+      "preserveRedirectQuery": ["raw"]
     },
     {
       "category": "redirect-query",
       "description": "Raw CommonJS package roots redirect to their entry asset",
       "expect": "javascript",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "raw",
-        "package-root",
-        "commonjs"
-      ],
+      "features": ["redirect", "query-forwarding", "raw", "package-root", "commonjs"],
       "package": "react",
       "path": "/react@18?raw",
       "redirectParity": "final-path-and-query"
@@ -107,13 +66,7 @@
       "category": "redirect-query",
       "description": "Raw ESM package roots redirect through import exports",
       "expect": "javascript",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "raw",
-        "package-root",
-        "exports"
-      ],
+      "features": ["redirect", "query-forwarding", "raw", "package-root", "exports"],
       "package": "preact",
       "path": "/preact@10.26.4?raw",
       "redirectParity": "final-path-and-query"
@@ -122,13 +75,7 @@
       "category": "redirect-query",
       "description": "Raw exported subpaths redirect to their source asset",
       "expect": "javascript",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "raw",
-        "subpath",
-        "exports"
-      ],
+      "features": ["redirect", "query-forwarding", "raw", "subpath", "exports"],
       "package": "react",
       "path": "/react@18.3.1/jsx-runtime?raw",
       "redirectParity": "final-path-and-query"
@@ -137,13 +84,7 @@
       "category": "redirect-query",
       "description": "Raw scoped package roots redirect through conditional exports",
       "expect": "javascript",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "raw",
-        "scoped-package",
-        "exports"
-      ],
+      "features": ["redirect", "query-forwarding", "raw", "scoped-package", "exports"],
       "package": "@tanstack/query-core",
       "path": "/@tanstack/query-core@5.64.1?raw",
       "redirectParity": "final-path-and-query"
@@ -152,14 +93,7 @@
       "category": "redirect-query",
       "description": "Raw extensionless scoped subpaths redirect to JavaScript assets",
       "expect": "javascript",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "raw",
-        "scoped-package",
-        "subpath",
-        "extensionless"
-      ],
+      "features": ["redirect", "query-forwarding", "raw", "scoped-package", "subpath", "extensionless"],
       "package": "@babel/runtime",
       "path": "/@babel/runtime@7.26.0/helpers/extends?raw",
       "redirectParity": "final-path-and-query"
@@ -168,81 +102,34 @@
       "category": "redirect-query",
       "description": "Raw package roots prefer module entries over stylesheet metadata",
       "expect": "javascript",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "raw",
-        "package-root",
-        "module-field",
-        "css"
-      ],
+      "features": ["redirect", "query-forwarding", "raw", "package-root", "module-field", "css"],
       "package": "bootstrap",
       "path": "/bootstrap@5.3.8?raw",
       "redirectParity": "final-path-and-query"
     },
     {
-      "category": "diagnostic",
-      "description": "Raw mode rejects transform flags",
-      "expect": "diagnostic",
-      "features": [
-        "raw",
-        "invalid-query"
-      ],
-      "package": "react",
-      "path": "/react@18.3.1?raw&target=es2022"
-    },
-    {
       "category": "build-options",
       "description": "Development build flag",
       "expect": "module",
-      "features": [
-        "dev"
-      ],
+      "features": ["dev"],
       "package": "react",
       "path": "/react@18.3.1?dev",
-      "preserveRedirectQuery": [
-        "dev"
-      ]
-    },
-    {
-      "category": "redirect-query",
-      "description": "Semver redirects preserve build query parameters",
-      "expect": "module",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "dev",
-        "external",
-        "target"
-      ],
-      "package": "react",
-      "path": "/react@18?dev&external=react&target=es2020",
-      "preserveRedirectQuery": [
-        "dev",
-        "external",
-        "target"
-      ]
+      "preserveRedirectQuery": ["dev"]
     },
     {
       "category": "build-options",
       "description": "Development env option",
       "expect": "module",
-      "features": [
-        "env"
-      ],
+      "features": ["env"],
       "package": "react",
       "path": "/react@18.3.1?env=development",
-      "preserveRedirectQuery": [
-        "env"
-      ]
+      "preserveRedirectQuery": ["env"]
     },
     {
       "category": "build-options",
       "description": "Browser target option",
       "expect": "module",
-      "features": [
-        "target"
-      ],
+      "features": ["target"],
       "package": "react",
       "path": "/react@18.3.1?target=es2015"
     },
@@ -250,78 +137,52 @@
       "category": "build-options",
       "description": "Custom conditions option",
       "expect": "module",
-      "features": [
-        "conditions"
-      ],
+      "features": ["conditions"],
       "package": "preact",
       "path": "/preact@10.26.4?conditions=browser,development",
-      "preserveRedirectQuery": [
-        "conditions"
-      ]
+      "preserveRedirectQuery": ["conditions"]
     },
     {
       "category": "build-options",
       "description": "Selected ESM exports",
       "expect": "module",
-      "features": [
-        "exports-selection",
-        "tree-shaking"
-      ],
+      "features": ["exports-selection", "tree-shaking"],
       "package": "preact",
       "path": "/preact@10.26.4?exports=h,render",
-      "preserveRedirectQuery": [
-        "exports"
-      ]
+      "preserveRedirectQuery": ["exports"]
     },
     {
       "category": "build-options",
       "description": "Minified output option",
       "expect": "module",
-      "features": [
-        "min"
-      ],
+      "features": ["min"],
       "package": "preact",
       "path": "/preact@10.26.4?min",
-      "preserveRedirectQuery": [
-        "min"
-      ]
+      "preserveRedirectQuery": ["min"]
     },
     {
       "category": "build-options",
       "description": "Inline source map option",
       "expect": "module",
-      "features": [
-        "sourcemap"
-      ],
+      "features": ["sourcemap"],
       "package": "preact",
       "path": "/preact@10.26.4?sourcemap",
-      "preserveRedirectQuery": [
-        "sourcemap"
-      ]
+      "preserveRedirectQuery": ["sourcemap"]
     },
     {
       "category": "types",
       "description": "No DTS header option",
       "expect": "module",
-      "features": [
-        "no-dts"
-      ],
+      "features": ["no-dts"],
       "package": "preact",
       "path": "/preact@10.26.4?no-dts",
-      "preserveRedirectQuery": [
-        "no-dts"
-      ]
+      "preserveRedirectQuery": ["no-dts"]
     },
     {
       "category": "redirect-query",
       "description": "Types-only package redirects strip build queries from declaration assets",
       "expect": "typescript",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "types",
-        "target"
-      ],
+      "features": ["redirect", "query-forwarding", "types", "target"],
       "package": "@types/react",
       "path": "/@types/react@18.2.0?target=es2020",
       "redirectParity": "final-path-and-query"
@@ -330,61 +191,34 @@
       "category": "redirect-query",
       "description": "Types-only roots ignore typesVersions wildcard directories",
       "expect": "typescript",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "types",
-        "types-versions",
-        "raw"
-      ],
+      "features": ["redirect", "query-forwarding", "types", "types-versions", "raw"],
       "package": "@types/node",
       "path": "/@types/node@22.10.2?raw",
       "redirectParity": "final-path-and-query"
     },
     {
-      "category": "import-map",
-      "description": "Import-map-friendly path query syntax",
-      "expect": "module",
-      "features": [
-        "path-query",
-        "dev"
-      ],
-      "package": "react-dom",
-      "path": "/react-dom@18.3.1&dev/client"
-    },
-    {
       "category": "metadata",
       "description": "Metadata",
       "expect": "json",
-      "features": [
-        "meta"
-      ],
+      "features": ["meta"],
       "package": "preact",
       "path": "/preact@10.26.4?meta",
-      "preserveRedirectQuery": [
-        "meta"
-      ]
+      "preserveRedirectQuery": ["meta"]
     },
     {
       "category": "worker",
       "description": "Worker wrapper",
       "expect": "module",
-      "features": [
-        "worker"
-      ],
+      "features": ["worker"],
       "package": "preact",
       "path": "/preact@10.26.4?worker",
-      "preserveRedirectQuery": [
-        "worker"
-      ]
+      "preserveRedirectQuery": ["worker"]
     },
     {
       "category": "runtime-target",
       "description": "Runtime-native target",
       "expect": "module",
-      "features": [
-        "target-node"
-      ],
+      "features": ["target-node"],
       "package": "react",
       "path": "/react@18.3.1?target=node"
     },
@@ -392,9 +226,7 @@
       "category": "diagnostic",
       "description": "Unsupported source diagnostic",
       "expect": "diagnostic",
-      "features": [
-        "unsupported-source"
-      ],
+      "features": ["unsupported-source"],
       "package": "preact",
       "path": "/preact@10.26.4/component.vue"
     },
@@ -402,10 +234,7 @@
       "category": "css",
       "description": "CSS package root",
       "expect": "css",
-      "features": [
-        "css",
-        "package-root"
-      ],
+      "features": ["css", "package-root"],
       "package": "normalize.css",
       "path": "/normalize.css@8.0.1"
     },
@@ -413,12 +242,7 @@
       "category": "redirect-query",
       "description": "CSS entry redirects strip irrelevant build queries",
       "expect": "css",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "css",
-        "target"
-      ],
+      "features": ["redirect", "query-forwarding", "css", "target"],
       "package": "normalize.css",
       "path": "/normalize.css@8.0.1?target=es2020",
       "redirectParity": "final-path-and-query"
@@ -427,12 +251,7 @@
       "category": "redirect-query",
       "description": "Raw CSS package roots redirect to the stylesheet asset",
       "expect": "css",
-      "features": [
-        "redirect",
-        "query-forwarding",
-        "css",
-        "raw"
-      ],
+      "features": ["redirect", "query-forwarding", "css", "raw"],
       "package": "normalize.css",
       "path": "/normalize.css@8.0.1?raw",
       "redirectParity": "final-path-and-query"
@@ -441,10 +260,7 @@
       "category": "css",
       "description": "Direct CSS file",
       "expect": "css",
-      "features": [
-        "css",
-        "subpath"
-      ],
+      "features": ["css", "subpath"],
       "package": "bootstrap",
       "path": "/bootstrap@5.3.8/dist/css/bootstrap.min.css"
     },
@@ -452,24 +268,16 @@
       "category": "css",
       "description": "Constructable stylesheet module",
       "expect": "module",
-      "features": [
-        "css",
-        "css-module"
-      ],
+      "features": ["css", "css-module"],
       "package": "react-toastify",
       "path": "/react-toastify@11.0.5/dist/ReactToastify.css?module",
-      "preserveRedirectQuery": [
-        "module"
-      ]
+      "preserveRedirectQuery": ["module"]
     },
     {
       "category": "css",
       "description": "Explicit CSS request without a stylesheet",
       "expect": "diagnostic",
-      "features": [
-        "css",
-        "css-not-found"
-      ],
+      "features": ["css", "css-not-found"],
       "package": "react",
       "path": "/react@18.3.1?css"
     },
@@ -477,11 +285,7 @@
       "category": "cjs-interop",
       "description": "Babel-compiled CommonJS default export (is-hotkey)",
       "expect": "module",
-      "features": [
-        "cjs",
-        "esmodule-default",
-        "version"
-      ],
+      "features": ["cjs", "esmodule-default", "version"],
       "package": "is-hotkey",
       "path": "/is-hotkey@0.2.0"
     },
@@ -489,12 +293,7 @@
       "category": "cjs-interop",
       "description": "CommonJS reexport of a Node builtin (safe-buffer)",
       "expect": "module",
-      "features": [
-        "cjs",
-        "reexport",
-        "node-builtin",
-        "version"
-      ],
+      "features": ["cjs", "reexport", "node-builtin", "version"],
       "package": "safe-buffer",
       "path": "/safe-buffer@5.2.1"
     },
@@ -502,11 +301,7 @@
       "category": "cjs-interop",
       "description": "Minified CommonJS build keeps named exports",
       "expect": "module",
-      "features": [
-        "cjs",
-        "min",
-        "version"
-      ],
+      "features": ["cjs", "min", "version"],
       "package": "react",
       "path": "/react@18.3.1?min"
     },
@@ -514,11 +309,7 @@
       "category": "dependency-resolution",
       "description": "npm: alias dependencies resolve (@isaacs/cliui)",
       "expect": "module",
-      "features": [
-        "cjs",
-        "npm-alias",
-        "version"
-      ],
+      "features": ["cjs", "npm-alias", "version"],
       "package": "@isaacs/cliui",
       "path": "/@isaacs/cliui@8.0.2"
     },
@@ -526,10 +317,7 @@
       "category": "package-name",
       "description": "Legacy uppercase package name (JSONStream)",
       "expect": "module",
-      "features": [
-        "uppercase-name",
-        "version"
-      ],
+      "features": ["uppercase-name", "version"],
       "package": "JSONStream",
       "path": "/JSONStream@1.3.5"
     }

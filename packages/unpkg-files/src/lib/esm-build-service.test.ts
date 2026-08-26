@@ -15,7 +15,6 @@ import {
   rewriteEsmImports,
   transformSource,
   UnsupportedDynamicRequireError,
-  UnsupportedNodeBuiltinError,
 } from "./esm-build-service.ts";
 
 const registry = "https://registry.npmjs.org";
@@ -414,20 +413,45 @@ describe("rewriteEsmImports", () => {
     expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/fs/promises?target=es2022"');
   });
 
-  it("rejects node: builtins that have no browser polyfill", async () => {
+  it("stubs node: builtins that have no browser polyfill", async () => {
     let code = 'import sqlite from "node:sqlite";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    await expect(rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options())).rejects.toBeInstanceOf(
-      UnsupportedNodeBuiltinError
-    );
+    expect(result).toBe('import sqlite from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/@empty?target=es2022";');
   });
 
-  it("rejects bare builtins that have no browser polyfill", async () => {
+  it("stubs bare builtins that have no browser polyfill", async () => {
     let code = 'import traceEvents from "trace_events";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    await expect(rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options())).rejects.toBeInstanceOf(
-      UnsupportedNodeBuiltinError
-    );
+    expect(result).toBe('import traceEvents from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/@empty?target=es2022";');
+  });
+
+  it("does not treat Object.prototype names as builtins", async () => {
+    // "constructor" is a real npm package; an inherited Object.prototype key
+    // must not shadow it.
+    let code = 'import ctor from "constructor";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { constructor: "1.0.0" }, options());
+
+    expect(result).toBe('import ctor from "https://esm.unpkg.com/constructor@1.0.0?target=es2022";');
+  });
+
+  it("cleans loose exact versions before emitting URLs", async () => {
+    let code = 'import x from "loose-pkg";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "loose-pkg": "v1.2.3" }, options());
+
+    expect(result).toBe('import x from "https://esm.unpkg.com/loose-pkg@1.2.3?target=es2022";');
+  });
+
+  it("marks builds unpinned when dependency resolution fails", async () => {
+    let code = 'import missing from "unmocked-package";';
+    let diagnostics = { unpinnedSpecifiers: [] as string[] };
+    // "unmocked-package" is not in the registry mock; the fetch throws, the
+    // rewrite degrades to the raw range, and the build is flagged unpinned.
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "unmocked-package": "^2" }, options(), diagnostics);
+
+    expect(result).toBe('import missing from "https://esm.unpkg.com/unmocked-package@^2?target=es2022";');
+    expect(diagnostics.unpinnedSpecifiers).toEqual(["unmocked-package"]);
   });
 });
 
@@ -557,6 +581,50 @@ describe("bundleSource", () => {
       expect(result.code).not.toContain("'ok'");
       expect(result.code).toContain("as createRoot");
       expect(result.code).toContain("as default");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("bundles self-references that resolve to the entry being built", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-root-self-reference-"));
+
+    try {
+      let code = "exports.helper = () => 'ok';\nvar self = require('root-self-package');\nexports.viaSelf = () => self.helper();";
+      // Externalizing a self-reference to the entry itself would make the
+      // module import its own URL mid-evaluation.
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "root-self-package", exports: { ".": "./index.js" } },
+        "root-self-package",
+        "1.0.0",
+        "/index.js",
+        code,
+        options()
+      );
+
+      expect(result.code).not.toContain('from "root-self-package"');
+      expect(result.code).toContain("as helper");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("fails builds for self-references blocked by the exports map", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-blocked-self-reference-"));
+
+    try {
+      await expect(
+        bundleSource(
+          packageDirectory,
+          { name: "blocked-self-package", exports: { ".": "./index.js", "./internal/*": null } },
+          "blocked-self-package",
+          "1.0.0",
+          "/index.js",
+          "var util = require('blocked-self-package/internal/util');\nexports.util = util;",
+          options()
+        )
+      ).rejects.toThrow('blocked by its exports map');
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }

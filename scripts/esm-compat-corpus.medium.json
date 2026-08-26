@@ -6,10 +6,7 @@
       "category": "react",
       "description": "React package root",
       "expect": "module",
-      "features": [
-        "package-root",
-        "version"
-      ],
+      "features": ["package-root", "version"],
       "package": "react",
       "path": "/react@18.3.1"
     },
@@ -17,9 +14,7 @@
       "category": "react",
       "description": "React development build",
       "expect": "module",
-      "features": [
-        "dev"
-      ],
+      "features": ["dev"],
       "package": "react",
       "path": "/react@18.3.1?dev"
     },
@@ -27,9 +22,7 @@
       "category": "react",
       "description": "React legacy browser target",
       "expect": "module",
-      "features": [
-        "target"
-      ],
+      "features": ["target"],
       "package": "react",
       "path": "/react@18.3.1?target=es2015"
     },
@@ -37,10 +30,7 @@
       "category": "react",
       "description": "React DOM client subpath",
       "expect": "module",
-      "features": [
-        "subpath",
-        "peer-dependency"
-      ],
+      "features": ["subpath", "peer-dependency"],
       "package": "react-dom",
       "path": "/react-dom@18.3.1/client"
     },
@@ -48,10 +38,7 @@
       "category": "react",
       "description": "React DOM with external React",
       "expect": "module",
-      "features": [
-        "external",
-        "peer-dependency"
-      ],
+      "features": ["external", "peer-dependency"],
       "package": "react-dom",
       "path": "/react-dom@18.3.1/client?external=react"
     },
@@ -59,10 +46,7 @@
       "category": "react",
       "description": "React DOM with dependency override",
       "expect": "module",
-      "features": [
-        "deps",
-        "peer-dependency"
-      ],
+      "features": ["deps", "peer-dependency"],
       "package": "react-dom",
       "path": "/react-dom@18.3.1/client?deps=react@18.2.0"
     },
@@ -70,11 +54,7 @@
       "category": "react",
       "description": "React DOM with React aliased to Preact compat",
       "expect": "module",
-      "features": [
-        "alias",
-        "deps",
-        "peer-dependency"
-      ],
+      "features": ["alias", "deps", "peer-dependency"],
       "package": "react-dom",
       "path": "/react-dom@18.3.1/client?alias=react:preact/compat&deps=preact@10.25.4"
     },
@@ -82,9 +62,7 @@
       "category": "preact",
       "description": "Preact package root",
       "expect": "module",
-      "features": [
-        "package-root"
-      ],
+      "features": ["package-root"],
       "package": "preact",
       "path": "/preact@10.26.4"
     },
@@ -92,9 +70,7 @@
       "category": "preact",
       "description": "Preact hooks subpath",
       "expect": "module",
-      "features": [
-        "subpath"
-      ],
+      "features": ["subpath"],
       "package": "preact",
       "path": "/preact@10.26.4/hooks"
     },
@@ -102,9 +78,7 @@
       "category": "preact",
       "description": "Preact custom development conditions",
       "expect": "module",
-      "features": [
-        "conditions"
-      ],
+      "features": ["conditions"],
       "package": "preact",
       "path": "/preact@10.26.4?conditions=browser,development"
     },
@@ -112,10 +86,7 @@
       "category": "framework",
       "description": "Vue package root",
       "expect": "module",
-      "features": [
-        "package-root",
-        "exports"
-      ],
+      "features": ["package-root", "exports"],
       "package": "vue",
       "path": "/vue@3.5.13"
     },
@@ -123,10 +94,7 @@
       "category": "framework",
       "description": "Vue development build",
       "expect": "module",
-      "features": [
-        "dev",
-        "exports"
-      ],
+      "features": ["dev", "exports"],
       "package": "vue",
       "path": "/vue@3.5.13?dev"
     },
@@ -134,9 +102,7 @@
       "category": "framework",
       "description": "Vue reactivity scoped package",
       "expect": "module",
-      "features": [
-        "scoped-package"
-      ],
+      "features": ["scoped-package"],
       "package": "@vue/reactivity",
       "path": "/@vue/reactivity@3.5.13"
     },
@@ -144,10 +110,7 @@
       "category": "framework",
       "description": "Vue runtime DOM scoped package",
       "expect": "module",
-      "features": [
-        "scoped-package",
-        "browser"
-      ],
+      "features": ["scoped-package", "browser"],
       "package": "@vue/runtime-dom",
       "path": "/@vue/runtime-dom@3.5.13"
     },
@@ -155,10 +118,7 @@
       "category": "framework",
       "description": "Svelte package root",
       "expect": "module",
-      "features": [
-        "package-root",
-        "exports"
-      ],
+      "features": ["package-root", "exports"],
       "package": "svelte",
       "path": "/svelte@5.17.3"
     },
@@ -166,10 +126,7 @@
       "category": "framework",
       "description": "Svelte store subpath",
       "expect": "module",
-      "features": [
-        "subpath",
-        "exports"
-      ],
+      "features": ["subpath", "exports"],
       "package": "svelte",
       "path": "/svelte@5.17.3/store"
     },
@@ -177,10 +134,7 @@
       "category": "framework",
       "description": "Svelte easing subpath",
       "expect": "module",
-      "features": [
-        "subpath",
-        "exports"
-      ],
+      "features": ["subpath", "exports"],
       "package": "svelte",
       "path": "/svelte@5.17.3/easing"
     },
@@ -188,10 +142,7 @@
       "category": "framework",
       "description": "Lit package root",
       "expect": "module",
-      "features": [
-        "package-root",
-        "exports"
-      ],
+      "features": ["package-root", "exports"],
       "package": "lit",
       "path": "/lit@3.2.1"
     },
@@ -199,10 +150,7 @@
       "category": "framework",
       "description": "Lit decorators subpath",
       "expect": "module",
-      "features": [
-        "subpath",
-        "exports"
-      ],
+      "features": ["subpath", "exports"],
       "package": "lit",
       "path": "/lit@3.2.1/decorators.js"
     },
@@ -210,9 +158,7 @@
       "category": "framework",
       "description": "Lit reactive element scoped package",
       "expect": "module",
-      "features": [
-        "scoped-package"
-      ],
+      "features": ["scoped-package"],
       "package": "@lit/reactive-element",
       "path": "/@lit/reactive-element@2.0.4"
     },
@@ -220,9 +166,7 @@
       "category": "library",
       "description": "Lodash package root",
       "expect": "module",
-      "features": [
-        "commonjs"
-      ],
+      "features": ["commonjs"],
       "package": "lodash",
       "path": "/lodash@4.17.21",
       "exportParity": "expected-only"
@@ -231,10 +175,7 @@
       "category": "library",
       "description": "Lodash map subpath",
       "expect": "module",
-      "features": [
-        "commonjs",
-        "subpath"
-      ],
+      "features": ["commonjs", "subpath"],
       "package": "lodash",
       "path": "/lodash@4.17.21/map"
     },
@@ -242,9 +183,7 @@
       "category": "library",
       "description": "Lodash ES package root",
       "expect": "module",
-      "features": [
-        "esm"
-      ],
+      "features": ["esm"],
       "package": "lodash-es",
       "path": "/lodash-es@4.17.21"
     },
@@ -252,9 +191,7 @@
       "category": "library",
       "description": "date-fns package root",
       "expect": "module",
-      "features": [
-        "exports"
-      ],
+      "features": ["exports"],
       "package": "date-fns",
       "path": "/date-fns@4.1.0"
     },
@@ -262,10 +199,7 @@
       "category": "library",
       "description": "date-fns addDays subpath",
       "expect": "module",
-      "features": [
-        "exports",
-        "subpath"
-      ],
+      "features": ["exports", "subpath"],
       "package": "date-fns",
       "path": "/date-fns@4.1.0/addDays"
     },
@@ -273,9 +207,7 @@
       "category": "library",
       "description": "Day.js package root",
       "expect": "module",
-      "features": [
-        "commonjs"
-      ],
+      "features": ["commonjs"],
       "package": "dayjs",
       "path": "/dayjs@1.11.13"
     },
@@ -283,10 +215,7 @@
       "category": "library",
       "description": "Day.js relativeTime plugin",
       "expect": "module",
-      "features": [
-        "commonjs",
-        "subpath"
-      ],
+      "features": ["commonjs", "subpath"],
       "package": "dayjs",
       "path": "/dayjs@1.11.13/plugin/relativeTime"
     },
@@ -294,9 +223,7 @@
       "category": "library",
       "description": "Nano ID package root",
       "expect": "module",
-      "features": [
-        "exports"
-      ],
+      "features": ["exports"],
       "package": "nanoid",
       "path": "/nanoid@5.0.9"
     },
@@ -304,9 +231,7 @@
       "category": "library",
       "description": "UUID package root",
       "expect": "module",
-      "features": [
-        "exports"
-      ],
+      "features": ["exports"],
       "package": "uuid",
       "path": "/uuid@11.0.5"
     },
@@ -314,10 +239,7 @@
       "category": "state",
       "description": "Zustand package root",
       "expect": "module",
-      "features": [
-        "exports",
-        "peer-dependency"
-      ],
+      "features": ["exports", "peer-dependency"],
       "package": "zustand",
       "path": "/zustand@5.0.3"
     },
@@ -325,11 +247,7 @@
       "category": "state",
       "description": "Zustand React subpath",
       "expect": "module",
-      "features": [
-        "exports",
-        "peer-dependency",
-        "subpath"
-      ],
+      "features": ["exports", "peer-dependency", "subpath"],
       "package": "zustand",
       "path": "/zustand@5.0.3/react"
     },
@@ -337,9 +255,7 @@
       "category": "state",
       "description": "Redux package root",
       "expect": "module",
-      "features": [
-        "exports"
-      ],
+      "features": ["exports"],
       "package": "redux",
       "path": "/redux@5.0.1"
     },
@@ -347,10 +263,7 @@
       "category": "state",
       "description": "Redux Toolkit scoped package",
       "expect": "module",
-      "features": [
-        "scoped-package",
-        "exports"
-      ],
+      "features": ["scoped-package", "exports"],
       "package": "@reduxjs/toolkit",
       "path": "/@reduxjs/toolkit@2.5.0"
     },
@@ -358,10 +271,7 @@
       "category": "state",
       "description": "SWR package root",
       "expect": "module",
-      "features": [
-        "exports",
-        "peer-dependency"
-      ],
+      "features": ["exports", "peer-dependency"],
       "package": "swr",
       "path": "/swr@2.3.0"
     },
@@ -369,10 +279,7 @@
       "category": "state",
       "description": "SWR external-all shorthand",
       "expect": "module",
-      "features": [
-        "external-all",
-        "peer-dependency"
-      ],
+      "features": ["external-all", "peer-dependency"],
       "package": "swr",
       "path": "/*swr@2.3.0"
     },
@@ -380,10 +287,7 @@
       "category": "ui",
       "description": "Floating UI DOM package",
       "expect": "module",
-      "features": [
-        "scoped-package",
-        "exports"
-      ],
+      "features": ["scoped-package", "exports"],
       "package": "@floating-ui/dom",
       "path": "/@floating-ui/dom@1.6.13"
     },
@@ -391,10 +295,7 @@
       "category": "ui",
       "description": "TanStack Query Core package",
       "expect": "module",
-      "features": [
-        "scoped-package",
-        "exports"
-      ],
+      "features": ["scoped-package", "exports"],
       "package": "@tanstack/query-core",
       "path": "/@tanstack/query-core@5.64.1"
     },
@@ -402,11 +303,7 @@
       "category": "ui",
       "description": "TanStack React Query with external React",
       "expect": "module",
-      "features": [
-        "scoped-package",
-        "external",
-        "peer-dependency"
-      ],
+      "features": ["scoped-package", "external", "peer-dependency"],
       "package": "@tanstack/react-query",
       "path": "/@tanstack/react-query@5.64.1?external=react"
     },
@@ -414,10 +311,7 @@
       "category": "ui",
       "description": "Framer Motion with external React peers",
       "expect": "module",
-      "features": [
-        "external",
-        "peer-dependency"
-      ],
+      "features": ["external", "peer-dependency"],
       "package": "framer-motion",
       "path": "/framer-motion@12.0.0?external=react,react-dom"
     },
@@ -425,9 +319,7 @@
       "category": "reactivity",
       "description": "RxJS package root",
       "expect": "module",
-      "features": [
-        "exports"
-      ],
+      "features": ["exports"],
       "package": "rxjs",
       "path": "/rxjs@7.8.1"
     },
@@ -435,10 +327,7 @@
       "category": "reactivity",
       "description": "RxJS operators subpath",
       "expect": "module",
-      "features": [
-        "exports",
-        "subpath"
-      ],
+      "features": ["exports", "subpath"],
       "package": "rxjs",
       "path": "/rxjs@7.8.1/operators"
     },
@@ -446,9 +335,7 @@
       "category": "reactivity",
       "description": "Immer package root",
       "expect": "module",
-      "features": [
-        "exports"
-      ],
+      "features": ["exports"],
       "package": "immer",
       "path": "/immer@10.1.1"
     },
@@ -456,10 +343,7 @@
       "category": "reactivity",
       "description": "Valtio package root",
       "expect": "module",
-      "features": [
-        "exports",
-        "peer-dependency"
-      ],
+      "features": ["exports", "peer-dependency"],
       "package": "valtio",
       "path": "/valtio@2.1.3"
     },
@@ -467,10 +351,7 @@
       "category": "reactivity",
       "description": "Jotai package root",
       "expect": "module",
-      "features": [
-        "exports",
-        "peer-dependency"
-      ],
+      "features": ["exports", "peer-dependency"],
       "package": "jotai",
       "path": "/jotai@2.11.0"
     },
@@ -478,11 +359,7 @@
       "category": "styling",
       "description": "Emotion React with external React",
       "expect": "module",
-      "features": [
-        "scoped-package",
-        "external",
-        "peer-dependency"
-      ],
+      "features": ["scoped-package", "external", "peer-dependency"],
       "package": "@emotion/react",
       "path": "/@emotion/react@11.14.0?external=react"
     },
@@ -490,9 +367,7 @@
       "category": "graphics",
       "description": "Three package root",
       "expect": "module",
-      "features": [
-        "package-root"
-      ],
+      "features": ["package-root"],
       "package": "three",
       "path": "/three@0.172.0"
     },
@@ -500,9 +375,7 @@
       "category": "graphics",
       "description": "Three OrbitControls example module",
       "expect": "module",
-      "features": [
-        "subpath"
-      ],
+      "features": ["subpath"],
       "package": "three",
       "path": "/three@0.172.0/examples/jsm/controls/OrbitControls.js"
     },
@@ -510,10 +383,7 @@
       "category": "graphics",
       "description": "D3 package root",
       "expect": "module",
-      "features": [
-        "package-root",
-        "many-dependencies"
-      ],
+      "features": ["package-root", "many-dependencies"],
       "package": "d3",
       "path": "/d3@7.9.0"
     },
@@ -521,9 +391,7 @@
       "category": "graphics",
       "description": "D3 scale package",
       "expect": "module",
-      "features": [
-        "package-root"
-      ],
+      "features": ["package-root"],
       "package": "d3-scale",
       "path": "/d3-scale@4.0.2"
     },
@@ -531,9 +399,7 @@
       "category": "node-polyfill",
       "description": "Buffer package root",
       "expect": "module",
-      "features": [
-        "node-polyfill"
-      ],
+      "features": ["node-polyfill"],
       "package": "buffer",
       "path": "/buffer@6.0.3"
     },
@@ -541,9 +407,7 @@
       "category": "node-polyfill",
       "description": "Process package root",
       "expect": "module",
-      "features": [
-        "node-polyfill"
-      ],
+      "features": ["node-polyfill"],
       "package": "process",
       "path": "/process@0.11.10"
     },
@@ -551,9 +415,7 @@
       "category": "node-polyfill",
       "description": "Events package root",
       "expect": "module",
-      "features": [
-        "node-polyfill"
-      ],
+      "features": ["node-polyfill"],
       "package": "events",
       "path": "/events@3.3.0"
     },
@@ -561,9 +423,7 @@
       "category": "node-polyfill",
       "description": "Path browserify package root",
       "expect": "module",
-      "features": [
-        "node-polyfill"
-      ],
+      "features": ["node-polyfill"],
       "package": "path-browserify",
       "path": "/path-browserify@1.0.1"
     },
@@ -571,10 +431,7 @@
       "category": "tooling-runtime",
       "description": "Babel runtime ESM helper",
       "expect": "module",
-      "features": [
-        "scoped-package",
-        "subpath"
-      ],
+      "features": ["scoped-package", "subpath"],
       "package": "@babel/runtime",
       "path": "/@babel/runtime@7.26.0/helpers/esm/extends"
     },
@@ -582,9 +439,7 @@
       "category": "tooling-runtime",
       "description": "TSLib package root",
       "expect": "module",
-      "features": [
-        "package-root"
-      ],
+      "features": ["package-root"],
       "package": "tslib",
       "path": "/tslib@2.8.1"
     },
@@ -592,9 +447,7 @@
       "category": "schema",
       "description": "GraphQL package root",
       "expect": "module",
-      "features": [
-        "commonjs"
-      ],
+      "features": ["commonjs"],
       "package": "graphql",
       "path": "/graphql@16.10.0"
     },
@@ -602,9 +455,7 @@
       "category": "schema",
       "description": "Yup package root",
       "expect": "module",
-      "features": [
-        "exports"
-      ],
+      "features": ["exports"],
       "package": "yup",
       "path": "/yup@1.6.1"
     },
@@ -612,9 +463,7 @@
       "category": "schema",
       "description": "Zod package root",
       "expect": "module",
-      "features": [
-        "exports"
-      ],
+      "features": ["exports"],
       "package": "zod",
       "path": "/zod@3.24.1"
     },
@@ -622,9 +471,7 @@
       "category": "utility-route",
       "description": "React raw package JSON",
       "expect": "json",
-      "features": [
-        "raw"
-      ],
+      "features": ["raw"],
       "package": "react",
       "path": "/react@18.3.1/package.json?raw"
     },
@@ -632,9 +479,7 @@
       "category": "utility-route",
       "description": "Preact metadata",
       "expect": "json",
-      "features": [
-        "meta"
-      ],
+      "features": ["meta"],
       "package": "preact",
       "path": "/preact@10.26.4?meta"
     },
@@ -642,9 +487,7 @@
       "category": "utility-route",
       "description": "Preact worker wrapper",
       "expect": "module",
-      "features": [
-        "worker"
-      ],
+      "features": ["worker"],
       "package": "preact",
       "path": "/preact@10.26.4?worker"
     },
@@ -652,10 +495,7 @@
       "category": "css",
       "description": "Normalize.css package root",
       "expect": "css",
-      "features": [
-        "css",
-        "package-root"
-      ],
+      "features": ["css", "package-root"],
       "package": "normalize.css",
       "path": "/normalize.css@8.0.1"
     },
@@ -663,10 +503,7 @@
       "category": "css",
       "description": "Bootstrap direct CSS file",
       "expect": "css",
-      "features": [
-        "css",
-        "subpath"
-      ],
+      "features": ["css", "subpath"],
       "package": "bootstrap",
       "path": "/bootstrap@5.3.8/dist/css/bootstrap.min.css"
     },
@@ -674,10 +511,7 @@
       "category": "css",
       "description": "React Toastify direct CSS file",
       "expect": "css",
-      "features": [
-        "css",
-        "subpath"
-      ],
+      "features": ["css", "subpath"],
       "package": "react-toastify",
       "path": "/react-toastify@11.0.5/dist/ReactToastify.css",
       "contentParity": "expected-only"
@@ -686,10 +520,7 @@
       "category": "css",
       "description": "React Toastify constructable stylesheet module",
       "expect": "module",
-      "features": [
-        "css",
-        "css-module"
-      ],
+      "features": ["css", "css-module"],
       "package": "react-toastify",
       "path": "/react-toastify@11.0.5/dist/ReactToastify.css?module"
     },
@@ -697,10 +528,7 @@
       "category": "css",
       "description": "React explicit CSS request without stylesheet",
       "expect": "diagnostic",
-      "features": [
-        "css",
-        "css-not-found"
-      ],
+      "features": ["css", "css-not-found"],
       "package": "react",
       "path": "/react@18.3.1?css"
     },
@@ -708,10 +536,7 @@
       "category": "diagnostic",
       "description": "Raw mode rejects transform flags",
       "expect": "diagnostic",
-      "features": [
-        "raw",
-        "invalid-query"
-      ],
+      "features": ["raw", "invalid-query"],
       "package": "react",
       "path": "/react@18.3.1?raw&target=es2022"
     },
@@ -719,9 +544,7 @@
       "category": "diagnostic",
       "description": "Unsupported Vue single-file component diagnostic",
       "expect": "diagnostic",
-      "features": [
-        "unsupported-source"
-      ],
+      "features": ["unsupported-source"],
       "package": "preact",
       "path": "/preact@10.26.4/component.vue"
     }

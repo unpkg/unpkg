@@ -655,7 +655,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                     </td>
                     <td class="py-2 align-top">
                       Returns JSON metadata for the resolved module, including dependencies, export subpaths, target,
-                      bundle mode, types URL, and integrity.
+                      types URL, and integrity.
                     </td>
                   </tr>
                   <tr class="border-b border-slate-200 dark:border-dark-border">
@@ -664,8 +664,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                     </td>
                     <td class="py-2 align-top">
                       Serves the raw package file without transforming it. Raw mode cannot be combined with build
-                      options like <code class="text-sm bg-slate-100 dark:bg-dark-panel">?target</code>,{" "}
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">?bundle</code>, or{" "}
+                      options like <code class="text-sm bg-slate-100 dark:bg-dark-panel">?target</code> or{" "}
                       <code class="text-sm bg-slate-100 dark:bg-dark-panel">?min</code>.
                     </td>
                   </tr>
