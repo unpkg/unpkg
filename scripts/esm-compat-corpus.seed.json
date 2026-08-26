@@ -28,11 +28,11 @@
     },
     {
       "category": "external",
-      "description": "Explicit external dependency",
+      "description": "Explicit external dependency across a version-resolving redirect",
       "expect": "module",
       "features": ["external"],
       "package": "react-dom",
-      "path": "/react-dom@18.3.1/client?external=react",
+      "path": "/react-dom@18/client?external=react",
       "preserveRedirectQuery": ["external"]
     },
     {
@@ -118,11 +118,11 @@
     },
     {
       "category": "build-options",
-      "description": "Development env option",
+      "description": "Development env option across a version-resolving redirect",
       "expect": "module",
       "features": ["env"],
       "package": "react",
-      "path": "/react@18.3.1?env=development",
+      "path": "/react@18?env=development",
       "preserveRedirectQuery": ["env"]
     },
     {

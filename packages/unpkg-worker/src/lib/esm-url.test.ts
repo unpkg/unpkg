@@ -35,9 +35,20 @@ describe("parseEsmPackagePathname", () => {
 });
 
 describe("normalizeEsmRequestUrl", () => {
-  it("adds the default target", () => {
+  it("keeps the default target implicit", () => {
     let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react@18");
-    expect("url" in result && result.url.search).toBe("?target=es2022");
+    expect("url" in result && result.url.search).toBe("");
+    expect("target" in result && result.target).toBe("es2022");
+  });
+
+  it("strips an explicit default target", () => {
+    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react@18?target=es2022");
+    expect("url" in result && result.url.search).toBe("");
+  });
+
+  it("keeps non-default targets in the canonical URL", () => {
+    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react@18?target=es2017");
+    expect("url" in result && result.url.search).toBe("?target=es2017");
   });
 
   it("canonicalizes flag and list param values into one cache key", () => {
@@ -45,7 +56,7 @@ describe("normalizeEsmRequestUrl", () => {
       "https://esm.unpkg.com/react-dom@18.3.1?min=1&conditions=development&conditions=browser,development&junk=x"
     );
 
-    expect("url" in result && result.url.search).toBe("?conditions=browser%2Cdevelopment&min=&target=es2022");
+    expect("url" in result && result.url.search).toBe("?conditions=browser%2Cdevelopment&min=");
   });
 
   it("rejects ?meta combined with route-changing params", () => {

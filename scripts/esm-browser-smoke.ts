@@ -358,7 +358,9 @@ function createRuntimeSmokeCases(): RuntimeSmokeCase[] {
           if (typeof module.default !== "function") {
             throw new Error("Default export is not the unwrapped exports.default function");
           }
-          if (!module.default("mod+s", { which: 83, metaKey: true })) {
+          // shift+s is platform-independent; mod resolves to meta on macOS and
+          // ctrl elsewhere.
+          if (!module.default("shift+s", { which: 83, shiftKey: true })) {
             throw new Error("Unwrapped default export did not behave as isHotkey");
           }
           return ["default", "isHotkey"];

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { parse as parseCommonJs } from "@esm.sh/cjs-module-lexer";
@@ -23,6 +23,9 @@ const immutableCacheControl = "public, max-age=31536000, immutable";
 // The @jspm/core major used for Node builtin polyfills. Emitted URLs pin the
 // resolved exact version; this range is the fallback when resolution fails.
 const jspmCorePolyfillRange = "2";
+// Basename of the per-build globals shim written into the extracted package
+// directory and passed to esbuild's inject option.
+const injectedGlobalsBasename = "__unpkg_globals__.mjs";
 // Node builtins with a browser implementation in @jspm/core. The bare subpath
 // (without /browser/) resolves through @jspm/core's own exports map, which picks
 // the browser variant via the default condition. inspector maps to an empty stub.
@@ -403,12 +406,27 @@ export async function bundleSource(
       sourcefile: filename,
     };
   }
+  // Browser builds shim the Node globals CJS code commonly references. esbuild
+  // only includes the injected imports that are actually used, and the bare
+  // "buffer"/"process" specifiers rewrite to polyfill URLs afterwards.
+  let inject: string[] = [];
+  if (!isRuntimeNativeTarget(options.target)) {
+    let globalsFilePath = path.join(packageDirectory, injectedGlobalsBasename);
+    await writeFile(
+      globalsFilePath,
+      ['export { Buffer } from "buffer";', 'export { default as process } from "process";', ""].join("\n")
+    );
+    inject = [globalsFilePath];
+  }
+
   let result = await esbuild.build({
     bundle: true,
     define: {
       "process.env.NODE_ENV": JSON.stringify(options.env),
+      ...(isRuntimeNativeTarget(options.target) ? undefined : { global: "globalThis" }),
     },
     format: "esm",
+    inject,
     jsx: options.jsx === "automatic" ? "automatic" : "transform",
     jsxFactory: options.jsx === "preact" ? "h" : undefined,
     jsxFragment: options.jsx === "preact" ? "Fragment" : undefined,
@@ -851,6 +869,19 @@ function createPackageInternalBundlePlugin(
           return null;
         }
 
+        // The injected globals file lives on the real filesystem; let esbuild's
+        // default resolver and loader handle it. (Compared by basename: macOS
+        // temp paths canonicalize through the /private/var symlink.)
+        if (args.path.endsWith(`/${injectedGlobalsBasename}`)) {
+          return null;
+        }
+
+        // The globals file's own imports are pure shims: mark them
+        // side-effect free so esbuild drops the ones the bundle never uses.
+        if (args.importer.endsWith(`/${injectedGlobalsBasename}`)) {
+          return { path: args.path, external: true, sideEffects: false };
+        }
+
         if (args.namespace === "unpkg-external-module") {
           return { path: args.path, external: true };
         }
@@ -1085,7 +1116,7 @@ async function rewriteEsmSpecifier(
       diagnostics?.unpinnedSpecifiers.push(specifier);
     }
 
-    return `${origin}/@jspm/core@${polyfillVersion}/nodelibs/${polyfillSubpath}?target=${options.target}`;
+    return `${origin}/@jspm/core@${polyfillVersion}/nodelibs/${polyfillSubpath}${createTargetSearch(options)}`;
   }
 
   if (specifier === "" || isValidUrl(specifier)) {
@@ -1116,7 +1147,11 @@ async function rewriteEsmSpecifier(
     return `${origin}/${dependency.packageName}@${version}${stripTrailingSlash(aliased.path)}${search}`;
   }
 
-  return `${stripTrailingSlash(specifier)}?target=${options.target}`;
+  return `${stripTrailingSlash(specifier)}${createTargetSearch(options)}`;
+}
+
+function createTargetSearch(options: NormalizedBuildOptions): string {
+  return options.target === "es2022" ? "" : `?target=${options.target}`;
 }
 
 function createDependencySearch(options: NormalizedBuildOptions): string {
@@ -1124,9 +1159,12 @@ function createDependencySearch(options: NormalizedBuildOptions): string {
   if (options.env === "development") {
     searchParams.set("dev", "");
   }
-  // Always include the target so the emitted URL is already canonical; a URL
-  // without it would redirect on every dependency import.
-  searchParams.set("target", options.target);
+  // The default target is implicit in canonical URLs; only non-default targets
+  // appear, matching the esm worker's normalization exactly so emitted URLs
+  // never redirect.
+  if (options.target !== "es2022") {
+    searchParams.set("target", options.target);
+  }
   if (options.conditions.length > 0) {
     searchParams.set("conditions", options.conditions.join(","));
   }

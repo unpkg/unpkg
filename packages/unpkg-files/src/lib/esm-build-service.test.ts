@@ -254,14 +254,14 @@ describe("rewriteEsmImports", () => {
     let code = 'import React from "react";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { react: "^18" }, options());
 
-    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.3.1?target=es2022";');
+    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.3.1";');
   });
 
   it("applies dependency version overrides", async () => {
     let code = 'import React from "react";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { react: "^18" }, options("deps=react@18.2.0"));
 
-    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.2.0?deps=react%4018.2.0&target=es2022";');
+    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.2.0?deps=react%4018.2.0";');
   });
 
   it("applies aliases before version resolution", async () => {
@@ -275,7 +275,7 @@ describe("rewriteEsmImports", () => {
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/preact@10.25.4/compat?alias=react%3Apreact%2Fcompat&deps=preact%4010.25.4&target=es2022";'
+      'import React from "https://esm.unpkg.com/preact@10.25.4/compat?alias=react%3Apreact%2Fcompat&deps=preact%4010.25.4";'
     );
   });
 
@@ -297,7 +297,7 @@ describe("rewriteEsmImports", () => {
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/preact@10.26.4/compat?alias=react%3Apreact%2Fcompat&deps=react%4018.2.0&external=react-dom&target=es2022";'
+      'import React from "https://esm.unpkg.com/preact@10.26.4/compat?alias=react%3Apreact%2Fcompat&deps=react%4018.2.0&external=react-dom";'
     );
   });
 
@@ -326,7 +326,7 @@ describe("rewriteEsmImports", () => {
       options()
     );
 
-    expect(result).toBe('import stringWidth from "https://esm.unpkg.com/string-width@4.2.3?target=es2022";');
+    expect(result).toBe('import stringWidth from "https://esm.unpkg.com/string-width@4.2.3";');
   });
 
   it("resolves git and workspace dependency specifiers to published versions", async () => {
@@ -339,8 +339,8 @@ describe("rewriteEsmImports", () => {
       options()
     );
 
-    expect(result).toContain('from "https://esm.unpkg.com/react@18.3.1?target=es2022"');
-    expect(result).toContain('from "https://esm.unpkg.com/preact@10.26.4?target=es2022"');
+    expect(result).toContain('from "https://esm.unpkg.com/react@18.3.1"');
+    expect(result).toContain('from "https://esm.unpkg.com/preact@10.26.4"');
   });
 
   it("pins exact dependency versions without a registry lookup", async () => {
@@ -349,36 +349,36 @@ describe("rewriteEsmImports", () => {
     let code = 'import self from "self-pkg";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "self-pkg": "1.2.3" }, options());
 
-    expect(result).toBe('import self from "https://esm.unpkg.com/self-pkg@1.2.3?target=es2022";');
+    expect(result).toBe('import self from "https://esm.unpkg.com/self-pkg@1.2.3";');
   });
 
   it("rewrites local imports with the active target", async () => {
     let code = 'import util from "./util";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import util from "./util?target=es2022";');
+    expect(result).toBe('import util from "./util";');
   });
 
   it("rewrites common Node builtins to browser polyfills", async () => {
     let code = 'import process from "node:process";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import process from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/process?target=es2022";');
+    expect(result).toBe('import process from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/process";');
   });
 
   it("rewrites additional browser-compatible Node builtins to polyfills", async () => {
     let code = 'import crypto from "node:crypto";\nimport os from "os";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/crypto?target=es2022"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/os?target=es2022"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/crypto"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/os"');
   });
 
   it("rewrites Node-only builtins to browser polyfills", async () => {
     let code = 'import fs from "node:fs";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import fs from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/fs?target=es2022";');
+    expect(result).toBe('import fs from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/fs";');
   });
 
   it("rewrites additional Node-only builtins to browser polyfills", async () => {
@@ -386,7 +386,7 @@ describe("rewriteEsmImports", () => {
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
     expect(result).toBe(
-      'import workerThreads from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/worker_threads?target=es2022";'
+      'import workerThreads from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/worker_threads";'
     );
   });
 
@@ -410,25 +410,25 @@ describe("rewriteEsmImports", () => {
     ].join("\n");
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/querystring?target=es2022"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/vm?target=es2022"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/tty?target=es2022"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/constants?target=es2022"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/fs/promises?target=es2022"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/querystring"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/vm"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/tty"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/constants"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/fs/promises"');
   });
 
   it("stubs node: builtins that have no browser polyfill", async () => {
     let code = 'import sqlite from "node:sqlite";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import sqlite from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/@empty?target=es2022";');
+    expect(result).toBe('import sqlite from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/@empty";');
   });
 
   it("stubs bare builtins that have no browser polyfill", async () => {
     let code = 'import traceEvents from "trace_events";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import traceEvents from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/@empty?target=es2022";');
+    expect(result).toBe('import traceEvents from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/@empty";');
   });
 
   it("does not treat Object.prototype names as builtins", async () => {
@@ -437,14 +437,14 @@ describe("rewriteEsmImports", () => {
     let code = 'import ctor from "constructor";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { constructor: "1.0.0" }, options());
 
-    expect(result).toBe('import ctor from "https://esm.unpkg.com/constructor@1.0.0?target=es2022";');
+    expect(result).toBe('import ctor from "https://esm.unpkg.com/constructor@1.0.0";');
   });
 
   it("cleans loose exact versions before emitting URLs", async () => {
     let code = 'import x from "loose-pkg";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "loose-pkg": "v1.2.3" }, options());
 
-    expect(result).toBe('import x from "https://esm.unpkg.com/loose-pkg@1.2.3?target=es2022";');
+    expect(result).toBe('import x from "https://esm.unpkg.com/loose-pkg@1.2.3";');
   });
 
   it("marks builds unpinned when dependency resolution fails", async () => {
@@ -454,7 +454,7 @@ describe("rewriteEsmImports", () => {
     // rewrite degrades to the raw range, and the build is flagged unpinned.
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "unmocked-package": "^2" }, options(), diagnostics);
 
-    expect(result).toBe('import missing from "https://esm.unpkg.com/unmocked-package@^2?target=es2022";');
+    expect(result).toBe('import missing from "https://esm.unpkg.com/unmocked-package@^2";');
     expect(diagnostics.unpinnedSpecifiers).toEqual(["unmocked-package"]);
   });
 });

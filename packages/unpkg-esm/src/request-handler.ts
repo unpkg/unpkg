@@ -717,7 +717,12 @@ function redirect(location: string | URL, init?: ResponseInit | number): Respons
 }
 
 async function handleInlineTransformRequest(request: Request, env: Env): Promise<Response> {
-  let sourceResponse = await fetch(new URL(`/transform${new URL(request.url).search}`, env.FILES_ORIGIN), {
+  let url = new URL(request.url);
+  let transformSearchParams = new URLSearchParams(url.search);
+  // Rewritten bare imports must point back at this deployment, not the
+  // production origin the files service defaults to.
+  transformSearchParams.set("origin", url.origin);
+  let sourceResponse = await fetch(new URL(`/transform?${transformSearchParams}`, env.FILES_ORIGIN), {
     method: "POST",
     headers: {
       "Content-Type": request.headers.get("Content-Type") ?? "application/json",

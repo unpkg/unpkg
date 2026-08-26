@@ -161,6 +161,14 @@ describe("handleRequest", () => {
           });
         case "https://registry.npmjs.org/preact":
           return fileResponse(packageInfo.preact);
+        case "https://registry.npmjs.org/@jspm/core":
+          return Response.json({
+            name: "@jspm/core",
+            "dist-tags": { latest: "2.1.0" },
+            versions: {
+              "2.1.0": { name: "@jspm/core", version: "2.1.0" },
+            },
+          });
         case "https://registry.npmjs.org/react":
           return fileResponse(packageInfo.react);
         case "https://registry.npmjs.org/run":
@@ -246,7 +254,7 @@ describe("handleRequest", () => {
     expect(response.status).toBe(302);
     let location = response.headers.get("Location");
     expect(location).not.toBeNull();
-    expect(location).toMatch(/^\/react@18\.\d+\.\d+\?meta=&target=es2022$/);
+    expect(location).toMatch(/^\/react@18\.\d+\.\d+\?meta=$/);
   });
 
   it("serves legacy uppercase package names without falling back to lowercase", async () => {
@@ -254,13 +262,13 @@ describe("handleRequest", () => {
     // must resolve the uppercase package, not redirect to the lowercase one.
     let response = await dispatchFetch("https://esm.unpkg.com/JSONStream", { redirect: "manual" });
     expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe("/JSONStream@1.3.5?target=es2022");
+    expect(response.headers.get("Location")).toBe("/JSONStream@1.3.5");
   });
 
   it("redirects mixed-case requests to the canonical package name", async () => {
     let response = await dispatchFetch("https://esm.unpkg.com/React@18.2.0", { redirect: "manual" });
     expect(response.status).toBe(301);
-    expect(response.headers.get("Location")).toBe("/react@18.2.0?target=es2022");
+    expect(response.headers.get("Location")).toBe("/react@18.2.0");
   });
 
   it("rejects ?meta combined with params that change the module route", async () => {
@@ -277,11 +285,11 @@ describe("handleRequest", () => {
   });
 
   it("strips unknown query params during normalization", async () => {
-    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?junk=1&target=es2022", {
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?junk=1&dev", {
       redirect: "manual",
     });
     expect(response.status).toBe(301);
-    expect(response.headers.get("Location")).toBe("/preact@10.26.4?target=es2022");
+    expect(response.headers.get("Location")).toBe("/preact@10.26.4?dev=");
   });
 
   it("rejects unsupported build params with a JSON diagnostic", async () => {
@@ -299,7 +307,7 @@ describe("handleRequest", () => {
     defaultCacheStore.clear();
 
     // The integrity cache is only active outside development/test modes.
-    let request = new Request("https://esm.unpkg.com/react@18.2.0?meta=&target=es2022");
+    let request = new Request("https://esm.unpkg.com/react@18.2.0?meta=");
     let response = await handleRequest(request, { ...env, MODE: "production" }, context);
     expect(response.status).toBe(200);
     let json = (await response.json()) as any;
@@ -307,7 +315,7 @@ describe("handleRequest", () => {
     // The integrity hash must be computed from the artifact cached under the
     // module URL, so a later module request serves exactly the hashed bytes.
     await Bun.sleep(0);
-    let cached = defaultCacheStore.get("https://esm.unpkg.com/react@18.2.0?target=es2022");
+    let cached = defaultCacheStore.get("https://esm.unpkg.com/react@18.2.0");
     expect(cached).toBeDefined();
 
     let bytes = await cached!.clone().arrayBuffer();
@@ -330,7 +338,7 @@ describe("handleRequest", () => {
     expect(json.version).toBe("18.2.0");
     expect(json.subpath).toBe(".");
     expect(json.target).toBe("es2022");
-    expect(json.module).toBe("https://esm.unpkg.com/react@18.2.0?target=es2022");
+    expect(json.module).toBe("https://esm.unpkg.com/react@18.2.0");
     expect(json.types).toBeNull();
     expect(json.integrity).toMatch(/^sha384-/);
   });
@@ -367,12 +375,8 @@ describe("handleRequest", () => {
   });
 
   it("proxies build artifacts from the files origin", async () => {
-    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4/src/component.js", {
-      redirect: "manual",
-    });
-    expect(redirectResponse.status).toBe(301);
-
-    let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
+    // Default-target module URLs are canonical as-is; no redirect.
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4/src/component.js");
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/javascript; charset=utf-8");
     expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
@@ -381,12 +385,7 @@ describe("handleRequest", () => {
   });
 
   it("adds TypeScript declaration headers to build artifacts", async () => {
-    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4", {
-      redirect: "manual",
-    });
-    expect(redirectResponse.status).toBe(301);
-
-    let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4");
     expect(response.status).toBe(200);
     expect(response.headers.get("X-TypeScript-Types")).toBe("https://esm.unpkg.com/preact@10.26.4/src/index.d.ts");
   });
@@ -427,12 +426,7 @@ describe("handleRequest", () => {
   });
 
   it("does not build explicit files blocked by null package exports", async () => {
-    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/cesium@1.144.0/Build/Cesium/Cesium.js", {
-      redirect: "manual",
-    });
-    expect(redirectResponse.status).toBe(301);
-
-    let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
+    let response = await dispatchFetch("https://esm.unpkg.com/cesium@1.144.0/Build/Cesium/Cesium.js");
     expect(response.status).toBe(404);
     expect(await response.json()).toMatchObject({
       error: {
@@ -600,7 +594,7 @@ describe("handleRequest", () => {
     expect(response.headers.get("Content-Type")).toBe("application/javascript; charset=utf-8");
     expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
     expect(await response.text()).toContain(
-      'return new Worker("https://esm.unpkg.com/preact@10.26.4/src/component.js?target=es2022", { type: "module", ...options });'
+      'return new Worker("https://esm.unpkg.com/preact@10.26.4/src/component.js", { type: "module", ...options });'
     );
   });
 

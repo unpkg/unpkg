@@ -133,12 +133,13 @@ export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmR
     }
   }
 
-  if (
-    !url.searchParams.has("target") &&
-    !url.searchParams.has("raw") &&
-    !isUntargetedAssetRequest(packagePath, url.searchParams)
-  ) {
-    url.searchParams.set("target", "es2022");
+  // The default target is implicit: canonical URLs never carry target=es2022.
+  // This keeps the bare module URL directly servable (no redirect), which
+  // matters because browsers key the module map by request URL — if the bare
+  // URL redirected to a ?target= variant while rewritten dependency imports
+  // used the variant directly, the same module would load twice.
+  if (url.searchParams.get("target") === "es2022") {
+    url.searchParams.delete("target");
   }
 
   let search = normalizeSearchParams(url.searchParams);
@@ -148,23 +149,9 @@ export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmR
     packagePath,
     search,
     searchParams: new URLSearchParams(url.searchParams),
-    target: url.searchParams.get("target") ?? "raw",
+    target: url.searchParams.get("target") ?? "es2022",
     url,
   };
-}
-
-function isUntargetedAssetRequest(packagePath: EsmPackagePath, searchParams: URLSearchParams): boolean {
-  return (
-    searchParams.has("css") ||
-    packagePath.package.toLowerCase().startsWith("@types/") ||
-    packagePath.package.endsWith(".css") ||
-    packagePath.filename?.endsWith(".css") === true ||
-    isTypeDeclarationPath(packagePath.filename)
-  );
-}
-
-function isTypeDeclarationPath(filename: string | undefined): boolean {
-  return filename?.endsWith(".d.ts") || filename?.endsWith(".d.mts") || filename?.endsWith(".d.cts") || false;
 }
 
 export function parseEsmPackagePathname(pathname: string): EsmPackagePath | null {
