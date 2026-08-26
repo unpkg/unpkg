@@ -1,9 +1,11 @@
 import { type HydrateComponentTable, hydrateAll } from "../src/hydration.ts";
 
 import { HomeNav } from "../src/components/home-nav.tsx";
+import { RunDemo } from "../src/components/run-demo.tsx";
 
 const StatefulComponents: HydrateComponentTable = {
   HomeNav,
+  RunDemo,
 };
 
 hydrateAll(StatefulComponents);

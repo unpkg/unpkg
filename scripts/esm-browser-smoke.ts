@@ -629,6 +629,27 @@ function createRuntimeSmokeCases(): RuntimeSmokeCase[] {
     {
       case: {
         category: "runtime",
+        description: "Homepage confetti demo runs through /run",
+        expect: "module",
+        features: ["runtime", "run", "homepage"],
+        path: "/__runtime/homepage-run-demo",
+      },
+      run: async (page, origin, runOrigin) => {
+        await page.goto(`${runOrigin}/`, { waitUntil: "domcontentloaded" });
+        // hydrateAll removes data-hydrate attributes as it attaches components;
+        // the button is inert until then.
+        await page.waitForFunction(() => document.querySelector("[data-hydrate]") == null, undefined, {
+          timeout: 30000,
+        });
+        await page.getByRole("button", { name: "Run this example" }).click();
+        // canvas-confetti appends a canvas once the transformed inline script runs.
+        await page.waitForSelector("canvas", { timeout: 30000 });
+        return ["run", "confetti"];
+      },
+    },
+    {
+      case: {
+        category: "runtime",
         description: "Inline TSX helper transforms browser scripts",
         expect: "module",
         features: ["runtime", "tsx"],
