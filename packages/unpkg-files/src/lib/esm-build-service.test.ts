@@ -19,6 +19,17 @@ import {
 
 const registry = "https://registry.npmjs.org";
 
+async function importBundledCode(code: string): Promise<Record<string, unknown>> {
+  let directory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-import-"));
+  let modulePath = path.join(directory, "bundle.mjs");
+  try {
+    await writeFile(modulePath, code);
+    return await import(modulePath);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+}
+
 describe("parseDependencyOverrides", () => {
   it("parses package version overrides", () => {
     expect(parseDependencyOverrides("react@18.2.0,@scope/pkg@1.2.3")).toEqual({
@@ -485,10 +496,8 @@ describe("bundleSource", () => {
       );
 
       expect(result.code).not.toContain('Dynamic require of "self-referencing-package"');
-      expect(result.code).toContain("createRoot");
-      expect(result.code).toContain("__unpkg_cjs_default as default");
-      expect(result.code).toContain('__unpkg_cjs_default["createRoot"]');
       expect(result.code).toContain("as createRoot");
+      expect(result.code).toContain("as default");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }
@@ -530,8 +539,133 @@ describe("bundleSource", () => {
         options()
       );
 
-      expect(result.code).toContain('__unpkg_cjs_default["createContext"]');
       expect(result.code).toContain("as createContext");
+      expect(result.code).toContain("as default");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps CommonJS named exports when minifying", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-minified-cjs-exports-"));
+
+    try {
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "minified-cjs-package" },
+        "minified-cjs-package",
+        "1.0.0",
+        "/index.js",
+        "exports.foo = 1; exports.bar = function bar() { return 2; };",
+        options("min")
+      );
+
+      expect(result.code).toContain("as foo");
+      expect(result.code).toContain("as bar");
+      expect(result.code).toContain("as default");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("unwraps the default export of __esModule CommonJS modules", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-esmodule-default-"));
+
+    try {
+      let code = [
+        "Object.defineProperty(exports, '__esModule', { value: true });",
+        "exports.default = function main() { return 'main'; };",
+        "exports.helper = function helper() { return 'helper'; };",
+      ].join("\n");
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "esmodule-default-package" },
+        "esmodule-default-package",
+        "1.0.0",
+        "/index.js",
+        code,
+        options()
+      );
+
+      // esbuild's __toESM interop resolves the default binding to exports.default for
+      // __esModule modules; the raw exports object must not be the default export.
+      expect(result.code).toContain("__toESM");
+      expect(result.code).toContain(".default;");
+      expect(result.code).toContain("as helper");
+      expect(result.code).toContain("as default");
+
+      let namespace = await importBundledCode(result.code);
+      expect(typeof namespace.default).toBe("function");
+      expect((namespace.default as () => string)()).toBe("main");
+      expect((namespace.helper as () => string)()).toBe("helper");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps the exports object as default for CommonJS modules without __esModule", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-plain-cjs-default-"));
+
+    try {
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "plain-cjs-package" },
+        "plain-cjs-package",
+        "1.0.0",
+        "/index.js",
+        "exports.foo = 1;",
+        options()
+      );
+
+      let namespace = await importBundledCode(result.code);
+      expect(namespace.foo).toBe(1);
+      expect((namespace.default as { foo: number }).foo).toBe(1);
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("reexports other packages with export * so named exports resolve at runtime", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-external-reexport-"));
+
+    try {
+      let code = [
+        "module.exports = require('buffer');",
+        "exports.extra = true;",
+      ].join("\n");
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "external-reexport-package" },
+        "external-reexport-package",
+        "1.0.0",
+        "/index.js",
+        code,
+        options()
+      );
+
+      expect(result.code).toContain('export * from "buffer"');
+      expect(result.code).toContain("as extra");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps inline sourcemaps on CommonJS builds with named exports", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-cjs-sourcemap-"));
+
+    try {
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "cjs-sourcemap-package" },
+        "cjs-sourcemap-package",
+        "1.0.0",
+        "/index.js",
+        "exports.foo = 1;",
+        options("sourcemap")
+      );
+
+      expect(result.code).toContain("as foo");
+      expect(result.code).toContain("//# sourceMappingURL=data:application/json");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }
@@ -555,9 +689,8 @@ describe("bundleSource", () => {
         options()
       );
 
-      expect(result.code).toContain('__unpkg_cjs_default["createRoot"]');
       expect(result.code).toContain("as createRoot");
-      expect(result.code).not.toContain('unpkg_cjs_default["privateInternal"]');
+      expect(result.code).not.toContain("privateInternal as");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }

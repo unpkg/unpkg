@@ -139,6 +139,7 @@ export interface InlineTransformRequest {
 }
 
 interface PackageJson {
+  browser?: string | Record<string, string>;
   dependencies?: Record<string, string>;
   exports?: string | null | Record<string, unknown>;
   main?: string;
@@ -363,7 +364,7 @@ export async function bundleSource(
   code: string,
   options: NormalizedBuildOptions
 ): Promise<{ code: string; map?: string }> {
-  let commonJsExportNames = await analyzeCommonJsExports(
+  let commonJsAnalysis = await analyzeCommonJsExports(
     packageDirectory,
     packageJson,
     packageName,
@@ -372,21 +373,34 @@ export async function bundleSource(
     code,
     options
   );
+  let isCommonJsEntry =
+    !hasEsmExports(filename, code) &&
+    (commonJsAnalysis.exports.length > 0 || commonJsAnalysis.externalReexports.length > 0);
   let selectEsmExports =
-    options.exportNames.length > 0 && commonJsExportNames.length === 0 && hasEsmExports(filename, code);
-  let stdin = selectEsmExports
-    ? {
-        contents: `export { ${options.exportNames.join(", ")} } from ${JSON.stringify(filename)};`,
-        loader: "js" as const,
-        resolveDir: "/",
-        sourcefile: "/__unpkg_selected_exports__.js",
-      }
-    : {
-        contents: code,
-        loader: getEsbuildLoader(filename),
-        resolveDir: path.posix.dirname(filename),
-        sourcefile: filename,
-      };
+    options.exportNames.length > 0 && !isCommonJsEntry && hasEsmExports(filename, code);
+  let stdin: esbuild.StdinOptions;
+  if (isCommonJsEntry) {
+    stdin = {
+      contents: createCommonJsInteropEntry(filename, commonJsAnalysis, options.exportNames),
+      loader: "js" as const,
+      resolveDir: "/",
+      sourcefile: "/__unpkg_cjs_interop__.js",
+    };
+  } else if (selectEsmExports) {
+    stdin = {
+      contents: `export { ${options.exportNames.join(", ")} } from ${JSON.stringify(filename)};`,
+      loader: "js" as const,
+      resolveDir: "/",
+      sourcefile: "/__unpkg_selected_exports__.js",
+    };
+  } else {
+    stdin = {
+      contents: code,
+      loader: getEsbuildLoader(filename),
+      resolveDir: path.posix.dirname(filename),
+      sourcefile: filename,
+    };
+  }
   let result = await esbuild.build({
     bundle: true,
     define: {
@@ -400,7 +414,12 @@ export async function bundleSource(
     jsxImportSource: options.jsxImportSource,
     keepNames: options.keepNames,
     minify: options.minify,
-    plugins: [createPackageInternalBundlePlugin(packageDirectory, packageJson, packageName, version, options)],
+    plugins: [
+      createPackageInternalBundlePlugin(packageDirectory, packageJson, packageName, version, options, {
+        code,
+        filename,
+      }),
+    ],
     sourcemap: options.sourcemap ? "inline" : false,
     stdin,
     platform: options.target === "node" ? "node" : "browser",
@@ -414,8 +433,42 @@ export async function bundleSource(
   }
 
   return {
-    code: addCommonJsNamedExports(output.text, commonJsExportNames),
+    code: output.text,
   };
+}
+
+/**
+ * Builds a synthetic ESM entry module for a CommonJS entry file. esbuild's CommonJS
+ * interop then produces the default export (unwrapping `exports.default` for
+ * `__esModule` modules), and the named exports are real ESM exports of the bundle,
+ * so they survive minification and keep sourcemaps intact. Reexports of other
+ * packages become `export * from` statements that resolve at runtime.
+ */
+function createCommonJsInteropEntry(
+  filename: string,
+  analysis: CommonJsExportAnalysis,
+  selectedExportNames: string[]
+): string {
+  let names = (selectedExportNames.length > 0 ? selectedExportNames : analysis.exports).filter(
+    (name) => name !== "default" && name !== "__unpkg_cjs_default__" && isSafeExportName(name)
+  );
+  let source = JSON.stringify(filename);
+  let lines = [
+    names.length > 0
+      ? `import __unpkg_cjs_default__, { ${names.join(", ")} } from ${source};`
+      : `import __unpkg_cjs_default__ from ${source};`,
+    "export default __unpkg_cjs_default__;",
+  ];
+  if (names.length > 0) {
+    lines.push(`export { ${names.join(", ")} };`);
+  }
+  if (selectedExportNames.length === 0) {
+    for (let specifier of analysis.externalReexports) {
+      lines.push(`export * from ${JSON.stringify(specifier)};`);
+    }
+  }
+
+  return lines.join("\n") + "\n";
 }
 
 export function parseDependencyOverrides(value: string | null): Record<string, string> {
@@ -665,6 +718,11 @@ export function analyzeCommonJsSource(
   }
 }
 
+export interface CommonJsExportAnalysis {
+  exports: string[];
+  externalReexports: string[];
+}
+
 export async function analyzeCommonJsExports(
   packageDirectory: string,
   packageJson: PackageJson,
@@ -673,8 +731,9 @@ export async function analyzeCommonJsExports(
   filename: string,
   code: string,
   options: NormalizedBuildOptions
-): Promise<string[]> {
+): Promise<CommonJsExportAnalysis> {
   let exportNames = new Set<string>();
+  let externalReexports = new Set<string>();
   let pending = [{ callMode: false, code, filename }];
   let visited = new Set<string>();
 
@@ -701,8 +760,21 @@ export async function analyzeCommonJsExports(
     for (let reexport of analysis.reexports) {
       let callMode = reexport.endsWith("()");
       let specifier = callMode ? reexport.slice(0, -2) : reexport;
-      let resolved = resolveCommonJsReexport(current.filename, specifier, packageJson, packageName, options);
-      if (resolved == null) continue;
+
+      if (!specifier.startsWith(".")) {
+        // A reexport of another package (or a Node builtin). Its export names are not
+        // statically known here; surface it so the build can emit `export * from` and
+        // let the rewritten module URL provide the names at runtime.
+        if (!callMode) {
+          externalReexports.add(specifier);
+        }
+        continue;
+      }
+
+      let resolved = path.posix.normalize(path.posix.join(path.posix.dirname(current.filename), specifier));
+      if (!resolved.startsWith("/")) {
+        resolved = `/${resolved}`;
+      }
 
       let file = await getFirstExistingSourceFile(packageDirectory, resolved);
       if (file != null) {
@@ -715,28 +787,10 @@ export async function analyzeCommonJsExports(
     }
   }
 
-  return Array.from(exportNames).sort();
-}
-
-function resolveCommonJsReexport(
-  containingFilename: string,
-  specifier: string,
-  packageJson: PackageJson,
-  packageName: string,
-  options: NormalizedBuildOptions
-): string | null {
-  if (specifier.startsWith(".")) {
-    let resolved = path.posix.normalize(path.posix.join(path.posix.dirname(containingFilename), specifier));
-    return resolved.startsWith("/") ? resolved : `/${resolved}`;
-  }
-
-  let parsed = parseBareSpecifier(specifier);
-  if (parsed?.packageName !== packageName) {
-    return null;
-  }
-
-  let selfReferencePath = parsed.path === "" ? "/" : parsed.path;
-  return resolveBuildFilename(packageJson, selfReferencePath, options);
+  return {
+    exports: Array.from(exportNames).sort(),
+    externalReexports: Array.from(externalReexports).sort(),
+  };
 }
 
 function readJsonExportNames(code: string): string[] {
@@ -793,7 +847,8 @@ function addCommonJsNamedExports(code: string, exportNames: string[]): string {
   let namedExportSpecifiers = exportNames.map((name, index) => `__unpkg_cjs_export_${index} as ${name}`).join(", ");
   return (
     code.slice(0, match.index) +
-    `var __unpkg_cjs_default = ${match[1]};\n${namedExportDeclarations}\nexport { __unpkg_cjs_default as default, ${namedExportSpecifiers} };\n`
+    `var __unpkg_cjs_default = ${match[1]};\n${namedExportDeclarations}\nexport { __unpkg_cjs_default as default, ${namedExportSpecifiers} };\n` +
+    code.slice(match.index + match[0].length)
   );
 }
 
@@ -802,7 +857,8 @@ function createPackageInternalBundlePlugin(
   packageJson: PackageJson,
   packageName: string,
   version: string,
-  options: NormalizedBuildOptions
+  options: NormalizedBuildOptions,
+  entry?: { code: string; filename: string }
 ): esbuild.Plugin {
   return {
     name: "unpkg-package-internal",
@@ -866,6 +922,14 @@ function createPackageInternalBundlePlugin(
       });
 
       build.onLoad({ filter: /.*/, namespace: "unpkg-package" }, async (args) => {
+        if (entry != null && args.path === entry.filename) {
+          return {
+            contents: entry.code,
+            loader: getEsbuildLoader(entry.filename),
+            resolveDir: path.posix.dirname(entry.filename),
+          };
+        }
+
         let file = await getFirstExistingSourceFile(packageDirectory, args.path);
         if (file == null) {
           return {
