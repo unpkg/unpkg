@@ -8,13 +8,20 @@ WORKDIR /app
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
 
-# Install pnpm
-RUN npm install -g pnpm@10.7.0
+# Install pnpm (same version as packageManager in package.json)
+RUN npm install -g pnpm@10.15.0
 
-# Copy workspace configuration files
+# Copy workspace configuration files. Workspace packages are injected
+# (inject-workspace-packages in .npmrc), so every workspace manifest must be
+# present for the lockfile's injected file: entries to install and for
+# syncInjectedDepsAfterScripts to sync build output after builds.
 COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/unpkg-files/package.json ./packages/unpkg-files/
 COPY packages/unpkg-worker/package.json ./packages/unpkg-worker/
+COPY packages/unpkg-esm/package.json ./packages/unpkg-esm/
+COPY packages/unpkg-app/package.json ./packages/unpkg-app/
+COPY packages/unpkg-www/package.json ./packages/unpkg-www/
+COPY scripts/package.json ./scripts/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -23,8 +30,8 @@ RUN pnpm install --frozen-lockfile
 COPY packages/unpkg-files ./packages/unpkg-files/
 COPY packages/unpkg-worker ./packages/unpkg-worker/
 
-# Build all packages
-RUN pnpm run build
+# Build the packages this image ships
+RUN pnpm --filter unpkg-worker --filter unpkg-files run build
 
 # Create production deploy
 RUN pnpm --filter unpkg-files deploy --prod dist-files
