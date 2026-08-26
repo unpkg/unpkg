@@ -15,6 +15,7 @@ import {
   rewriteEsmImports,
   transformSource,
   UnsupportedDynamicRequireError,
+  UnsupportedNodeBuiltinError,
 } from "./esm-build-service.ts";
 
 const registry = "https://registry.npmjs.org";
@@ -335,22 +336,22 @@ describe("rewriteEsmImports", () => {
     let code = 'import process from "node:process";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import process from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/process";');
+    expect(result).toBe('import process from "https://esm.unpkg.com/@jspm/core@2/nodelibs/process";');
   });
 
   it("rewrites additional browser-compatible Node builtins to polyfills", async () => {
     let code = 'import crypto from "node:crypto";\nimport os from "os";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/crypto"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/os"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/crypto"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/os"');
   });
 
   it("rewrites Node-only builtins to browser polyfills", async () => {
     let code = 'import fs from "node:fs";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import fs from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/fs";');
+    expect(result).toBe('import fs from "https://esm.unpkg.com/@jspm/core@2/nodelibs/fs";');
   });
 
   it("rewrites additional Node-only builtins to browser polyfills", async () => {
@@ -358,7 +359,7 @@ describe("rewriteEsmImports", () => {
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
     expect(result).toBe(
-      'import workerThreads from "https://esm.unpkg.com/@jspm/core@2/nodelibs/browser/worker_threads";'
+      'import workerThreads from "https://esm.unpkg.com/@jspm/core@2/nodelibs/worker_threads";'
     );
   });
 
@@ -367,6 +368,42 @@ describe("rewriteEsmImports", () => {
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options("target=node"));
 
     expect(result).toBe(code);
+  });
+
+  it("polyfills bare builtins instead of resolving same-named npm packages", async () => {
+    // querystring, vm, tty, and constants all have unrelated npm packages squatting
+    // their names; the builtin must win. None of them are mocked in the registry
+    // fetch above, so resolving them as npm packages would throw.
+    let code = [
+      'import qs from "querystring";',
+      'import vm from "vm";',
+      'import tty from "tty";',
+      'import constants from "constants";',
+      'import promises from "fs/promises";',
+    ].join("\n");
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
+
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/querystring"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/vm"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/tty"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/constants"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/fs/promises"');
+  });
+
+  it("rejects node: builtins that have no browser polyfill", async () => {
+    let code = 'import sqlite from "node:sqlite";';
+
+    await expect(rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options())).rejects.toBeInstanceOf(
+      UnsupportedNodeBuiltinError
+    );
+  });
+
+  it("rejects bare builtins that have no browser polyfill", async () => {
+    let code = 'import traceEvents from "trace_events";';
+
+    await expect(rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options())).rejects.toBeInstanceOf(
+      UnsupportedNodeBuiltinError
+    );
   });
 });
 

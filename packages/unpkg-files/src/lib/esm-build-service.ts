@@ -16,82 +16,74 @@ import { getFile, withPackageFileDirectory } from "./npm-files.ts";
 
 const defaultEsmOrigin = "https://esm.unpkg.com";
 const moduleCacheControl = "public, max-age=60, s-maxage=300";
-const hardNodeBuiltins = new Set([
+// Node builtins with a browser implementation in @jspm/core. The bare subpath
+// (without /browser/) resolves through @jspm/core's own exports map, which picks
+// the browser variant via the default condition. inspector maps to an empty stub.
+const polyfilledNodeBuiltins = [
+  "assert",
+  "assert/strict",
+  "async_hooks",
+  "buffer",
   "child_process",
   "cluster",
+  "console",
+  "constants",
+  "crypto",
   "dgram",
+  "diagnostics_channel",
   "dns",
+  "dns/promises",
+  "domain",
+  "events",
   "fs",
+  "fs/promises",
+  "http",
+  "http2",
+  "https",
+  "inspector",
+  "inspector/promises",
   "module",
   "net",
-  "node:child_process",
-  "node:cluster",
-  "node:dgram",
-  "node:dns",
-  "node:fs",
-  "node:module",
-  "node:net",
-  "node:readline",
-  "node:tls",
-  "node:worker_threads",
+  "os",
+  "path",
+  "path/posix",
+  "path/win32",
+  "perf_hooks",
+  "process",
+  "punycode",
+  "querystring",
   "readline",
+  "repl",
+  "stream",
+  "stream/consumers",
+  "stream/promises",
+  "stream/web",
+  "string_decoder",
+  "sys",
+  "timers",
+  "timers/promises",
   "tls",
+  "tty",
+  "url",
+  "util",
+  "util/types",
+  "v8",
+  "vm",
+  "wasi",
   "worker_threads",
-]);
-const browserBuiltinPolyfills: Record<string, string> = {
-  "node:assert": "@jspm/core@2/nodelibs/browser/assert",
-  "node:buffer": "@jspm/core@2/nodelibs/browser/buffer",
-  "node:child_process": "@jspm/core@2/nodelibs/browser/child_process",
-  "node:cluster": "@jspm/core@2/nodelibs/browser/cluster",
-  "node:crypto": "@jspm/core@2/nodelibs/browser/crypto",
-  "node:dgram": "@jspm/core@2/nodelibs/browser/dgram",
-  "node:dns": "@jspm/core@2/nodelibs/browser/dns",
-  "node:events": "@jspm/core@2/nodelibs/browser/events",
-  "node:fs": "@jspm/core@2/nodelibs/browser/fs",
-  "node:http": "@jspm/core@2/nodelibs/browser/http",
-  "node:https": "@jspm/core@2/nodelibs/browser/https",
-  "node:module": "@jspm/core@2/nodelibs/browser/module",
-  "node:net": "@jspm/core@2/nodelibs/browser/net",
-  "node:os": "@jspm/core@2/nodelibs/browser/os",
-  "node:path": "@jspm/core@2/nodelibs/browser/path",
-  "node:punycode": "@jspm/core@2/nodelibs/browser/punycode",
-  "node:process": "@jspm/core@2/nodelibs/browser/process",
-  "node:readline": "@jspm/core@2/nodelibs/browser/readline",
-  "node:stream": "@jspm/core@2/nodelibs/browser/stream",
-  "node:string_decoder": "@jspm/core@2/nodelibs/browser/string_decoder",
-  "node:timers": "@jspm/core@2/nodelibs/browser/timers",
-  "node:tls": "@jspm/core@2/nodelibs/browser/tls",
-  "node:url": "@jspm/core@2/nodelibs/browser/url",
-  "node:util": "@jspm/core@2/nodelibs/browser/util",
-  "node:worker_threads": "@jspm/core@2/nodelibs/browser/worker_threads",
-  "node:zlib": "@jspm/core@2/nodelibs/browser/zlib",
-  assert: "@jspm/core@2/nodelibs/browser/assert",
-  buffer: "@jspm/core@2/nodelibs/browser/buffer",
-  child_process: "@jspm/core@2/nodelibs/browser/child_process",
-  cluster: "@jspm/core@2/nodelibs/browser/cluster",
-  crypto: "@jspm/core@2/nodelibs/browser/crypto",
-  dgram: "@jspm/core@2/nodelibs/browser/dgram",
-  dns: "@jspm/core@2/nodelibs/browser/dns",
-  events: "@jspm/core@2/nodelibs/browser/events",
-  fs: "@jspm/core@2/nodelibs/browser/fs",
-  http: "@jspm/core@2/nodelibs/browser/http",
-  https: "@jspm/core@2/nodelibs/browser/https",
-  module: "@jspm/core@2/nodelibs/browser/module",
-  net: "@jspm/core@2/nodelibs/browser/net",
-  os: "@jspm/core@2/nodelibs/browser/os",
-  path: "@jspm/core@2/nodelibs/browser/path",
-  punycode: "@jspm/core@2/nodelibs/browser/punycode",
-  process: "@jspm/core@2/nodelibs/browser/process",
-  readline: "@jspm/core@2/nodelibs/browser/readline",
-  stream: "@jspm/core@2/nodelibs/browser/stream",
-  string_decoder: "@jspm/core@2/nodelibs/browser/string_decoder",
-  timers: "@jspm/core@2/nodelibs/browser/timers",
-  tls: "@jspm/core@2/nodelibs/browser/tls",
-  url: "@jspm/core@2/nodelibs/browser/url",
-  util: "@jspm/core@2/nodelibs/browser/util",
-  worker_threads: "@jspm/core@2/nodelibs/browser/worker_threads",
-  zlib: "@jspm/core@2/nodelibs/browser/zlib",
-};
+  "zlib",
+];
+const browserBuiltinPolyfills: Record<string, string> = Object.fromEntries(
+  polyfilledNodeBuiltins.flatMap((builtin) => {
+    let polyfill = `@jspm/core@2/nodelibs/${builtin}`;
+    return [
+      [builtin, polyfill],
+      [`node:${builtin}`, polyfill],
+    ];
+  })
+);
+// Builtins with no browser implementation; also requireable without the node: prefix.
+const unpolyfilledNodeBuiltins = new Set(["readline/promises", "trace_events"]);
 
 export interface BuildRequest {
   packageName: string;
@@ -1012,7 +1004,7 @@ function isRuntimeNativeTarget(target: string): boolean {
 }
 
 function isNodeBuiltinSpecifier(specifier: string): boolean {
-  return specifier.startsWith("node:") || specifier in browserBuiltinPolyfills || hardNodeBuiltins.has(specifier);
+  return specifier.startsWith("node:") || specifier in browserBuiltinPolyfills || unpolyfilledNodeBuiltins.has(specifier);
 }
 
 function parseJsxMode(value: string | null): NormalizedBuildOptions["jsx"] {
@@ -1037,7 +1029,9 @@ async function rewriteEsmSpecifier(
   if (specifier in browserBuiltinPolyfills) {
     return `${origin}/${browserBuiltinPolyfills[specifier]}`;
   }
-  if (hardNodeBuiltins.has(specifier)) {
+  if (isNodeBuiltinSpecifier(specifier)) {
+    // Includes any node:-prefixed specifier without a polyfill; passing it through
+    // would reach the browser as an unresolvable specifier.
     throw new UnsupportedNodeBuiltinError(specifier);
   }
 
