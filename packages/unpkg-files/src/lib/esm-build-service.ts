@@ -1026,10 +1026,11 @@ async function rewriteEsmSpecifier(
       options.dependencyOverrides[aliased.packageName] ??
       dependencies[aliased.packageName] ??
       "latest";
-    let version = await resolveDependencyVersion(registry, aliased.packageName, requestedVersion);
+    let dependency = parseDependencyVersionSpecifier(aliased.packageName, requestedVersion);
+    let version = await resolveDependencyVersion(registry, dependency.packageName, dependency.versionRangeOrTag);
     let search = createDependencySearch(options);
 
-    return `${origin}/${aliased.packageName}@${version}${stripTrailingSlash(aliased.path)}${search}`;
+    return `${origin}/${dependency.packageName}@${version}${stripTrailingSlash(aliased.path)}${search}`;
   }
 
   return `${stripTrailingSlash(specifier)}?target=${options.target}`;
@@ -1103,19 +1104,54 @@ function applyAlias(
   };
 }
 
+/**
+ * Interprets the version field of a dependency entry. Handles npm: aliases
+ * ("npm:string-width@^4.2.0" installs a different package under this name),
+ * workspace: protocol ranges, and git/URL specifiers that have no registry
+ * version to resolve (those fall back to the latest published version).
+ */
+function parseDependencyVersionSpecifier(
+  packageName: string,
+  requestedVersion: string
+): { packageName: string; versionRangeOrTag: string } {
+  if (requestedVersion.startsWith("npm:")) {
+    let aliasTarget = parsePackageVersionPair(requestedVersion.slice(4));
+    if (aliasTarget != null) {
+      return { packageName: aliasTarget.packageName, versionRangeOrTag: aliasTarget.version };
+    }
+
+    let aliasName = requestedVersion.slice(4);
+    return { packageName: aliasName === "" ? packageName : aliasName, versionRangeOrTag: "latest" };
+  }
+
+  if (requestedVersion.startsWith("workspace:")) {
+    let range = requestedVersion.slice("workspace:".length);
+    let isBareProtocol = range === "" || range === "*" || range === "^" || range === "~";
+    return { packageName, versionRangeOrTag: isBareProtocol ? "latest" : range };
+  }
+
+  // git/GitHub/tarball-URL/file specifiers have no registry range; slashes and
+  // colons never appear in valid semver ranges or dist-tags.
+  if (requestedVersion.includes("/") || requestedVersion.includes(":")) {
+    return { packageName, versionRangeOrTag: "latest" };
+  }
+
+  return { packageName, versionRangeOrTag: requestedVersion };
+}
+
 const packageInfoTtlMs = 5 * 60 * 1000;
 const packageInfoCacheMaxEntries = 500;
 let packageInfoCache = new Map<string, { expiresAt: number; promise: Promise<PackageInfo | null> }>();
 
 function getCachedPackageInfo(registry: string, packageName: string): Promise<PackageInfo | null> {
-  let key = `${registry}/${packageName.toLowerCase()}`;
+  let key = `${registry}/${packageName}`;
   let cached = packageInfoCache.get(key);
   if (cached != null && cached.expiresAt > Date.now()) {
     return cached.promise;
   }
 
   let promise = (async (): Promise<PackageInfo | null> => {
-    let response = await fetch(new URL(`/${packageName.toLowerCase()}`, registry), {
+    let response = await fetch(new URL(`/${packageName}`, registry), {
       headers: { Accept: "application/json" },
     });
     if (!response.ok) {
@@ -1149,6 +1185,9 @@ async function resolveDependencyVersion(registry: string, packageName: string, v
   }
 
   let packageInfo = await getCachedPackageInfo(registry, packageName);
+  if (packageInfo == null && packageName !== packageName.toLowerCase()) {
+    packageInfo = await getCachedPackageInfo(registry, packageName.toLowerCase());
+  }
   if (packageInfo == null) {
     return versionRangeOrTag;
   }

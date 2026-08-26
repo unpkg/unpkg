@@ -60,8 +60,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   }
 
   let packagePath = normalized.packagePath;
-  let packageName = packagePath.package.toLowerCase();
-  let packageInfo = await getPackageInfo(context, publicNpmRegistry, packageName);
+  let packageInfo = await getPackageInfo(context, publicNpmRegistry, packagePath.package);
   if (packageInfo == null) {
     return jsonError({
       code: "PACKAGE_NOT_FOUND",
@@ -69,6 +68,9 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       status: 404,
     });
   }
+
+  // Canonical name from the registry; may differ from the request in case.
+  let packageName = packageInfo.name;
 
   let version = resolvePackageVersion(packageInfo, packagePath.version ?? "latest");
   if (version == null || packageInfo.versions == null || packageInfo.versions[version] == null) {

@@ -52,7 +52,23 @@ export async function getPackageInfo(
   registry: string,
   packageName: string
 ): Promise<PackageInfo | null> {
-  let request = new Request(createPackageInfoUrl(registry, packageName), {
+  // The npm registry is case-sensitive and legacy packages with uppercase names
+  // exist (often alongside an unrelated lowercase package), so try the name as
+  // given first and only fall back to lowercase.
+  let packageInfo = await fetchPackageInfo(context, registry, packageName);
+  if (packageInfo == null && packageName !== packageName.toLowerCase()) {
+    packageInfo = await fetchPackageInfo(context, registry, packageName.toLowerCase());
+  }
+
+  return packageInfo;
+}
+
+async function fetchPackageInfo(
+  context: ExecutionContext,
+  registry: string,
+  packageName: string
+): Promise<PackageInfo | null> {
+  let request = new Request(new URL(`/${packageName}`, registry), {
     headers: { Accept: "application/json" },
   });
 
@@ -72,8 +88,4 @@ export async function getPackageInfo(
   }
 
   return null;
-}
-
-function createPackageInfoUrl(registry: string, packageName: string): URL {
-  return new URL(`/${packageName.toLowerCase()}`, registry);
 }

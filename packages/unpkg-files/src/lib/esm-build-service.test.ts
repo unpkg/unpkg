@@ -233,6 +233,8 @@ describe("rewriteEsmImports", () => {
           return Response.json(packageInfo("preact", ["10.25.4", "10.26.4"], "10.26.4"));
         case "https://registry.npmjs.org/@jspm/core":
           return Response.json(packageInfo("@jspm/core", ["2.0.9", "2.1.0"], "2.1.0"));
+        case "https://registry.npmjs.org/string-width":
+          return Response.json(packageInfo("string-width", ["4.2.3", "5.1.2"], "5.1.2"));
         default:
           throw new Error(`Unexpected URL: ${url}`);
       }
@@ -309,6 +311,33 @@ describe("rewriteEsmImports", () => {
     expect(result).toBe(
       'import React from "https://esm.unpkg.com/react@18.3.1?conditions=browser%2Cdevelopment&dev=&min=&sourcemap=&target=es2017";'
     );
+  });
+
+  it("resolves npm: alias dependencies to the aliased package", async () => {
+    let code = 'import stringWidth from "string-width-cjs";';
+    let result = await rewriteEsmImports(
+      code,
+      registry,
+      "https://esm.unpkg.com",
+      { "string-width-cjs": "npm:string-width@^4.2.0" },
+      options()
+    );
+
+    expect(result).toBe('import stringWidth from "https://esm.unpkg.com/string-width@4.2.3?target=es2022";');
+  });
+
+  it("resolves git and workspace dependency specifiers to published versions", async () => {
+    let code = 'import React from "react";\nimport Preact from "preact";';
+    let result = await rewriteEsmImports(
+      code,
+      registry,
+      "https://esm.unpkg.com",
+      { react: "github:facebook/react", preact: "workspace:^" },
+      options()
+    );
+
+    expect(result).toContain('from "https://esm.unpkg.com/react@18.3.1?target=es2022"');
+    expect(result).toContain('from "https://esm.unpkg.com/preact@10.26.4?target=es2022"');
   });
 
   it("pins exact dependency versions without a registry lookup", async () => {

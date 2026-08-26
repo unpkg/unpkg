@@ -23,6 +23,9 @@ describe("handleRequest", () => {
       let url = new URL(request.url);
 
       switch (url.href) {
+        case "https://registry.npmjs.org/React/-/React-18.2.0.tgz":
+          // The real registry is case-sensitive: no uppercase React tarball exists.
+          return new Response("Not found", { status: 404 });
         case "https://registry.npmjs.org/@ffmpeg/core/-/core-0.12.6.tgz":
           return fileResponse(packageTarballs["@ffmpeg/core"]["0.12.6"]);
         case "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz":

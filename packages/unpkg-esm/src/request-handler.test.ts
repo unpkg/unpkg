@@ -156,6 +156,24 @@ describe("handleRequest", () => {
         case "https://registry.npmjs.org/run":
         case "https://registry.npmjs.org/tsx":
           return new Response("Not found", { status: 404 });
+        case "https://registry.npmjs.org/JSONStream":
+          return Response.json({
+            name: "JSONStream",
+            "dist-tags": { latest: "1.3.5" },
+            versions: {
+              "1.3.5": { name: "JSONStream", version: "1.3.5", main: "index.js" },
+            },
+          });
+        case "https://registry.npmjs.org/jsonstream":
+          return Response.json({
+            name: "jsonstream",
+            "dist-tags": { latest: "1.0.3" },
+            versions: {
+              "1.0.3": { name: "jsonstream", version: "1.0.3", main: "index.js" },
+            },
+          });
+        case "https://registry.npmjs.org/React":
+          return new Response("Not found", { status: 404 });
         case "https://registry.npmjs.org/preact/-/preact-10.26.4.tgz":
           return fileResponse(packageTarballs.preact["10.26.4"]);
         case "https://registry.npmjs.org/react/-/react-18.2.0.tgz":
@@ -215,6 +233,20 @@ describe("handleRequest", () => {
     let location = response.headers.get("Location");
     expect(location).not.toBeNull();
     expect(location).toMatch(/^\/react@18\.\d+\.\d+\?meta=&target=es2022$/);
+  });
+
+  it("serves legacy uppercase package names without falling back to lowercase", async () => {
+    // JSONStream and jsonstream are different packages; the uppercase request
+    // must resolve the uppercase package, not redirect to the lowercase one.
+    let response = await dispatchFetch("https://esm.unpkg.com/JSONStream", { redirect: "manual" });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("Location")).toBe("/JSONStream@1.3.5?target=es2022");
+  });
+
+  it("redirects mixed-case requests to the canonical package name", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/React@18.2.0", { redirect: "manual" });
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/react@18.2.0?target=es2022");
   });
 
   it("rejects unsupported build params with a JSON diagnostic", async () => {
