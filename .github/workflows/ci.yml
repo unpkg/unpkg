@@ -70,12 +70,29 @@ jobs:
           esm_pid=$!
           (cd packages/unpkg-www && ./node_modules/.bin/wrangler dev --env dev --port 3000 --inspector-port 9230 --ip 127.0.0.1) > /tmp/unpkg-www.log 2>&1 &
           www_pid=$!
+          # The dev worker serves hydration assets from the esbuild dev server.
+          (cd packages/unpkg-www && pnpm run dev:assets) > /tmp/unpkg-www-assets.log 2>&1 &
+          assets_pid=$!
 
           cleanup() {
-            kill "$www_pid" "$esm_pid" "$files_pid" 2>/dev/null || true
-            wait "$www_pid" "$esm_pid" "$files_pid" 2>/dev/null || true
+            kill "$www_pid" "$esm_pid" "$files_pid" "$assets_pid" 2>/dev/null || true
+            wait "$www_pid" "$esm_pid" "$files_pid" "$assets_pid" 2>/dev/null || true
           }
           trap cleanup EXIT
+
+          for attempt in {1..60}; do
+            if curl --silent --output /dev/null http://localhost:8000/; then
+              break
+            fi
+
+            if [ "$attempt" -eq 60 ]; then
+              echo "Timed out waiting for the assets dev server"
+              cat /tmp/unpkg-www-assets.log || true
+              exit 1
+            fi
+
+            sleep 1
+          done
 
           for url in http://localhost:4000/_health http://localhost:3002/_health http://localhost:3000/_health; do
             for attempt in {1..60}; do

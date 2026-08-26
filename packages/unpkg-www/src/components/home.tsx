@@ -3,6 +3,7 @@ import { type VNode, Fragment } from "preact";
 import { CodeBlock } from "./code-block.tsx";
 import { HomeNav } from "./home-nav.tsx";
 import { Hydrate } from "./hydrate.tsx";
+import { RunDemo } from "./run-demo.tsx";
 
 export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string }): VNode {
   let navItems = {
@@ -419,6 +420,9 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                   </script>
                 `}
                 </CodeBlock>
+                <Hydrate>
+                  <RunDemo runUrl={url("/run")} />
+                </Hydrate>
               </div>
 
               <div class="mt-8">

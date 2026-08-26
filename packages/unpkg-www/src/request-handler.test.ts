@@ -261,6 +261,9 @@ describe("handleRequest", () => {
     expect(html).toContain('section id="inline-scripts"');
     expect(html).toContain('href="#inline-scripts"');
     expect(html).toContain(">Inline Scripts<");
+    expect(html).toContain(">Run this example<");
+    expect(html).toContain("&quot;key&quot;:&quot;RunDemo&quot;");
+    expect(html).toContain("&quot;runUrl&quot;:&quot;https://unpkg.dev/run&quot;");
     expect(html).toContain(">Segment<");
     expect(html).toContain(">Parameter<");
     expect(html).toContain("overflow-x-auto");
