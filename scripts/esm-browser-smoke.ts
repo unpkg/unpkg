@@ -298,6 +298,93 @@ function createRuntimeSmokeCases(): RuntimeSmokeCase[] {
     {
       case: {
         category: "runtime",
+        description: "Preact hooks share one preact instance with the root module",
+        expect: "module",
+        features: ["runtime", "preact", "hooks", "shared-instance"],
+        package: "preact",
+        path: "/__runtime/preact-hooks-shared-instance",
+      },
+      run: (page, origin) =>
+        page.evaluate(async (esmOrigin) => {
+          // Hooks only work when preact/hooks and preact share module state; a
+          // bundled private copy of preact core breaks this at runtime.
+          let { h, render } = await import(`${esmOrigin}/preact@10.26.4`);
+          let { useState } = await import(`${esmOrigin}/preact@10.26.4/hooks`);
+          let container = document.createElement("div");
+          document.body.append(container);
+          function Counter() {
+            let [count] = useState(41);
+            return h("output", null, String(count + 1));
+          }
+          render(h(Counter, null), container);
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          if (container.textContent !== "42") {
+            throw new Error(`Hooks render failed: ${container.textContent ?? ""}`);
+          }
+          render(null, container);
+          return ["h", "render", "useState"];
+        }, origin),
+    },
+    {
+      case: {
+        category: "runtime",
+        description: "Minified CommonJS builds keep named exports",
+        expect: "module",
+        features: ["runtime", "cjs", "min"],
+        package: "react",
+        path: "/__runtime/react-min-named-exports",
+      },
+      run: (page, origin) =>
+        page.evaluate(async (esmOrigin) => {
+          let { useState, version } = await import(`${esmOrigin}/react@18.3.1?min`);
+          if (typeof useState !== "function" || typeof version !== "string") {
+            throw new Error("Named exports missing from minified CommonJS build");
+          }
+          return ["useState", "version"];
+        }, origin),
+    },
+    {
+      case: {
+        category: "runtime",
+        description: "Babel-compiled CommonJS default export unwraps",
+        expect: "module",
+        features: ["runtime", "cjs", "esmodule-default"],
+        package: "is-hotkey",
+        path: "/__runtime/is-hotkey-default",
+      },
+      run: (page, origin) =>
+        page.evaluate(async (esmOrigin) => {
+          let module = await import(`${esmOrigin}/is-hotkey@0.2.0`);
+          if (typeof module.default !== "function") {
+            throw new Error("Default export is not the unwrapped exports.default function");
+          }
+          if (!module.default("mod+s", { which: 83, metaKey: true })) {
+            throw new Error("Unwrapped default export did not behave as isHotkey");
+          }
+          return ["default", "isHotkey"];
+        }, origin),
+    },
+    {
+      case: {
+        category: "runtime",
+        description: "CommonJS reexports of other packages keep named exports",
+        expect: "module",
+        features: ["runtime", "cjs", "reexport"],
+        package: "safe-buffer",
+        path: "/__runtime/safe-buffer-reexport",
+      },
+      run: (page, origin) =>
+        page.evaluate(async (esmOrigin) => {
+          let { Buffer } = await import(`${esmOrigin}/safe-buffer@5.2.1`);
+          if (typeof Buffer?.from !== "function") {
+            throw new Error("Buffer named export missing from safe-buffer");
+          }
+          return ["Buffer", "default"];
+        }, origin),
+    },
+    {
+      case: {
+        category: "runtime",
         description: "CommonJS lodash subpath executes in the browser",
         expect: "module",
         features: ["runtime", "cjs"],

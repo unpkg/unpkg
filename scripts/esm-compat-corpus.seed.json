@@ -472,6 +472,66 @@
       ],
       "package": "react",
       "path": "/react@18.3.1?css"
+    },
+    {
+      "category": "cjs-interop",
+      "description": "Babel-compiled CommonJS default export (is-hotkey)",
+      "expect": "module",
+      "features": [
+        "cjs",
+        "esmodule-default",
+        "version"
+      ],
+      "package": "is-hotkey",
+      "path": "/is-hotkey@0.2.0"
+    },
+    {
+      "category": "cjs-interop",
+      "description": "CommonJS reexport of a Node builtin (safe-buffer)",
+      "expect": "module",
+      "features": [
+        "cjs",
+        "reexport",
+        "node-builtin",
+        "version"
+      ],
+      "package": "safe-buffer",
+      "path": "/safe-buffer@5.2.1"
+    },
+    {
+      "category": "cjs-interop",
+      "description": "Minified CommonJS build keeps named exports",
+      "expect": "module",
+      "features": [
+        "cjs",
+        "min",
+        "version"
+      ],
+      "package": "react",
+      "path": "/react@18.3.1?min"
+    },
+    {
+      "category": "dependency-resolution",
+      "description": "npm: alias dependencies resolve (@isaacs/cliui)",
+      "expect": "module",
+      "features": [
+        "cjs",
+        "npm-alias",
+        "version"
+      ],
+      "package": "@isaacs/cliui",
+      "path": "/@isaacs/cliui@8.0.2"
+    },
+    {
+      "category": "package-name",
+      "description": "Legacy uppercase package name (JSONStream)",
+      "expect": "module",
+      "features": [
+        "uppercase-name",
+        "version"
+      ],
+      "package": "JSONStream",
+      "path": "/JSONStream@1.3.5"
     }
   ]
 }
