@@ -8,3 +8,6 @@ node_modules/
 # `pnpm deploy` output
 dist-app/
 dist-www/
+
+# Wrangler dev state
+.wrangler/
