@@ -231,6 +231,8 @@ describe("rewriteEsmImports", () => {
           return Response.json(packageInfo("react", ["18.2.0", "18.3.1"], "18.3.1"));
         case "https://registry.npmjs.org/preact":
           return Response.json(packageInfo("preact", ["10.25.4", "10.26.4"], "10.26.4"));
+        case "https://registry.npmjs.org/@jspm/core":
+          return Response.json(packageInfo("@jspm/core", ["2.0.9", "2.1.0"], "2.1.0"));
         default:
           throw new Error(`Unexpected URL: ${url}`);
       }
@@ -247,14 +249,14 @@ describe("rewriteEsmImports", () => {
     let code = 'import React from "react";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { react: "^18" }, options());
 
-    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.3.1";');
+    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.3.1?target=es2022";');
   });
 
   it("applies dependency version overrides", async () => {
     let code = 'import React from "react";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { react: "^18" }, options("deps=react@18.2.0"));
 
-    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.2.0?deps=react%4018.2.0";');
+    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.2.0?deps=react%4018.2.0&target=es2022";');
   });
 
   it("applies aliases before version resolution", async () => {
@@ -268,7 +270,7 @@ describe("rewriteEsmImports", () => {
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/preact@10.25.4/compat?deps=preact%4010.25.4&alias=react%3Apreact%2Fcompat";'
+      'import React from "https://esm.unpkg.com/preact@10.25.4/compat?alias=react%3Apreact%2Fcompat&deps=preact%4010.25.4&target=es2022";'
     );
   });
 
@@ -290,7 +292,7 @@ describe("rewriteEsmImports", () => {
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/preact@10.26.4/compat?external=react-dom&deps=react%4018.2.0&alias=react%3Apreact%2Fcompat";'
+      'import React from "https://esm.unpkg.com/preact@10.26.4/compat?alias=react%3Apreact%2Fcompat&deps=react%4018.2.0&external=react-dom&target=es2022";'
     );
   });
 
@@ -305,7 +307,7 @@ describe("rewriteEsmImports", () => {
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/react@18.3.1?dev=&target=es2017&conditions=browser%2Cdevelopment&min=&sourcemap=";'
+      'import React from "https://esm.unpkg.com/react@18.3.1?conditions=browser%2Cdevelopment&dev=&min=&sourcemap=&target=es2017";'
     );
   });
 
@@ -315,7 +317,7 @@ describe("rewriteEsmImports", () => {
     let code = 'import self from "self-pkg";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "self-pkg": "1.2.3" }, options());
 
-    expect(result).toBe('import self from "https://esm.unpkg.com/self-pkg@1.2.3";');
+    expect(result).toBe('import self from "https://esm.unpkg.com/self-pkg@1.2.3?target=es2022";');
   });
 
   it("rewrites local imports with the active target", async () => {
@@ -329,22 +331,22 @@ describe("rewriteEsmImports", () => {
     let code = 'import process from "node:process";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import process from "https://esm.unpkg.com/@jspm/core@2/nodelibs/process";');
+    expect(result).toBe('import process from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/process?target=es2022";');
   });
 
   it("rewrites additional browser-compatible Node builtins to polyfills", async () => {
     let code = 'import crypto from "node:crypto";\nimport os from "os";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/crypto"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/os"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/crypto?target=es2022"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/os?target=es2022"');
   });
 
   it("rewrites Node-only builtins to browser polyfills", async () => {
     let code = 'import fs from "node:fs";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toBe('import fs from "https://esm.unpkg.com/@jspm/core@2/nodelibs/fs";');
+    expect(result).toBe('import fs from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/fs?target=es2022";');
   });
 
   it("rewrites additional Node-only builtins to browser polyfills", async () => {
@@ -352,7 +354,7 @@ describe("rewriteEsmImports", () => {
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
     expect(result).toBe(
-      'import workerThreads from "https://esm.unpkg.com/@jspm/core@2/nodelibs/worker_threads";'
+      'import workerThreads from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/worker_threads?target=es2022";'
     );
   });
 
@@ -376,11 +378,11 @@ describe("rewriteEsmImports", () => {
     ].join("\n");
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
 
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/querystring"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/vm"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/tty"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/constants"');
-    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2/nodelibs/fs/promises"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/querystring?target=es2022"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/vm?target=es2022"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/tty?target=es2022"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/constants?target=es2022"');
+    expect(result).toContain('from "https://esm.unpkg.com/@jspm/core@2.1.0/nodelibs/fs/promises?target=es2022"');
   });
 
   it("rejects node: builtins that have no browser polyfill", async () => {

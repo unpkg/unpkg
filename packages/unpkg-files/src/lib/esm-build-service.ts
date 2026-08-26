@@ -307,29 +307,29 @@ export async function rewriteEsmImports(
   options: NormalizedBuildOptions
 ): Promise<string> {
   let [imports] = parse(code);
-  let rewrites: { start: number; end: number; value: string }[] = [];
+  let rewrites = (
+    await Promise.all(
+      imports.map(async (imp): Promise<{ start: number; end: number; value: string } | null> => {
+        if (imp.n === undefined) {
+          return null;
+        }
 
-  for (let imp of imports) {
-    if (imp.n === undefined) {
-      continue;
-    }
+        let specifier = code.slice(imp.s, imp.e);
+        let rewriteValue: string;
 
-    let specifier = code.slice(imp.s, imp.e);
-    let rewriteValue: string;
+        if (imp.t === 2) {
+          let match = /^(["'])([^"']*)\1$/.exec(specifier);
+          if (match === null) return null;
 
-    if (imp.t === 2) {
-      let match = /^(["'])([^"']*)\1$/.exec(specifier);
-      if (match === null) continue;
+          rewriteValue = match[1] + (await rewriteEsmSpecifier(match[2], registry, origin, dependencies, options)) + match[1];
+        } else {
+          rewriteValue = await rewriteEsmSpecifier(specifier, registry, origin, dependencies, options);
+        }
 
-      rewriteValue = match[1] + await rewriteEsmSpecifier(match[2], registry, origin, dependencies, options) + match[1];
-    } else {
-      rewriteValue = await rewriteEsmSpecifier(specifier, registry, origin, dependencies, options);
-    }
-
-    if (rewriteValue !== specifier) {
-      rewrites.push({ start: imp.s, end: imp.e, value: rewriteValue });
-    }
-  }
+        return rewriteValue === specifier ? null : { start: imp.s, end: imp.e, value: rewriteValue };
+      })
+    )
+  ).filter((rewrite): rewrite is NonNullable<typeof rewrite> => rewrite != null);
 
   rewrites.sort((a, b) => b.start - a.start);
 
@@ -998,7 +998,10 @@ async function rewriteEsmSpecifier(
   }
 
   if (specifier in browserBuiltinPolyfills) {
-    return `${origin}/${browserBuiltinPolyfills[specifier]}`;
+    // Pin the polyfill package so builds are deterministic and the emitted URL
+    // is canonical (no version-resolution redirect on every polyfill import).
+    let polyfillVersion = await resolveDependencyVersion(registry, "@jspm/core", "2");
+    return `${origin}/${browserBuiltinPolyfills[specifier].replace("@jspm/core@2/", `@jspm/core@${polyfillVersion}/`)}?target=${options.target}`;
   }
   if (isNodeBuiltinSpecifier(specifier)) {
     // Includes any node:-prefixed specifier without a polyfill; passing it through
@@ -1037,9 +1040,9 @@ function createDependencySearch(options: NormalizedBuildOptions): string {
   if (options.env === "development") {
     searchParams.set("dev", "");
   }
-  if (options.target !== "es2022") {
-    searchParams.set("target", options.target);
-  }
+  // Always include the target so the emitted URL is already canonical; a URL
+  // without it would redirect on every dependency import.
+  searchParams.set("target", options.target);
   if (options.conditions.length > 0) {
     searchParams.set("conditions", options.conditions.join(","));
   }
@@ -1066,6 +1069,10 @@ function createDependencySearch(options: NormalizedBuildOptions): string {
   if (aliases.length > 0) {
     searchParams.set("alias", aliases.join(","));
   }
+
+  // Match the canonical param order the esm worker normalizes to, so the URL
+  // never redirects.
+  searchParams.sort();
 
   let search = searchParams.toString();
   return search === "" ? "" : `?${search}`;
@@ -1096,20 +1103,56 @@ function applyAlias(
   };
 }
 
+const packageInfoTtlMs = 5 * 60 * 1000;
+const packageInfoCacheMaxEntries = 500;
+let packageInfoCache = new Map<string, { expiresAt: number; promise: Promise<PackageInfo | null> }>();
+
+function getCachedPackageInfo(registry: string, packageName: string): Promise<PackageInfo | null> {
+  let key = `${registry}/${packageName.toLowerCase()}`;
+  let cached = packageInfoCache.get(key);
+  if (cached != null && cached.expiresAt > Date.now()) {
+    return cached.promise;
+  }
+
+  let promise = (async (): Promise<PackageInfo | null> => {
+    let response = await fetch(new URL(`/${packageName.toLowerCase()}`, registry), {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      // Don't cache failures; a transient registry error should not stick.
+      packageInfoCache.delete(key);
+      return null;
+    }
+
+    return (await response.json()) as PackageInfo;
+  })();
+  promise.catch(() => packageInfoCache.delete(key));
+
+  if (packageInfoCache.size >= packageInfoCacheMaxEntries) {
+    let now = Date.now();
+    for (let [entryKey, entry] of packageInfoCache) {
+      if (entry.expiresAt <= now) packageInfoCache.delete(entryKey);
+    }
+    if (packageInfoCache.size >= packageInfoCacheMaxEntries) {
+      packageInfoCache.clear();
+    }
+  }
+  packageInfoCache.set(key, { expiresAt: Date.now() + packageInfoTtlMs, promise });
+
+  return promise;
+}
+
 async function resolveDependencyVersion(registry: string, packageName: string, versionRangeOrTag: string): Promise<string> {
   // Exact versions (including pinned self-references) need no registry lookup.
   if (semver.valid(versionRangeOrTag) != null) {
     return versionRangeOrTag;
   }
 
-  let response = await fetch(new URL(`/${packageName.toLowerCase()}`, registry), {
-    headers: { Accept: "application/json" },
-  });
-  if (!response.ok) {
+  let packageInfo = await getCachedPackageInfo(registry, packageName);
+  if (packageInfo == null) {
     return versionRangeOrTag;
   }
 
-  let packageInfo = await response.json() as PackageInfo;
   return resolvePackageVersion(packageInfo, versionRangeOrTag) ?? versionRangeOrTag;
 }
 
