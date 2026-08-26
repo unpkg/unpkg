@@ -42,6 +42,8 @@ function fileResponse(path: string): Response {
   return new Response(Bun.file(path));
 }
 
+const defaultCacheStore = new Map<string, Response>();
+
 describe("handleRequest", () => {
   let globalCaches: CacheStorage | undefined;
   let globalFetch: typeof fetch | undefined;
@@ -51,6 +53,14 @@ describe("handleRequest", () => {
     globalFetch = globalThis.fetch;
 
     globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          return defaultCacheStore.get(request.url)?.clone();
+        },
+        async put(request: Request, response: Response) {
+          defaultCacheStore.set(request.url, response);
+        },
+      },
       async open() {
         return {
           async match() {
@@ -260,6 +270,25 @@ describe("handleRequest", () => {
     });
   });
 
+  it("hashes and caches the exact artifact bytes for ?meta integrity", async () => {
+    defaultCacheStore.clear();
+
+    let response = await dispatchFetch("https://esm.unpkg.com/react@18.2.0?meta=&target=es2022");
+    expect(response.status).toBe(200);
+    let json = (await response.json()) as any;
+
+    // The integrity hash must be computed from the artifact cached under the
+    // module URL, so a later module request serves exactly the hashed bytes.
+    await Bun.sleep(0);
+    let cached = defaultCacheStore.get("https://esm.unpkg.com/react@18.2.0?target=es2022");
+    expect(cached).toBeDefined();
+
+    let bytes = await cached!.clone().arrayBuffer();
+    let digest = await crypto.subtle.digest("SHA-384", bytes);
+    let expected = `sha384-${btoa(String.fromCharCode(...new Uint8Array(digest)))}`;
+    expect(json.integrity).toBe(expected);
+  });
+
   it("returns build metadata for exact package URLs", async () => {
     let redirectResponse = await dispatchFetch("https://esm.unpkg.com/react@18.2.0?meta", { redirect: "manual" });
     expect(redirectResponse.status).toBe(301);
@@ -319,7 +348,7 @@ describe("handleRequest", () => {
     let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/javascript; charset=utf-8");
-    expect(response.headers.get("Cache-Control")).toBe("public, max-age=60, s-maxage=300");
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.has("X-UNPKG-Build-Key")).toBe(true);
   });
@@ -542,7 +571,7 @@ describe("handleRequest", () => {
     let response = await dispatchFetch(`https://esm.unpkg.com${redirectResponse.headers.get("Location")}`);
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/javascript; charset=utf-8");
-    expect(response.headers.get("Cache-Control")).toBe("public, max-age=60, s-maxage=300");
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000, immutable");
     expect(await response.text()).toContain(
       'return new Worker("https://esm.unpkg.com/preact@10.26.4/src/component.js?target=es2022", { type: "module", ...options });'
     );

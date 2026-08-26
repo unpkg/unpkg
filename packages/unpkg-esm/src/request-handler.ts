@@ -11,7 +11,10 @@ import { createHomePage } from "./components/home-page.tsx";
 import type { Env } from "./env.ts";
 
 const publicNpmRegistry = "https://registry.npmjs.org";
-const moduleCacheControl = "public, max-age=60, s-maxage=300";
+// Redirects, metadata, and errors stay short-lived so resolution changes roll out
+// quickly; artifacts at exact-version canonical URLs are immutable.
+const shortCacheControl = "public, max-age=60, s-maxage=300";
+const immutableCacheControl = "public, max-age=31536000, immutable";
 
 export async function handleRequest(request: Request, env: Env, context: ExecutionContext): Promise<Response> {
   let url = new URL(request.url);
@@ -48,7 +51,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   if (url.pathname === "/") {
     return new Response(createHomePage(env), {
       headers: {
-        "Cache-Control": "public, max-age=60, s-maxage=300",
+        "Cache-Control": shortCacheControl,
         "Content-Type": "text/html; charset=utf-8",
       },
     });
@@ -101,7 +104,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     return redirect(`${pathname}${search}`, {
       status: packagePath.version === version ? 301 : 302,
       headers: corsHeaders({
-        "Cache-Control": "public, max-age=60, s-maxage=300",
+        "Cache-Control": shortCacheControl,
       }),
     });
   }
@@ -118,7 +121,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       return redirect(new URL(typesPath).pathname, {
         status: 301,
         headers: corsHeaders({
-          "Cache-Control": moduleCacheControl,
+          "Cache-Control": shortCacheControl,
         }),
       });
     }
@@ -127,6 +130,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   if (searchParams.has("meta")) {
     let metadata = await createMetadata(
       env,
+      context,
       normalized.url.origin,
       packageName,
       version,
@@ -140,7 +144,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
 
     return Response.json(metadata, {
       headers: corsHeaders({
-        "Cache-Control": "public, max-age=60, s-maxage=300",
+        "Cache-Control": shortCacheControl,
         "Content-Type": "application/json",
       }),
     });
@@ -157,7 +161,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
 
     return new Response(code, {
       headers: corsHeaders({
-        "Cache-Control": moduleCacheControl,
+        "Cache-Control": immutableCacheControl,
         "Content-Type": "application/javascript; charset=utf-8",
       }),
     });
@@ -170,7 +174,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       return redirect(`/${packageName}@${version}${rawPath}${rawSearch}`, {
         status: 301,
         headers: corsHeaders({
-          "Cache-Control": moduleCacheControl,
+          "Cache-Control": shortCacheControl,
         }),
       });
     }
@@ -189,7 +193,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       return redirect(`/${packageName}@${version}${cssPath}${normalizeSearch(cssSearchParams)}`, {
         status: 301,
         headers: corsHeaders({
-          "Cache-Control": moduleCacheControl,
+          "Cache-Control": shortCacheControl,
         }),
       });
     }
@@ -207,10 +211,27 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     });
   }
 
+  return createBuildResponse(env, normalized.url.origin, packageName, version, packagePath.filename, packageJson, searchParams);
+}
+
+/**
+ * Fetches a build artifact from the files origin and wraps it as the module
+ * response served to browsers. Both the module route and ?meta integrity use
+ * this, so the hashed bytes always match the bytes a browser receives.
+ */
+async function createBuildResponse(
+  env: Env,
+  origin: string,
+  packageName: string,
+  version: string,
+  filename: string | undefined,
+  packageJson: PackageJson,
+  searchParams: URLSearchParams
+): Promise<Response> {
   let buildSearchParams = new URLSearchParams(searchParams);
-  buildSearchParams.set("origin", normalized.url.origin);
+  buildSearchParams.set("origin", origin);
   let buildResponse = await fetch(
-    new URL(`/build/${packageName}@${version}${packagePath.filename ?? ""}${normalizeSearch(buildSearchParams)}`, env.FILES_ORIGIN)
+    new URL(`/build/${packageName}@${version}${filename ?? ""}${normalizeSearch(buildSearchParams)}`, env.FILES_ORIGIN)
   );
   if (!buildResponse.ok) {
     return jsonError({
@@ -224,7 +245,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   for (let [name, value] of Object.entries(corsHeaders())) {
     headers.set(name, value);
   }
-  let types = getPackageTypesUrl(normalized.url.origin, packageName, version, packagePath.filename, packageJson);
+  let types = getPackageTypesUrl(origin, packageName, version, filename, packageJson);
   if (types != null && !searchParams.has("no-dts")) {
     headers.set("X-TypeScript-Types", types);
   }
@@ -256,6 +277,7 @@ interface Metadata {
 
 async function createMetadata(
   env: Env,
+  context: ExecutionContext,
   origin: string,
   packageName: string,
   version: string,
@@ -271,7 +293,7 @@ async function createMetadata(
   let modulePath = `/${packageName}@${version}${filename ?? ""}${artifactSearch}`;
   let module = new URL(modulePath, origin).toString();
   let types = getPackageTypesUrl(origin, packageName, version, filename, packageJson);
-  let integrity = await getBuildIntegrity(env, origin, packageName, version, filename, artifactSearchParams);
+  let integrity = await getBuildIntegrity(env, context, origin, packageName, version, filename, packageJson, artifactSearchParams);
   if ("response" in integrity) {
     return integrity;
   }
@@ -297,25 +319,37 @@ async function createMetadata(
 
 async function getBuildIntegrity(
   env: Env,
+  context: ExecutionContext,
   origin: string,
   packageName: string,
   version: string,
   filename: string | undefined,
+  packageJson: PackageJson,
   searchParams: URLSearchParams
 ): Promise<{ response: Response } | { value: string | null }> {
   if (searchParams.has("raw")) {
     return { value: null };
   }
 
-  let buildSearchParams = new URLSearchParams(searchParams);
-  buildSearchParams.set("origin", origin);
-  let response: Response;
-  try {
-    response = await fetch(
-      new URL(`/build/${packageName}@${version}${filename ?? ""}${normalizeSearch(buildSearchParams)}`, env.FILES_ORIGIN)
-    );
-  } catch {
-    return { value: null };
+  // Hash the same bytes the module URL serves: prefer the edge-cached artifact,
+  // and cache what we build here under the module URL so the subsequent module
+  // request in this colo serves exactly the hashed bytes.
+  let moduleRequest = new Request(
+    new URL(`/${packageName}@${version}${filename ?? ""}${normalizeSearch(searchParams)}`, origin)
+  );
+  let cache = getDefaultCache();
+  let response = cache != null ? await cache.match(moduleRequest) : undefined;
+
+  if (response == null) {
+    try {
+      response = await createBuildResponse(env, origin, packageName, version, filename, packageJson, searchParams);
+    } catch {
+      return { value: null };
+    }
+
+    if (response.ok && cache != null) {
+      context.waitUntil(cache.put(moduleRequest, response.clone()));
+    }
   }
 
   if (!response.ok) {
@@ -323,7 +357,7 @@ async function getBuildIntegrity(
       return {
         response: jsonError({
           code: "BUILD_NOT_FOUND",
-          message: await response.text(),
+          message: `Build not found: ${packageName}@${version}${filename ?? ""}`,
           status: 404,
         }),
       };
@@ -335,6 +369,10 @@ async function getBuildIntegrity(
   let bytes = await response.arrayBuffer();
   let digest = await crypto.subtle.digest("SHA-384", bytes);
   return { value: `sha384-${base64Encode(new Uint8Array(digest))}` };
+}
+
+function getDefaultCache(): Cache | undefined {
+  return (globalThis.caches as unknown as { default?: Cache } | undefined)?.default;
 }
 
 async function serveRawFile(env: Env, packageName: string, version: string, filename: string): Promise<Response> {
@@ -381,7 +419,7 @@ async function serveCssModule(env: Env, packageName: string, version: string, fi
 
   return new Response(code, {
     headers: corsHeaders({
-      "Cache-Control": moduleCacheControl,
+      "Cache-Control": immutableCacheControl,
       "Content-Type": "application/javascript; charset=utf-8",
     }),
   });
@@ -652,7 +690,7 @@ function jsonError(error: EsmRequestError | { code: string; message: string; sta
     {
       status: error.status,
       headers: corsHeaders({
-        "Cache-Control": "public, max-age=60, s-maxage=300",
+        "Cache-Control": shortCacheControl,
         "Content-Type": "application/json",
       }),
     }

@@ -16,6 +16,9 @@ import { getFile, withPackageFileDirectory } from "./npm-files.ts";
 
 const defaultEsmOrigin = "https://esm.unpkg.com";
 const moduleCacheControl = "public, max-age=60, s-maxage=300";
+// Build artifacts are only served at exact-version canonical URLs, so they can
+// be cached like immutable content.
+const immutableCacheControl = "public, max-age=31536000, immutable";
 // Node builtins with a browser implementation in @jspm/core. The bare subpath
 // (without /browser/) resolves through @jspm/core's own exports map, which picks
 // the browser variant via the default condition. inspector maps to an empty stub.
@@ -217,7 +220,7 @@ export async function buildEsmModule(registry: string, request: BuildRequest): P
   return {
     code: rewritten,
     headers: {
-      "Cache-Control": moduleCacheControl,
+      "Cache-Control": immutableCacheControl,
       "Content-Type": "application/javascript; charset=utf-8",
       "X-UNPKG-Build-Key": buildKey,
       "X-UNPKG-Build-Input": filename,
