@@ -20,7 +20,14 @@ export function RunDemo({ runUrl }: { runUrl: string }): VNode {
     }
 
     setState("running");
-    let slowRunTimer = setTimeout(() => setSlowRun(true), 250);
+    // Show the running state only when a run is genuinely slow, and once shown
+    // keep it up for a minimum time — otherwise runs near the threshold (every
+    // click does a real /transform round trip) blink the label.
+    let slowRunShownAt = 0;
+    let slowRunTimer = setTimeout(() => {
+      slowRunShownAt = Date.now();
+      setSlowRun(true);
+    }, 300);
 
     try {
       // Recreate the example's inline script tag and hand it to the real /run
@@ -42,7 +49,12 @@ export function RunDemo({ runUrl }: { runUrl: string }): VNode {
       setState("error");
     } finally {
       clearTimeout(slowRunTimer);
-      setSlowRun(false);
+      if (slowRunShownAt === 0) {
+        setSlowRun(false);
+      } else {
+        let remaining = Math.max(0, 500 - (Date.now() - slowRunShownAt));
+        setTimeout(() => setSlowRun(false), remaining);
+      }
     }
   }
 
