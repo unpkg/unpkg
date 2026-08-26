@@ -236,7 +236,6 @@ export async function handleRequest(request: Request, env: Env, context: Executi
 
 interface Metadata {
   build: {
-    bundle: string;
     minify: boolean;
     sourcemap: boolean;
   };
@@ -288,7 +287,6 @@ async function createMetadata(
     peerDependencies: packageJson.peerDependencies ?? {},
     exports: listExportSubpaths(packageJson),
     build: {
-      bundle: searchParams.has("standalone") ? "standalone" : searchParams.has("bundle") ? "bundle" : "smart",
       minify: searchParams.has("min"),
       sourcemap: searchParams.has("sourcemap"),
     },

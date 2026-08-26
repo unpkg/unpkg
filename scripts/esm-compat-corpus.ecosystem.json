@@ -3,7 +3,7 @@
   "description": "Version-pinned npm package scenarios for ecosystem-scale esm.sh compatibility measurement.",
   "generatedAt": "2026-05-13T00:58:08.197Z",
   "packageCount": 104,
-  "scenarioCount": 380,
+  "scenarioCount": 363,
   "cases": [
     {
       "category": "cjs",
@@ -657,36 +657,6 @@
     },
     {
       "category": "large-graph",
-      "description": "Explicit bundle for d3@7.9.0",
-      "expect": "module",
-      "features": [
-        "bundle"
-      ],
-      "package": "d3",
-      "path": "/d3@7.9.0?bundle"
-    },
-    {
-      "category": "large-graph",
-      "description": "No-bundle output for d3@7.9.0",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "d3",
-      "path": "/d3@7.9.0?no-bundle"
-    },
-    {
-      "category": "large-graph",
-      "description": "Standalone output for d3@7.9.0",
-      "expect": "module",
-      "features": [
-        "standalone"
-      ],
-      "package": "d3",
-      "path": "/d3@7.9.0?standalone"
-    },
-    {
-      "category": "large-graph",
       "description": "Package root for d3-array@3.2.4",
       "expect": "module",
       "features": [
@@ -774,16 +744,6 @@
       ],
       "package": "date-fns",
       "path": "/date-fns@4.1.0/package.json?raw"
-    },
-    {
-      "category": "browser",
-      "description": "No-bundle output for date-fns@4.1.0",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "date-fns",
-      "path": "/date-fns@4.1.0?no-bundle"
     },
     {
       "category": "cjs",
@@ -1436,16 +1396,6 @@
       "path": "/lit@3.3.2/package.json?raw"
     },
     {
-      "category": "framework",
-      "description": "No-bundle output for lit@3.3.2",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "lit",
-      "path": "/lit@3.3.2?no-bundle"
-    },
-    {
       "category": "cjs",
       "description": "Package root for lodash@4.18.1",
       "expect": "module",
@@ -1505,16 +1455,6 @@
       ],
       "package": "lodash-es",
       "path": "/lodash-es@4.18.1/package.json?raw"
-    },
-    {
-      "category": "browser",
-      "description": "No-bundle output for lodash-es@4.18.1",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "lodash-es",
-      "path": "/lodash-es@4.18.1?no-bundle"
     },
     {
       "category": "browser",
@@ -1816,16 +1756,6 @@
       ],
       "package": "preact",
       "path": "/preact@10.29.1/jsx-runtime"
-    },
-    {
-      "category": "framework",
-      "description": "No-bundle output for preact@10.29.1",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "preact",
-      "path": "/preact@10.29.1?no-bundle"
     },
     {
       "category": "framework",
@@ -2459,16 +2389,6 @@
       "path": "/rxjs@7.8.2/package.json?raw"
     },
     {
-      "category": "browser",
-      "description": "No-bundle output for rxjs@7.8.2",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "rxjs",
-      "path": "/rxjs@7.8.2?no-bundle"
-    },
-    {
       "category": "framework-peer",
       "description": "Package root for scheduler@0.27.0",
       "expect": "module",
@@ -2598,16 +2518,6 @@
       ],
       "package": "solid-js",
       "path": "/solid-js@1.9.12/jsx-runtime"
-    },
-    {
-      "category": "framework",
-      "description": "No-bundle output for solid-js@1.9.12",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "solid-js",
-      "path": "/solid-js@1.9.12?no-bundle"
     },
     {
       "category": "node-builtin",
@@ -3120,16 +3030,6 @@
       "path": "/vue@3.5.34?dev"
     },
     {
-      "category": "framework",
-      "description": "No-bundle output for vue@3.5.34",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "vue",
-      "path": "/vue@3.5.34?no-bundle"
-    },
-    {
       "category": "framework-peer",
       "description": "Package root for vue-router@5.0.6",
       "expect": "module",
@@ -3361,36 +3261,6 @@
     },
     {
       "category": "large-graph",
-      "description": "Explicit bundle for three@0.184.0",
-      "expect": "module",
-      "features": [
-        "bundle"
-      ],
-      "package": "three",
-      "path": "/three@0.184.0?bundle"
-    },
-    {
-      "category": "large-graph",
-      "description": "No-bundle output for three@0.184.0",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "three",
-      "path": "/three@0.184.0?no-bundle"
-    },
-    {
-      "category": "large-graph",
-      "description": "Standalone output for three@0.184.0",
-      "expect": "module",
-      "features": [
-        "standalone"
-      ],
-      "package": "three",
-      "path": "/three@0.184.0?standalone"
-    },
-    {
-      "category": "large-graph",
       "description": "Package root for monaco-editor@0.55.1",
       "expect": "module",
       "features": [
@@ -3418,26 +3288,6 @@
       ],
       "package": "monaco-editor",
       "path": "/monaco-editor@0.55.1/package.json?raw"
-    },
-    {
-      "category": "large-graph",
-      "description": "Explicit bundle for monaco-editor@0.55.1",
-      "expect": "module",
-      "features": [
-        "bundle"
-      ],
-      "package": "monaco-editor",
-      "path": "/monaco-editor@0.55.1?bundle"
-    },
-    {
-      "category": "large-graph",
-      "description": "No-bundle output for monaco-editor@0.55.1",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "monaco-editor",
-      "path": "/monaco-editor@0.55.1?no-bundle"
     },
     {
       "category": "framework-peer",
@@ -3568,26 +3418,6 @@
       ],
       "package": "ag-grid-community",
       "path": "/ag-grid-community@35.3.0/package.json?raw"
-    },
-    {
-      "category": "large-graph",
-      "description": "Explicit bundle for ag-grid-community@35.3.0",
-      "expect": "module",
-      "features": [
-        "bundle"
-      ],
-      "package": "ag-grid-community",
-      "path": "/ag-grid-community@35.3.0?bundle"
-    },
-    {
-      "category": "large-graph",
-      "description": "No-bundle output for ag-grid-community@35.3.0",
-      "expect": "module",
-      "features": [
-        "no-bundle"
-      ],
-      "package": "ag-grid-community",
-      "path": "/ag-grid-community@35.3.0?no-bundle"
     },
     {
       "category": "browser",

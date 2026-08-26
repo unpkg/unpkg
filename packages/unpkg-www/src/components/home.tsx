@@ -575,9 +575,8 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                       <code class="text-sm bg-slate-100 dark:bg-dark-panel">es2015</code> through{" "}
                       <code class="text-sm bg-slate-100 dark:bg-dark-panel">es2024</code>,{" "}
                       <code class="text-sm bg-slate-100 dark:bg-dark-panel">esnext</code>,{" "}
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">node</code>,{" "}
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">deno</code>, and{" "}
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">denonext</code>.
+                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">node</code>, and{" "}
+                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">deno</code>.
                     </td>
                   </tr>
                   <tr class="border-b border-slate-200 dark:border-dark-border">
@@ -626,17 +625,6 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                   </tr>
                   <tr class="border-b border-slate-200 dark:border-dark-border">
                     <td class="py-2 pr-4 align-top break-all">
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">?bundle</code>,{" "}
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">?standalone</code>,{" "}
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">?no-bundle</code>
-                    </td>
-                    <td class="py-2 align-top">
-                      Controls dependency bundling. <code class="text-sm bg-slate-100 dark:bg-dark-panel">?bundle=false</code> also
-                      disables bundling.
-                    </td>
-                  </tr>
-                  <tr class="border-b border-slate-200 dark:border-dark-border">
-                    <td class="py-2 pr-4 align-top break-all">
                       <code class="text-sm bg-slate-100 dark:bg-dark-panel">?jsx=automatic</code>,{" "}
                       <code class="text-sm bg-slate-100 dark:bg-dark-panel">?jsxImportSource=...</code>
                     </td>
@@ -648,14 +636,9 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                   <tr class="border-b border-slate-200 dark:border-dark-border">
                     <td class="py-2 pr-4 align-top break-all">
                       <code class="text-sm bg-slate-100 dark:bg-dark-panel">?min</code>,{" "}
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">?sourcemap</code>,{" "}
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">?keep-names</code>,{" "}
-                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">?ignore-annotations</code>
+                      <code class="text-sm bg-slate-100 dark:bg-dark-panel">?sourcemap</code>
                     </td>
-                    <td class="py-2 align-top">
-                      Controls output minification, inline source maps, function/class names, and tree-shaking
-                      annotations.
-                    </td>
+                    <td class="py-2 align-top">Controls output minification and inline source maps.</td>
                   </tr>
                   <tr class="border-b border-slate-200 dark:border-dark-border">
                     <td class="py-2 pr-4 align-top break-all">

@@ -94,16 +94,13 @@ export interface BuildRequest {
 
 export interface NormalizedBuildOptions {
   aliases: Record<string, string>;
-  bundleMode: "smart" | "bundle" | "standalone" | "none";
   conditions: string[];
   dependencyOverrides: Record<string, string>;
   env: "development" | "production";
   exportNames: string[];
   external: string[];
-  ignoreAnnotations: boolean;
   jsx?: "react" | "preact" | "automatic";
   jsxImportSource?: string;
-  keepNames: boolean;
   minify: boolean;
   origin: string;
   sourcemap: boolean;
@@ -203,12 +200,9 @@ export async function buildEsmModule(registry: string, request: BuildRequest): P
   let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies, {
     [request.packageName]: request.version,
   });
-  let transformed =
-    request.options.bundleMode === "none"
-      ? await transformSource(code, filename, request.options)
-      : await withPackageFileDirectory(registry, request.packageName, request.version, (packageDirectory) =>
-          bundleSource(packageDirectory, packageJson, request.packageName, request.version, filename, code, request.options)
-        );
+  let transformed = await withPackageFileDirectory(registry, request.packageName, request.version, (packageDirectory) =>
+    bundleSource(packageDirectory, packageJson, request.packageName, request.version, filename, code, request.options)
+  );
   let rewritten = await rewriteEsmImports(transformed.code, registry, request.options.origin, deps, request.options);
   let buildKey = createBuildKey(request, filename);
   let metadata: BuildMetadata = {
@@ -225,7 +219,6 @@ export async function buildEsmModule(registry: string, request: BuildRequest): P
     headers: {
       "Cache-Control": moduleCacheControl,
       "Content-Type": "application/javascript; charset=utf-8",
-      "X-UNPKG-Bundle-Mode": request.options.bundleMode,
       "X-UNPKG-Build-Key": buildKey,
       "X-UNPKG-Build-Input": filename,
       "X-UNPKG-Transformer": "esbuild",
@@ -274,7 +267,6 @@ export async function transformInlineEsmModule(registry: string, request: Inline
     headers: {
       "Cache-Control": moduleCacheControl,
       "Content-Type": "application/javascript; charset=utf-8",
-      "X-UNPKG-Bundle-Mode": request.options.bundleMode,
       "X-UNPKG-Build-Key": buildKey,
       "X-UNPKG-Build-Input": request.filename,
       "X-UNPKG-Transformer": "esbuild",
@@ -293,16 +285,13 @@ export async function transformInlineEsmModule(registry: string, request: Inline
 export function normalizeBuildOptions(searchParams: URLSearchParams): NormalizedBuildOptions {
   return {
     aliases: parseAliases(searchParams.get("alias")),
-    bundleMode: parseBundleMode(searchParams),
     conditions: parseConditions(searchParams),
     dependencyOverrides: parseDependencyOverrides(searchParams.get("deps")),
     env: searchParams.has("dev") || searchParams.get("env") === "development" ? "development" : "production",
     exportNames: parseSelectedExports(searchParams.get("exports")),
     external: searchParams.get("external")?.split(",").filter(Boolean) ?? [],
-    ignoreAnnotations: searchParams.has("ignore-annotations"),
     jsx: parseJsxMode(searchParams.get("jsx")),
     jsxImportSource: searchParams.get("jsxImportSource") ?? undefined,
-    keepNames: searchParams.has("keep-names"),
     minify: searchParams.has("min"),
     origin: searchParams.get("origin") ?? defaultEsmOrigin,
     sourcemap: searchParams.has("sourcemap"),
@@ -396,12 +385,10 @@ export async function bundleSource(
       "process.env.NODE_ENV": JSON.stringify(options.env),
     },
     format: "esm",
-    ignoreAnnotations: options.ignoreAnnotations,
     jsx: options.jsx === "automatic" ? "automatic" : "transform",
     jsxFactory: options.jsx === "preact" ? "h" : undefined,
     jsxFragment: options.jsx === "preact" ? "Fragment" : undefined,
     jsxImportSource: options.jsxImportSource,
-    keepNames: options.keepNames,
     minify: options.minify,
     plugins: [
       createPackageInternalBundlePlugin(packageDirectory, {
@@ -564,7 +551,7 @@ function parseConditions(searchParams: URLSearchParams): string[] {
 
 function getBuildConditions(options: Pick<NormalizedBuildOptions, "conditions" | "env" | "target">): string[] {
   let runtimeConditions = isRuntimeNativeTarget(options.target)
-    ? [options.target === "denonext" ? "deno" : options.target]
+    ? [options.target]
     : ["browser"];
   let envConditions = options.env === "development" ? ["development"] : ["production"];
   let defaults = ["import", "module", "default"];
@@ -575,20 +562,6 @@ function getBuildConditions(options: Pick<NormalizedBuildOptions, "conditions" |
 
 function isJavaScriptContentType(contentType: string): boolean {
   return contentType === "text/javascript" || contentType === "application/javascript";
-}
-
-function parseBundleMode(searchParams: URLSearchParams): NormalizedBuildOptions["bundleMode"] {
-  if (searchParams.has("no-bundle") || searchParams.get("bundle") === "false") {
-    return "none";
-  }
-  if (searchParams.has("standalone")) {
-    return "standalone";
-  }
-  if (searchParams.has("bundle")) {
-    return "bundle";
-  }
-
-  return "smart";
 }
 
 export async function transformSource(
@@ -605,12 +578,10 @@ export async function transformSource(
       "process.env.NODE_ENV": JSON.stringify(options.env),
     },
     format: "esm",
-    ignoreAnnotations: options.ignoreAnnotations,
     jsx: options.jsx === "automatic" ? "automatic" : "transform",
     jsxFactory: options.jsx === "preact" ? "h" : undefined,
     jsxFragment: options.jsx === "preact" ? "Fragment" : undefined,
     jsxImportSource: options.jsxImportSource,
-    keepNames: options.keepNames,
     loader: getEsbuildLoader(filename),
     minify: options.minify,
     sourcemap: options.sourcemap ? "inline" : false,
@@ -992,7 +963,7 @@ function isUnsupportedSourceFile(filename: string): boolean {
 }
 
 function getEsbuildTarget(target: string): esbuild.TransformOptions["target"] {
-  if (target === "deno" || target === "denonext" || target === "node") {
+  if (target === "deno" || target === "node") {
     return "es2022";
   }
 
@@ -1000,7 +971,7 @@ function getEsbuildTarget(target: string): esbuild.TransformOptions["target"] {
 }
 
 function isRuntimeNativeTarget(target: string): boolean {
-  return target === "deno" || target === "denonext" || target === "node";
+  return target === "deno" || target === "node";
 }
 
 function isNodeBuiltinSpecifier(specifier: string): boolean {
@@ -1071,17 +1042,6 @@ function createDependencySearch(options: NormalizedBuildOptions): string {
   }
   if (options.conditions.length > 0) {
     searchParams.set("conditions", options.conditions.join(","));
-  }
-  if (options.bundleMode === "bundle") {
-    searchParams.set("bundle", "");
-  } else if (options.bundleMode === "standalone") {
-    searchParams.set("standalone", "");
-  }
-  if (options.ignoreAnnotations) {
-    searchParams.set("ignore-annotations", "");
-  }
-  if (options.keepNames) {
-    searchParams.set("keep-names", "");
   }
   if (options.minify) {
     searchParams.set("min", "");

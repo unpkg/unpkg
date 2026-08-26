@@ -196,14 +196,13 @@ describe("handleRequest", () => {
   });
 
   describe("/build requests", () => {
-    it("builds a no-bundle ESM artifact for a JavaScript file", async () => {
-      let response = await dispatchFetch("https://files.unpkg.com/build/preact@10.26.4/src/component.js?no-bundle&target=es2022");
+    it("builds an ESM artifact for a JavaScript file", async () => {
+      let response = await dispatchFetch("https://files.unpkg.com/build/preact@10.26.4/src/component.js?target=es2022");
       expect(response.status).toBe(200);
       expect(response.headers.get("Content-Type")).toBe("application/javascript; charset=utf-8");
       expect(response.headers.get("Cache-Control")).toBe("public, max-age=60, s-maxage=300");
       expect(response.headers.has("X-UNPKG-Build-Key")).toBe(true);
       expect(response.headers.get("X-UNPKG-Build-Input")).toBe("/src/component.js");
-      expect(await response.text()).toContain('from "./util?target=es2022";');
     });
 
     it("bundles package-internal imports by default", async () => {

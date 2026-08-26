@@ -40,18 +40,19 @@ describe("normalizeEsmRequestUrl", () => {
     expect("url" in result && result.url.search).toBe("?target=es2022");
   });
 
-  it("normalizes import-map-friendly path query syntax", () => {
-    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react-dom@18.3.1&dev/client");
+  it("rejects unsupported build params", () => {
+    for (let param of ["bundle", "ignore-annotations", "keep-names", "no-bundle", "standalone"]) {
+      let result = normalizeEsmRequestUrl(`https://esm.unpkg.com/react-dom@18.3.1?${param}`);
 
-    expect("url" in result && result.url.pathname).toBe("/react-dom@18.3.1/client");
-    expect("url" in result && result.url.search).toBe("?dev=&target=es2022");
+      expect("code" in result && result.code).toBe("INVALID_QUERY");
+      expect("status" in result && result.status).toBe(400);
+    }
   });
 
-  it("normalizes import-map-friendly trailing slash query syntax", () => {
-    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react-dom@18.3.1&dev/");
+  it("rejects the denonext target", () => {
+    let result = normalizeEsmRequestUrl("https://esm.unpkg.com/react-dom@18.3.1?target=denonext");
 
-    expect("url" in result && result.url.pathname).toBe("/react-dom@18.3.1/");
-    expect("url" in result && result.url.search).toBe("?dev=&target=es2022");
+    expect("code" in result && result.code).toBe("UNSUPPORTED_TARGET");
   });
 
   it("accepts runtime-native esm.sh compatibility targets", () => {

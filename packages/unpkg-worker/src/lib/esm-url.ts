@@ -38,37 +38,25 @@ const browserTargets = new Set([
   "es2024",
   "esnext",
   "deno",
-  "denonext",
   "node",
 ]);
 
 const rawModeConflicts = new Set([
-  "bundle",
   "dev",
   "env",
   "exports",
-  "ignore-annotations",
   "jsx",
   "jsxImportSource",
-  "keep-names",
   "min",
-  "no-bundle",
   "sourcemap",
-  "standalone",
   "target",
 ]);
 
+// Build params that were copied from esm.sh but are not part of this service's API.
+const unsupportedQueryParams = new Set(["bundle", "ignore-annotations", "keep-names", "no-bundle", "standalone"]);
+
 export function normalizeEsmRequestUrl(requestUrl: string | URL): NormalizedEsmRequest | EsmRequestError {
   let url = new URL(requestUrl);
-  let pathQuery = extractPathQuery(url.pathname);
-
-  if (pathQuery != null) {
-    url.pathname = pathQuery.pathname;
-    for (let [name, value] of pathQuery.searchParams) {
-      url.searchParams.append(name, value);
-    }
-  }
-
   let packagePath = parseEsmPackagePathname(url.pathname);
   if (packagePath == null) {
     return {
@@ -145,6 +133,16 @@ export function getEsmPackageSubpath(filename: string | undefined): string {
 }
 
 function validateEsmSearchParams(searchParams: URLSearchParams): EsmRequestError | null {
+  for (let name of unsupportedQueryParams) {
+    if (searchParams.has(name)) {
+      return {
+        code: "INVALID_QUERY",
+        message: `?${name} is not supported`,
+        status: 400,
+      };
+    }
+  }
+
   let target = searchParams.get("target");
   if (target != null && !browserTargets.has(target)) {
     return {
@@ -184,34 +182,6 @@ function validateEsmSearchParams(searchParams: URLSearchParams): EsmRequestError
   }
 
   return null;
-}
-
-function extractPathQuery(pathname: string): { pathname: string; searchParams: URLSearchParams } | null {
-  let ampersandIndex = pathname.indexOf("&");
-  if (ampersandIndex === -1) return null;
-
-  let before = pathname.slice(0, ampersandIndex);
-  let after = pathname.slice(ampersandIndex + 1);
-  let slashIndex = after.indexOf("/");
-  let pathQuery = slashIndex === -1 ? after : after.slice(0, slashIndex);
-  let pathSuffix = slashIndex === -1 ? "" : after.slice(slashIndex);
-  let searchParams = new URLSearchParams();
-
-  for (let part of pathQuery.split("&")) {
-    if (part === "") continue;
-
-    let equalsIndex = part.indexOf("=");
-    if (equalsIndex === -1) {
-      searchParams.append(part, "");
-    } else {
-      searchParams.append(part.slice(0, equalsIndex), part.slice(equalsIndex + 1));
-    }
-  }
-
-  return {
-    pathname: before + pathSuffix,
-    searchParams,
-  };
 }
 
 function normalizeSearchParams(searchParams: URLSearchParams): string {

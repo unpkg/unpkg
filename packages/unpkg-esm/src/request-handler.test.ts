@@ -217,12 +217,15 @@ describe("handleRequest", () => {
     expect(location).toMatch(/^\/react@18\.\d+\.\d+\?meta=&target=es2022$/);
   });
 
-  it("normalizes import-map-friendly path query syntax", async () => {
-    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4&dev/hooks?meta", {
-      redirect: "manual",
+  it("rejects unsupported build params with a JSON diagnostic", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?standalone");
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        code: "INVALID_QUERY",
+        message: "?standalone is not supported",
+      },
     });
-    expect(response.status).toBe(301);
-    expect(response.headers.get("Location")).toBe("/preact@10.26.4/hooks?dev=&meta=&target=es2022");
   });
 
   it("returns build metadata for exact package URLs", async () => {
@@ -276,7 +279,7 @@ describe("handleRequest", () => {
   });
 
   it("proxies build artifacts from the files origin", async () => {
-    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4/src/component.js?no-bundle", {
+    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4/src/component.js", {
       redirect: "manual",
     });
     expect(redirectResponse.status).toBe(301);
@@ -287,11 +290,10 @@ describe("handleRequest", () => {
     expect(response.headers.get("Cache-Control")).toBe("public, max-age=60, s-maxage=300");
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.has("X-UNPKG-Build-Key")).toBe(true);
-    expect(await response.text()).toContain('from "./util?target=es2022";');
   });
 
   it("adds TypeScript declaration headers to build artifacts", async () => {
-    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4?no-bundle", {
+    let redirectResponse = await dispatchFetch("https://esm.unpkg.com/preact@10.26.4", {
       redirect: "manual",
     });
     expect(redirectResponse.status).toBe(301);

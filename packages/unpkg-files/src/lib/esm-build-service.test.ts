@@ -286,11 +286,11 @@ describe("rewriteEsmImports", () => {
       registry,
       "https://esm.unpkg.com",
       { react: "^18" },
-      options("bundle&deps=react@18.2.0&alias=react:preact/compat&external=react-dom")
+      options("deps=react@18.2.0&alias=react:preact/compat&external=react-dom")
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/preact@10.26.4/compat?bundle=&external=react-dom&deps=react%4018.2.0&alias=react%3Apreact%2Fcompat";'
+      'import React from "https://esm.unpkg.com/preact@10.26.4/compat?external=react-dom&deps=react%4018.2.0&alias=react%3Apreact%2Fcompat";'
     );
   });
 
@@ -301,19 +301,12 @@ describe("rewriteEsmImports", () => {
       registry,
       "https://esm.unpkg.com",
       { react: "^18" },
-      options("dev&target=es2017&conditions=browser,development&keep-names&ignore-annotations&min&sourcemap")
+      options("dev&target=es2017&conditions=browser,development&min&sourcemap")
     );
 
     expect(result).toBe(
-      'import React from "https://esm.unpkg.com/react@18.3.1?dev=&target=es2017&conditions=browser%2Cdevelopment&ignore-annotations=&keep-names=&min=&sourcemap=";'
+      'import React from "https://esm.unpkg.com/react@18.3.1?dev=&target=es2017&conditions=browser%2Cdevelopment&min=&sourcemap=";'
     );
-  });
-
-  it("propagates standalone mode to rewritten dependencies", async () => {
-    let code = 'import React from "react";';
-    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { react: "^18" }, options("standalone"));
-
-    expect(result).toBe('import React from "https://esm.unpkg.com/react@18.3.1?standalone=";');
   });
 
   it("pins exact dependency versions without a registry lookup", async () => {
