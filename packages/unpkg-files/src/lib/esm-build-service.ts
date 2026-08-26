@@ -5,6 +5,7 @@ import path from "node:path";
 import { parse as parseCommonJs } from "@esm.sh/cjs-module-lexer";
 import * as esbuild from "esbuild";
 import { parse } from "es-module-lexer/js";
+import * as semver from "semver";
 import {
   resolvePackageExportResult,
   resolvePackageVersion,
@@ -205,7 +206,11 @@ export async function buildEsmModule(registry: string, request: BuildRequest): P
   }
 
   let code = new TextDecoder().decode(file.body);
-  let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies);
+  // Bare self-references stay external in the bundle; pin them to the version
+  // being built so every subpath shares one module instance.
+  let deps = Object.assign({}, packageJson.peerDependencies, packageJson.dependencies, {
+    [request.packageName]: request.version,
+  });
   let transformed =
     request.options.bundleMode === "none"
       ? await transformSource(code, filename, request.options)
@@ -364,15 +369,7 @@ export async function bundleSource(
   code: string,
   options: NormalizedBuildOptions
 ): Promise<{ code: string; map?: string }> {
-  let commonJsAnalysis = await analyzeCommonJsExports(
-    packageDirectory,
-    packageJson,
-    packageName,
-    version,
-    filename,
-    code,
-    options
-  );
+  let commonJsAnalysis = await analyzeCommonJsExports(packageDirectory, filename, code, options);
   let isCommonJsEntry =
     !hasEsmExports(filename, code) &&
     (commonJsAnalysis.exports.length > 0 || commonJsAnalysis.externalReexports.length > 0);
@@ -415,7 +412,7 @@ export async function bundleSource(
     keepNames: options.keepNames,
     minify: options.minify,
     plugins: [
-      createPackageInternalBundlePlugin(packageDirectory, packageJson, packageName, version, options, {
+      createPackageInternalBundlePlugin(packageDirectory, {
         code,
         filename,
       }),
@@ -725,9 +722,6 @@ export interface CommonJsExportAnalysis {
 
 export async function analyzeCommonJsExports(
   packageDirectory: string,
-  packageJson: PackageJson,
-  packageName: string,
-  version: string,
   filename: string,
   code: string,
   options: NormalizedBuildOptions
@@ -854,10 +848,6 @@ function addCommonJsNamedExports(code: string, exportNames: string[]): string {
 
 function createPackageInternalBundlePlugin(
   packageDirectory: string,
-  packageJson: PackageJson,
-  packageName: string,
-  version: string,
-  options: NormalizedBuildOptions,
   entry?: { code: string; filename: string }
 ): esbuild.Plugin {
   return {
@@ -880,22 +870,9 @@ function createPackageInternalBundlePlugin(
         }
 
         if (isBareSpecifier(args.path)) {
-          let parsed = parseBareSpecifier(args.path);
-          if (parsed?.packageName === packageName) {
-            let selfReferencePath = parsed.path === "" ? "/" : parsed.path;
-            let resolved = resolveBuildFilename(packageJson, selfReferencePath, options);
-            if (resolved == null) {
-              return {
-                errors: [{ text: `Package subpath "${selfReferencePath}" is blocked by its exports map` }],
-              };
-            }
-
-            return {
-              path: resolved,
-              namespace: "unpkg-package",
-            };
-          }
-
+          // Bare self-references stay external so every subpath shares one module
+          // instance at runtime; bundling a private copy would duplicate module
+          // state (e.g. preact/hooks bundling its own preact core).
           if (args.kind !== "require-call") {
             return { path: args.path, external: true };
           }
@@ -1166,6 +1143,11 @@ function applyAlias(
 }
 
 async function resolveDependencyVersion(registry: string, packageName: string, versionRangeOrTag: string): Promise<string> {
+  // Exact versions (including pinned self-references) need no registry lookup.
+  if (semver.valid(versionRangeOrTag) != null) {
+    return versionRangeOrTag;
+  }
+
   let response = await fetch(new URL(`/${packageName.toLowerCase()}`, registry), {
     headers: { Accept: "application/json" },
   });

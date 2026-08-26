@@ -315,6 +315,15 @@ describe("rewriteEsmImports", () => {
     expect(result).toBe('import React from "https://esm.unpkg.com/react@18.3.1?standalone=";');
   });
 
+  it("pins exact dependency versions without a registry lookup", async () => {
+    // "self-pkg" is not mocked in the registry fetch above; an exact version must
+    // resolve without any network request.
+    let code = 'import self from "self-pkg";';
+    let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", { "self-pkg": "1.2.3" }, options());
+
+    expect(result).toBe('import self from "https://esm.unpkg.com/self-pkg@1.2.3";');
+  });
+
   it("rewrites local imports with the active target", async () => {
     let code = 'import util from "./util";';
     let result = await rewriteEsmImports(code, registry, "https://esm.unpkg.com", {}, options());
@@ -459,25 +468,11 @@ describe("bundleSource", () => {
     }
   });
 
-  it("bundles package self-references as package-internal imports", async () => {
+  it("keeps package self-references external so subpaths share one module instance", async () => {
     let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-self-reference-"));
 
     try {
-      await writeFile(
-        path.join(packageDirectory, "package.json"),
-        JSON.stringify({
-          name: "self-referencing-package",
-          exports: {
-            ".": "./index.js",
-            "./client": "./client.js",
-          },
-        })
-      );
       await writeFile(path.join(packageDirectory, "index.js"), "exports.createRoot = () => 'ok';");
-      await writeFile(
-        path.join(packageDirectory, "client.js"),
-        "var root = require('self-referencing-package'); exports.createRoot = root.createRoot;"
-      );
 
       let result = await bundleSource(
         packageDirectory,
@@ -496,8 +491,34 @@ describe("bundleSource", () => {
       );
 
       expect(result.code).not.toContain('Dynamic require of "self-referencing-package"');
+      // The root module must not be bundled into the subpath build.
+      expect(result.code).toContain('from "self-referencing-package"');
+      expect(result.code).not.toContain("'ok'");
       expect(result.code).toContain("as createRoot");
       expect(result.code).toContain("as default");
+    } finally {
+      await rm(packageDirectory, { force: true, recursive: true });
+    }
+  });
+
+  it("keeps ESM package self-references external", async () => {
+    let packageDirectory = await mkdtemp(path.join(tmpdir(), "unpkg-esm-esm-self-reference-"));
+
+    try {
+      await writeFile(path.join(packageDirectory, "index.js"), "export const h = () => 'h';");
+
+      let result = await bundleSource(
+        packageDirectory,
+        { name: "esm-self-package" },
+        "esm-self-package",
+        "1.0.0",
+        "/hooks.js",
+        "import { h } from 'esm-self-package';\nexport const useThing = () => h();",
+        options()
+      );
+
+      expect(result.code).toContain('from "esm-self-package"');
+      expect(result.code).not.toContain("'h'");
     } finally {
       await rm(packageDirectory, { force: true, recursive: true });
     }
