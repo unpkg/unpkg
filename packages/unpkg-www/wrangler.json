@@ -31,7 +31,8 @@
         "ESM_ORIGIN": "http://localhost:3002",
         "FILES_ORIGIN": "http://localhost:4000",
         "MODE": "development",
-        "ORIGIN": "http://localhost:3000"
+        "ORIGIN": "http://localhost:3000",
+        "SHIELD_API_ORIGIN": "http://localhost:8000/v1"
       }
     },
 

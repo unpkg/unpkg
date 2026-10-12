@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
 import type { Env } from "./env.ts";
+import { __resetShieldStateForTests } from "./shield.ts";
 import worker from "./worker.ts";
 
 const context = {
@@ -9,11 +10,42 @@ const context = {
   },
 } as unknown as ExecutionContext;
 
+const capturingContext = {
+  waited: [] as Promise<unknown>[],
+  waitUntil(promise: Promise<unknown>) {
+    capturingContext.waited.push(promise);
+  },
+} as unknown as ExecutionContext & { waited: Promise<unknown>[] };
+
+// Unroutable origin: background Shield refreshes fail fast without network.
+const shieldEnv = {
+  SHIELD_API_ORIGIN: "http://localhost:9/v1",
+  SHIELD_API_KEY: "test-key",
+} as Env;
+
 let originalCaches = globalThis.caches;
+let originalFetch = globalThis.fetch;
 
 afterEach(() => {
   globalThis.caches = originalCaches;
+  globalThis.fetch = originalFetch;
+  __resetShieldStateForTests();
 });
+
+function shieldRulesResponse(rules: unknown[]): Response {
+  return new Response(
+    JSON.stringify({ schema: 1, v: 9, ts: new Date().toISOString(), rules }),
+    { headers: { "Content-Type": "application/json" } }
+  );
+}
+
+// worker.fetch expects an incoming Request (with CfProperties); the DOM
+// Request built in tests is equivalent at runtime.
+type WorkerRequest = Parameters<typeof worker.fetch>[0];
+
+function workerRequest(url: string, init?: RequestInit): WorkerRequest {
+  return new Request(url, init) as unknown as WorkerRequest;
+}
 
 describe("worker", () => {
   it("adds a UTF-8 charset to cached text responses", async () => {
@@ -32,9 +64,106 @@ describe("worker", () => {
       },
     } as unknown as CacheStorage;
 
-    let response = await worker.fetch(new Request("https://unpkg.com/example@1.0.0/styles.css"), {} as Env, context);
+    let response = await worker.fetch(workerRequest("https://unpkg.com/example@1.0.0/styles.css"), {} as Env, context);
 
     expect(response.headers.get("Content-Type")).toBe("text/css; charset=utf-8");
     expect(await response.text()).toContain("×");
+  });
+
+  it("serves the request when the Shield rules cache fails (API-down fail-open)", async () => {
+    let cachedResponse = new Response("body { color: red; }", {
+      headers: {
+        "Cache-Control": "public, max-age=31536000",
+        "Content-Type": "text/css",
+      },
+    });
+
+    globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          // Shield rules lookup explodes; the package lookup hits.
+          if (request.url.includes("shield-internal")) throw new Error("cache unavailable");
+          return cachedResponse;
+        },
+      },
+    } as unknown as CacheStorage;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/styles.css"),
+      shieldEnv,
+      capturingContext
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("color: red");
+  });
+
+  it("serves the request when Shield itself throws (fail-open guard)", async () => {
+    let cachedResponse = new Response("body { color: blue; }", {
+      headers: {
+        "Cache-Control": "public, max-age=31536000",
+        "Content-Type": "text/css",
+      },
+    });
+
+    globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          // Cold Shield state (miss) plus the throwing context below makes
+          // getShieldRules reject; the package lookup itself hits.
+          if (request.url.includes("shield-internal")) return null;
+          return cachedResponse;
+        },
+      },
+    } as unknown as CacheStorage;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/styles.css"),
+      shieldEnv,
+      context // waitUntil throws: without the guard this request would 500
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("color: blue");
+  });
+
+  it("serves the block stub without touching package origins", async () => {
+    const rules = [{ action: "block", pkg: "example", from: ["1.0.0"], domains: ["*"] }];
+    const fetchedUrls: string[] = [];
+
+    globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          if (request.url.includes("shield-internal")) return shieldRulesResponse(rules).clone();
+          throw new Error("block path must not reach the package cache");
+        },
+        async put() {},
+      },
+    } as unknown as CacheStorage;
+
+    globalThis.fetch = (async (url: string | URL | Request) => {
+      fetchedUrls.push(url.toString());
+      // Background rules revalidate only.
+      return shieldRulesResponse(rules);
+    }) as unknown as typeof fetch;
+
+    const waited: Promise<unknown>[] = [];
+    const ctx = { waitUntil(promise: Promise<unknown>) { waited.push(promise); } } as unknown as ExecutionContext;
+
+    let blocked = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/index.js", {
+        headers: { Referer: "https://customer.test/" },
+      }),
+      { ...shieldEnv, SHIELD_API_ORIGIN: "https://shield.test/v1" },
+      ctx
+    );
+
+    expect(blocked.status).toBe(403);
+    expect(blocked.headers.get("Cache-Control")).toBe("no-store");
+    expect(await blocked.text()).toContain("example@1.0.0");
+    await Promise.all(waited);
+    // The only outbound call the worker ever makes is the rules fetch.
+    expect(fetchedUrls).toHaveLength(1);
+    expect(fetchedUrls[0]).toContain("/edge/rules");
   });
 });
