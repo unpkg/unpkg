@@ -11,3 +11,4 @@ dist-www/
 
 # Wrangler dev state
 .wrangler/
+.dev.vars

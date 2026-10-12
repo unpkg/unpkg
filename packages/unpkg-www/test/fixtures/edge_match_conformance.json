@@ -1,0 +1,303 @@
+{
+  "_comment": "Executable Shield<->unpkg edge-match contract. Canonical copy: sbom/api/tests/fixtures/edge_match_conformance.json. Mirrored to unpkg packages/unpkg-www/test/fixtures/edge_match_conformance.json — keep in sync; both suites MUST pass every case. Fields: rules[] {action?, pkg, from[], to?, domains?, refs?}; path+search+referer+origin in; expect rewritten path+search, {block:true}, or null.",
+  "schema": 1,
+  "cases": [
+    {
+      "name": "exact version + exact domain rewrites",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/2024/article",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "www subdomain of rule domain rewrites",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://www.nytimes.com/",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "deep subdomain of rule domain rewrites",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/lib/x.js",
+      "search": "",
+      "referer": "https://app.eu.nytimes.com/a",
+      "origin": null,
+      "expect": "/chalk@5.0.0/lib/x.js"
+    },
+    {
+      "name": "suffix-but-not-subdomain does NOT match",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://evilnytimes.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "global star domain matches anyone",
+      "rules": [{ "pkg": "evil-pkg", "from": ["2.0.0"], "to": "1.0.0", "domains": ["*"] }],
+      "path": "/evil-pkg@2.0.0/main.js",
+      "search": "",
+      "referer": "https://random.example.org/",
+      "origin": null,
+      "expect": "/evil-pkg@1.0.0/main.js"
+    },
+    {
+      "name": "non-matching version is untouched",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.0/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "version match is exact, not prefix",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.10/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "non-matching package is untouched",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/lodash@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "non-matching domain is untouched",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://example.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "package match is case-insensitive, rewrite preserves case",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/Chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": "/Chalk@5.0.0/index.js"
+    },
+    {
+      "name": "rule package case is normalized too",
+      "rules": [{ "pkg": "Chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "uppercase referer host matches",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://NYTIMES.COM/page",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "referer port is stripped",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com:8443/page",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "trailing-dot host matches",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com./page",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "origin fallback covers missing referer",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": null,
+      "origin": "https://app.nytimes.com",
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "missing referer and origin fails open",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": null,
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "unparseable referer fails open",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["*"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "::::not a url",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "query string is preserved",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "?module&target=es2022",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js?module&target=es2022"
+    },
+    {
+      "name": "scoped package rewrites",
+      "rules": [{ "pkg": "@solana/web3.js", "from": ["1.95.5"], "to": "1.95.4", "domains": ["nytimes.com"] }],
+      "path": "/@solana/web3.js@1.95.5/lib/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": "/@solana/web3.js@1.95.4/lib/index.js"
+    },
+    {
+      "name": "non-package paths are untouched",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["*"] }],
+      "path": "/",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "second matching rule for same package fires",
+      "rules": [
+        { "pkg": "chalk", "from": ["4.0.0"], "to": "3.0.0", "domains": ["nytimes.com"] },
+        { "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }
+      ],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "prerelease versions match exactly",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1-beta.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1-beta.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "unknown rule fields are ignored",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"], "future_action": "quarantine", "severity": 9 }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "explicit pin action behaves like default",
+      "rules": [{ "action": "pin", "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "block rule fires",
+      "rules": [{ "action": "block", "pkg": "evil-pkg", "from": ["9.9.9"], "domains": ["nytimes.com"] }],
+      "path": "/evil-pkg@9.9.9/index.js",
+      "search": "",
+      "referer": "https://app.nytimes.com/",
+      "origin": null,
+      "expect": { "block": true }
+    },
+    {
+      "name": "block rule wrong version is untouched",
+      "rules": [{ "action": "block", "pkg": "evil-pkg", "from": ["9.9.9"], "domains": ["nytimes.com"] }],
+      "path": "/evil-pkg@9.9.8/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "block rule wrong domain is untouched",
+      "rules": [{ "action": "block", "pkg": "evil-pkg", "from": ["9.9.9"], "domains": ["nytimes.com"] }],
+      "path": "/evil-pkg@9.9.9/index.js",
+      "search": "",
+      "referer": "https://example.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "unknown action is ignored fail-open",
+      "rules": [{ "action": "quarantine", "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "pin without target is ignored",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "domains": ["nytimes.com"] }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": null
+    },
+    {
+      "name": "absent domains list means global",
+      "rules": [{ "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0" }],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://anywhere.example/",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "overlapping rules: first match wins (order significant)",
+      "rules": [
+        { "action": "pin", "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] },
+        { "action": "block", "pkg": "chalk", "from": ["5.0.1"], "domains": ["*"] }
+      ],
+      "path": "/chalk@5.0.1/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": "/chalk@5.0.0/index.js"
+    },
+    {
+      "name": "pin and block coexist per version",
+      "rules": [
+        { "action": "pin", "pkg": "chalk", "from": ["5.0.1"], "to": "5.0.0", "domains": ["nytimes.com"] },
+        { "action": "block", "pkg": "chalk", "from": ["6.0.0"], "domains": ["nytimes.com"] }
+      ],
+      "path": "/chalk@6.0.0/index.js",
+      "search": "",
+      "referer": "https://nytimes.com/",
+      "origin": null,
+      "expect": { "block": true }
+    }
+  ]
+}
