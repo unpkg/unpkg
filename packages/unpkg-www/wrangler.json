@@ -6,6 +6,9 @@
 
   "name": "unpkg-www",
   "observability": { "enabled": true, "head_sampling_rate": 0.001 },
+  "kv_namespaces": [
+    { "binding": "SHIELD_RULES", "id": "3a1a277aa6f34659be126b05eab2f0a5" }
+  ],
   "routes": [
     { "pattern": "www.unpkg.com", "custom_domain": true },
     { "pattern": "unpkg.com", "custom_domain": true }
@@ -17,8 +20,7 @@
     "ESM_ORIGIN": "https://esm.unpkg.com",
     "FILES_ORIGIN": "https://fly.unpkg.com",
     "MODE": "production",
-    "ORIGIN": "https://unpkg.com",
-    "SHIELD_API_ORIGIN": "https://shield.unpkg.com/v1"
+    "ORIGIN": "https://unpkg.com"
   },
 
   "env": {
@@ -32,14 +34,16 @@
         "ESM_ORIGIN": "http://localhost:3002",
         "FILES_ORIGIN": "http://localhost:4000",
         "MODE": "development",
-        "ORIGIN": "http://localhost:3000",
-        "SHIELD_API_ORIGIN": "http://localhost:8000/v1"
+        "ORIGIN": "http://localhost:3000"
       }
     },
 
     "staging": {
       "name": "unpkg-www-staging",
       "observability": { "enabled": true },
+      "kv_namespaces": [
+        { "binding": "SHIELD_RULES", "id": "52069581860c484da319cd507d17eaf3" }
+      ],
       "routes": [
         { "pattern": "www.unpkg.dev", "custom_domain": true },
         { "pattern": "unpkg.dev", "custom_domain": true }
@@ -51,8 +55,7 @@
         "ESM_ORIGIN": "https://esm.unpkg.dev",
         "FILES_ORIGIN": "https://fly.unpkg.dev",
         "MODE": "staging",
-        "ORIGIN": "https://unpkg.dev",
-        "SHIELD_API_ORIGIN": "https://shield.unpkg.com/v1"
+        "ORIGIN": "https://unpkg.dev"
       }
     }
   }

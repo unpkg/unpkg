@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import type { Env } from "./env.ts";
+import type { Env, ShieldKV } from "./env.ts";
 import { __resetShieldStateForTests } from "./shield.ts";
 import worker from "./worker.ts";
 
@@ -17,10 +17,13 @@ const capturingContext = {
   },
 } as unknown as ExecutionContext & { waited: Promise<unknown>[] };
 
-// Unroutable origin: background Shield refreshes fail fast without network.
+// Shield reads rules from KV only; this binding stands in for the real one.
 const shieldEnv = {
-  SHIELD_API_ORIGIN: "http://localhost:9/v1",
-  SHIELD_API_KEY: "test-key",
+  SHIELD_RULES: {
+    async get(): Promise<string | null> {
+      return null;
+    },
+  },
 } as Env;
 
 let originalCaches = globalThis.caches;
@@ -129,7 +132,13 @@ describe("worker", () => {
 
   it("serves the block stub without touching package origins", async () => {
     const rules = [{ action: "block", pkg: "example", from: ["1.0.0"], domains: ["*"] }];
-    const fetchedUrls: string[] = [];
+    const gets: string[] = [];
+    const kv: ShieldKV = {
+      async get(key: string, type: "text") {
+        gets.push(`${key}:${type}`);
+        return JSON.stringify({ schema: 1, v: 9, rules });
+      },
+    };
 
     globalThis.caches = {
       default: {
@@ -141,10 +150,8 @@ describe("worker", () => {
       },
     } as unknown as CacheStorage;
 
-    globalThis.fetch = (async (url: string | URL | Request) => {
-      fetchedUrls.push(url.toString());
-      // Background rules revalidate only.
-      return shieldRulesResponse(rules);
+    globalThis.fetch = (async () => {
+      throw new Error("block path must not fetch");
     }) as unknown as typeof fetch;
 
     const waited: Promise<unknown>[] = [];
@@ -154,7 +161,7 @@ describe("worker", () => {
       workerRequest("https://unpkg.com/example@1.0.0/index.js", {
         headers: { Referer: "https://customer.test/" },
       }),
-      { ...shieldEnv, SHIELD_API_ORIGIN: "https://shield.test/v1" },
+      { ...shieldEnv, SHIELD_RULES: kv },
       ctx
     );
 
@@ -162,8 +169,7 @@ describe("worker", () => {
     expect(blocked.headers.get("Cache-Control")).toBe("no-store");
     expect(await blocked.text()).toContain("example@1.0.0");
     await Promise.all(waited);
-    // The only outbound call the worker ever makes is the rules fetch.
-    expect(fetchedUrls).toHaveLength(1);
-    expect(fetchedUrls[0]).toContain("/edge/rules");
+    // The only outbound call the worker ever makes is the KV rules read.
+    expect(gets).toEqual(["shield:edge-rules:v1:text"]);
   });
 });
