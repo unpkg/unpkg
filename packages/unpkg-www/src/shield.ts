@@ -1,4 +1,4 @@
-import type { Env } from "./env.ts";
+import type { Env, ShieldKV } from "./env.ts";
 
 /**
  * Shield version pinning for unpkg-www.
@@ -33,24 +33,37 @@ import type { Env } from "./env.ts";
  *
  * Correctness notes for the rules cache:
  * - Refresh is time-based (jittered soft TTL), out-of-band via
- *   `context.waitUntil`: Shield API latency can never add to response time.
+ *   `context.waitUntil`: KV read latency can never add to response time.
  * - In-memory replacement is always safe because of the in-flight guard: a
- *   fetch that completes did so after the previous accept, so its server
+ *   read that completes did so after the previous accept, so its server
  *   state is newer or equal. The version/hash comparison only skips
  *   redundant rebuilds — it is an optimization, not a correctness gate.
  * - TTLs use local fetch time only. Server timestamps are never compared
  *   against the worker clock for correctness.
- * - The Cache API put is guarded by `v` so a slow fetch cannot regress a
+ * - The Cache API put is guarded by `v` so a slow read cannot regress a
  *   newer DC-wide entry written by a fresher isolate.
  * - Payloads with a newer `schema` than supported are ignored entirely,
  *   so an API deploy can never confuse an older worker.
- * - Origin fetches are gated to ~1/soft-TTL/isolate even when the API is
- *   failing, so a brownout can never turn request rate into origin load.
+ * - KV reads are gated to ~1/soft-TTL/isolate even when KV is failing,
+ *   so an outage can never turn request rate into billed reads.
+ * - The SBOM API publishes the ruleset to Workers KV; the worker reads
+ *   it from the `SHIELD_RULES` binding and never contacts the API.
+ *   KV null reads as an empty ruleset (and is cached like any other
+ *   result — null reads are billed), while a thrown or corrupt KV read
+ *   is ignored: stale rules are kept and retried next TTL.
+ * - Accepted memory is monotonic in `v`: KV is eventually consistent and
+ *   may hand back an older version after a newer accept, so older `v`
+ *   never replaces accepted state (the Cache API put is guarded the
+ *   same way).
+ * - The payload's `refresh_s` (when a finite number) re-centers the soft
+ *   TTL (clamped 15..600s, jittered ±1/6), so the refresh/cost knob stays
+ *   server-side. Absent `refresh_s` keeps this isolate's current TTL.
  *
  * Deliberate non-goals: enforcement events are NOT reported back to the
  * API (no beacons). The worker is pure local request rewriting; the only
- * outbound call it ever makes is the rules fetch. Firing visibility comes
- * from feed-change logs plus CDN request logs, joined data-platform-side.
+ * outbound call it ever makes is the KV rules read. Firing visibility
+ * comes from feed-change logs plus CDN request logs, joined
+ * data-platform-side.
  */
 
 export type ShieldAction = "pin" | "block";
@@ -76,27 +89,27 @@ export type ShieldDecision =
   | { type: "block"; rule: ShieldRule; pkg: string; version: string };
 
 const RULES_CACHE_KEY = new Request("https://shield-internal/rules");
-const RULES_PATH = "/edge/rules";
 const MAX_SUPPORTED_SCHEMA = 1;
+// KV key for the ruleset. MUST match the backend's EDGE_KV_KEY.
+const KV_RULES_KEY = "shield:edge-rules:v1";
 // Jittered per isolate so DCs don't refresh in lockstep (thundering herd).
 const SOFT_TTL_MIN_MS = 25_000;
 const SOFT_TTL_MAX_MS = 35_000;
 const HARD_TTL_MS = 3_600_000;
-
-export interface ShieldFetch {
-  (url: string, init?: { headers?: Record<string, string> }): Promise<Response>;
-}
+// Bounds for the server-driven refresh interval (payload `refresh_s`).
+const REFRESH_MIN_S = 15;
+const REFRESH_MAX_S = 600;
 
 export interface ShieldDeps {
   cache: Cache;
-  fetch: ShieldFetch;
+  /** Test seam / override; production reads `env.SHIELD_RULES`. */
+  kv?: ShieldKV;
 }
 
 function defaultDeps(): ShieldDeps {
   // @ts-expect-error - `caches.default` is missing in @cloudflare/workers-types
   const cache = caches.default as Cache;
-  const fetch: ShieldFetch = (url, init) => globalThis.fetch(url, init);
-  return { cache, fetch };
+  return { cache };
 }
 
 let rulesMap: ShieldRulesMap | null = null;
@@ -104,7 +117,7 @@ let rulesVersion = 0;
 let rulesHash = "";
 let rulesFetchedAt = 0;
 let lastRefreshAttempt = 0;
-let softTtlMs = SOFT_TTL_MIN_MS + Math.random() * (SOFT_TTL_MAX_MS - SOFT_TTL_MIN_MS);
+let softTtlMs = softenTtl(30);
 let refreshInFlight: Promise<void> | null = null;
 
 /** Test-only: reset module state between cases. */
@@ -124,13 +137,28 @@ export function __ageShieldRulesForTests(ageMs: number): void {
   lastRefreshAttempt = Date.now() - ageMs;
 }
 
+/** Jitter a refresh center (±1/6) so isolates don't refresh in lockstep. */
+function softenTtl(refreshS: number): number {
+  const center = Math.min(REFRESH_MAX_S, Math.max(REFRESH_MIN_S, refreshS));
+  return center * 1000 * (5 / 6 + Math.random() * (1 / 3));
+}
+
+/**
+ * Adopt the payload's `refresh_s` as this isolate's soft TTL. Non-numeric
+ * values are ignored (the isolate keeps its current TTL), so older
+ * payloads without the field behave exactly as before.
+ */
+function adoptRefreshS(value: unknown): void {
+  if (typeof value !== "number" || !Number.isFinite(value)) return;
+  softTtlMs = softenTtl(value);
+}
+
 function scheduleRefresh(env: Env, context: ExecutionContext, deps: ShieldDeps): void {
-  // At most one origin fetch per soft TTL per isolate — including when the
-  // origin is failing. Without this gate, every request past a failed
-  // refresh would trigger another attempt, so an API brownout would turn
-  // the fleet's request rate into origin load (a self-inflicted DDoS).
-  // With it, total origin load is bounded by (live isolates / soft TTL)
-  // by construction, in success and failure alike.
+  // At most one KV read per soft TTL per isolate — including when KV is
+  // failing. Without this gate, every request past a failed refresh would
+  // trigger another attempt, so a KV outage would turn the fleet's request
+  // rate into billed reads. With it, total KV reads are bounded by (live
+  // isolates / soft TTL) by construction, in success and failure alike.
   const now = Date.now();
   if (now - lastRefreshAttempt < softTtlMs) return;
   lastRefreshAttempt = now;
@@ -150,6 +178,7 @@ interface RulesPayload {
   schema?: unknown;
   v?: unknown;
   rules?: unknown;
+  refresh_s?: unknown;
 }
 
 export function buildRulesMap(rules: unknown): { map: ShieldRulesMap; hash: string } {
@@ -192,7 +221,8 @@ export async function getShieldRules(
   context: ExecutionContext,
   deps: ShieldDeps = defaultDeps()
 ): Promise<ShieldRulesMap | null> {
-  if (!env.SHIELD_API_ORIGIN || !env.SHIELD_API_KEY) return null;
+  // No KV binding, no Shield. The worker never contacts the API.
+  if (!env.SHIELD_RULES) return null;
 
   const now = Date.now();
   if (rulesMap && now - rulesFetchedAt < HARD_TTL_MS) {
@@ -218,6 +248,7 @@ export async function getShieldRules(
       rulesVersion = typeof data.v === "number" ? data.v : 0;
       rulesHash = built.hash;
       rulesFetchedAt = now;
+      adoptRefreshS(data.refresh_s);
       scheduleRefresh(env, context, deps);
       return rulesMap;
     }
@@ -233,7 +264,7 @@ export async function getShieldRules(
 
 export async function refreshRules(env: Env, deps: ShieldDeps = defaultDeps()): Promise<void> {
   // In-flight guard: concurrent refreshes collapse into one. This also
-  // orders accepted fetches (each completes after the previous accept),
+  // orders accepted reads (each completes after the previous accept),
   // which is what makes in-memory replacement unconditionally safe.
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = doRefresh(env, deps).finally(() => {
@@ -244,44 +275,87 @@ export async function refreshRules(env: Env, deps: ShieldDeps = defaultDeps()): 
 
 async function doRefresh(env: Env, deps: ShieldDeps): Promise<void> {
   try {
-    const resp = await deps.fetch(`${env.SHIELD_API_ORIGIN}${RULES_PATH}`, {
-      headers: { Authorization: `Bearer ${env.SHIELD_API_KEY}` },
-    });
-    if (!resp.ok) return;
-    const data = (await resp.json()) as RulesPayload;
-    if (typeof data.schema === "number" && data.schema > MAX_SUPPORTED_SCHEMA) return;
-    const built = buildRulesMap(data.rules ?? []);
-    const version = typeof data.v === "number" ? data.v : 0;
-    // Always advance the fetch clock on success: this sets this isolate's
-    // next refresh ~one soft TTL out. The map rebuild is skipped when the
-    // content is identical (pure optimization).
-    rulesFetchedAt = Date.now();
-    if (built.hash !== rulesHash) {
-      rulesMap = built.map;
-      rulesHash = built.hash;
-      rulesVersion = version;
-    } else if (version > rulesVersion) {
-      rulesVersion = version;
+    // deps.kv is the test seam; production falls through to the binding.
+    const kv = deps.kv ?? env.SHIELD_RULES;
+    if (!kv) return;
+    const outcome = await readKvRules(kv);
+    if (outcome === "missing") {
+      // Null reads as an empty ruleset — and is cached like any other
+      // result (null reads are billed; an uncached null would re-read
+      // on every request). The v-guard inside accept keeps this from
+      // regressing newer accepted state if the key was just deleted.
+      await acceptRulesPayload({ schema: 1, v: 0, rules: [] }, deps);
+      return;
     }
-    // Put guard: never let a slow fetch regress a newer DC-wide entry.
-    try {
-      const cached = await deps.cache.match(RULES_CACHE_KEY);
-      if (cached) {
-        const cachedData = (await cached.json()) as RulesPayload;
-        if (typeof cachedData.v === "number" && cachedData.v > version) return;
-      }
-      await deps.cache.put(
-        RULES_CACHE_KEY,
-        new Response(JSON.stringify(data), {
-          headers: { "Cache-Control": `max-age=${HARD_TTL_MS / 1000}` },
-        })
-      );
-    } catch {
-      // Cache write failure must never break requests.
-    }
+    // Unreadable (thrown or corrupt) reads are ignored: stale rules are
+    // kept and retried next TTL. There is no other source — the worker
+    // never contacts the API.
+    if (outcome === "unreadable") return;
+    await acceptRulesPayload(outcome, deps);
   } catch (error) {
     console.error("Shield rules refresh failed:", error);
   }
+}
+
+/** Read the ruleset value from KV. Never throws. */
+async function readKvRules(kv: ShieldKV): Promise<unknown | "missing" | "unreadable"> {
+  let raw: string | null;
+  try {
+    raw = await kv.get(KV_RULES_KEY, "text");
+  } catch {
+    return "unreadable";
+  }
+  if (raw === null) return "missing";
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return "unreadable";
+  }
+}
+
+/**
+ * Validate and accept one rules payload into isolate memory and the
+ * DC-wide cache. Returns whether the payload was accepted.
+ */
+async function acceptRulesPayload(data: unknown, deps: ShieldDeps): Promise<boolean> {
+  if (data == null || typeof data !== "object") return false;
+  const payload = data as RulesPayload;
+  if (typeof payload.schema === "number" && payload.schema > MAX_SUPPORTED_SCHEMA) return false;
+  const built = buildRulesMap(payload.rules ?? []);
+  const version = typeof payload.v === "number" ? payload.v : 0;
+  // KV is eventually consistent: a read may hand back an older `v` than
+  // this isolate already accepted. Never regress accepted memory (the
+  // Cache API put below is guarded the same way).
+  if (rulesHash !== "" && version < rulesVersion) return false;
+  // Always advance the fetch clock on success: this sets this isolate's
+  // next refresh ~one soft TTL out. The map rebuild is skipped when the
+  // content is identical (pure optimization).
+  rulesFetchedAt = Date.now();
+  if (built.hash !== rulesHash) {
+    rulesMap = built.map;
+    rulesHash = built.hash;
+    rulesVersion = version;
+  } else if (version > rulesVersion) {
+    rulesVersion = version;
+  }
+  adoptRefreshS(payload.refresh_s);
+  // Put guard: never let a slow read regress a newer DC-wide entry.
+  try {
+    const cached = await deps.cache.match(RULES_CACHE_KEY);
+    if (cached) {
+      const cachedData = (await cached.json()) as RulesPayload;
+      if (typeof cachedData.v === "number" && cachedData.v > version) return true;
+    }
+    await deps.cache.put(
+      RULES_CACHE_KEY,
+      new Response(JSON.stringify(data), {
+        headers: { "Cache-Control": `max-age=${HARD_TTL_MS / 1000}` },
+      })
+    );
+  } catch {
+    // Cache write failure must never break requests.
+  }
+  return true;
 }
 
 const PKG_VERSION_RE = /^\/((?:@[^/]+\/)?[^/@]+)@([^/]+)/;

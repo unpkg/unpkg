@@ -1,3 +1,8 @@
+/** Minimal structural surface of the SHIELD_RULES KVNamespace binding. */
+export interface ShieldKV {
+  get(key: string, type: "text"): Promise<string | null>;
+}
+
 export interface Env {
   APP_ORIGIN: string;
   ASSETS_ORIGIN: string;
@@ -6,10 +11,9 @@ export interface Env {
   FILES_ORIGIN: string;
   MODE: "development" | "production" | "staging" | "test";
   ORIGIN: string;
-  // Shield version pinning (optional). When either is unset the worker
-  // behaves exactly as if shield.ts did not exist. SHIELD_API_KEY is a
-  // secret (`wrangler secret put`) and MUST never appear in wrangler.json;
-  // production/staging SHIELD_API_ORIGIN values are set at deploy time.
-  SHIELD_API_ORIGIN?: string;
-  SHIELD_API_KEY?: string;
+  // Shield version pinning (optional). The SBOM API publishes the ruleset
+  // to Workers KV; the worker reads it from this binding and never
+  // contacts the API. When unset, the worker behaves exactly as if
+  // shield.ts did not exist. Bound in wrangler.json (`kv_namespaces`).
+  SHIELD_RULES?: ShieldKV;
 }

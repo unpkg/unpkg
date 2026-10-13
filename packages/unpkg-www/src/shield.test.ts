@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from "bun:test";
 import type { ExecutionContext } from "@cloudflare/workers-types";
 
 import fixtures from "../test/fixtures/edge_match_conformance.json";
-import type { Env } from "./env.ts";
+import type { Env, ShieldKV } from "./env.ts";
 import {
   __ageShieldRulesForTests,
   __resetShieldStateForTests,
@@ -23,8 +23,6 @@ const env: Env = {
   FILES_ORIGIN: "https://files.unpkg.com",
   MODE: "test",
   ORIGIN: "https://unpkg.com",
-  SHIELD_API_ORIGIN: "https://shield.test/v1",
-  SHIELD_API_KEY: "test-key",
 };
 
 function makeContext(captured: Promise<unknown>[]): ExecutionContext {
@@ -43,10 +41,26 @@ function makeCache(initial?: Response): { cache: Cache; store: Map<string, Respo
   return { cache, store };
 }
 
-function rulesResponse(rules: unknown[], v: number): Response {
-  return new Response(JSON.stringify({ schema: 1, v, ts: new Date().toISOString(), rules }), {
-    headers: { "Content-Type": "application/json" },
-  });
+function kvPayload(rules: unknown[], v: number, refresh_s?: unknown): string {
+  return JSON.stringify({ schema: 1, v, ts: new Date().toISOString(), rules, refresh_s });
+}
+
+function makeKv(values: (string | null | Error)[]): { kv: ShieldKV; gets: string[] } {
+  const gets: string[] = [];
+  let i = 0;
+  const kv: ShieldKV = {
+    async get(key: string, type: "text") {
+      gets.push(`${key}:${type}`);
+      const next = values[Math.min(i++, values.length - 1)];
+      if (next instanceof Error) throw next;
+      return next;
+    },
+  };
+  return { kv, gets };
+}
+
+function withKv(base: Env, kv: ShieldKV): Env {
+  return { ...base, SHIELD_RULES: kv };
 }
 
 function decide(rules: unknown[], path: string, search: string, referer: string | null, origin: string | null) {
@@ -124,138 +138,228 @@ describe("block stub", () => {
 describe("rules fetching and caching", () => {
   const rules = [{ pkg: "chalk", from: ["5.0.1"], to: "5.0.0", domains: ["nytimes.com"] }];
 
-  it("returns null without Shield env vars and never fetches", async () => {
-    let fetched = 0;
+  it("returns null without the KV binding and never reads", async () => {
     const { cache } = makeCache();
-    const deps: ShieldDeps = { cache, fetch: async () => { fetched++; return rulesResponse([], 0); } };
+    const { kv, gets } = makeKv([kvPayload(rules, 7)]);
+    // Even with a KV override in deps, the missing binding disables Shield.
+    const deps: ShieldDeps = { cache, kv };
     const captured: Promise<unknown>[] = [];
-    const bare = { ...env, SHIELD_API_ORIGIN: undefined, SHIELD_API_KEY: undefined };
-    expect(await getShieldRules(bare, makeContext(captured), deps)).toBeNull();
-    expect(fetched).toBe(0);
+    expect(await getShieldRules(env, makeContext(captured), deps)).toBeNull();
+    expect(gets).toHaveLength(0);
     expect(captured).toHaveLength(0);
   });
 
   it("cold start returns null and warms the cache in the background", async () => {
-    let fetched = 0;
     const { cache, store } = makeCache();
-    const deps: ShieldDeps = {
-      cache,
-      fetch: async () => { fetched++; return rulesResponse(rules, 7); },
-    };
+    const { kv, gets } = makeKv([kvPayload(rules, 7)]);
+    const shEnv = withKv(env, kv);
+    // No deps.kv: exercises the env.SHIELD_RULES fallthrough.
+    const deps: ShieldDeps = { cache };
     const captured: Promise<unknown>[] = [];
-    expect(await getShieldRules(env, makeContext(captured), deps)).toBeNull();
+    expect(await getShieldRules(shEnv, makeContext(captured), deps)).toBeNull();
     expect(captured).toHaveLength(1);
     await captured[0];
-    expect(fetched).toBe(1);
+    expect(gets).toEqual(["shield:edge-rules:v1:text"]);
     expect(store.has("https://shield-internal/rules")).toBe(true);
-    // Warmed: the next call serves from memory without fetching.
-    const state = await getShieldRules(env, makeContext([]), deps);
+    // Warmed: the next call serves from memory without reading.
+    const state = await getShieldRules(shEnv, makeContext([]), deps);
     expect(state).not.toBeNull();
     expect(state!.get("chalk")).toHaveLength(1);
-    expect(fetched).toBe(1);
+    expect(gets).toHaveLength(1);
   });
 
   it("stale memory schedules a background refresh but serves stale rules", async () => {
-    let fetched = 0;
     const { cache } = makeCache();
-    const deps: ShieldDeps = {
-      cache,
-      fetch: async () => { fetched++; return rulesResponse(rules, 7); },
-    };
-    await refreshRules(env, deps);
-    expect(fetched).toBe(1);
+    const { kv, gets } = makeKv([kvPayload(rules, 7)]);
+    const shEnv = withKv(env, kv);
+    const deps: ShieldDeps = { cache, kv };
+    await refreshRules(shEnv, deps);
+    expect(gets).toHaveLength(1);
     __ageShieldRulesForTests(60_000);
     const captured: Promise<unknown>[] = [];
-    const served = await getShieldRules(env, makeContext(captured), deps);
+    const served = await getShieldRules(shEnv, makeContext(captured), deps);
     expect(served).not.toBeNull();
     expect(served!.get("chalk")).toHaveLength(1);
     expect(captured).toHaveLength(1);
     await captured[0];
-    expect(fetched).toBe(2);
+    expect(gets).toHaveLength(2);
   });
 
-  it("concurrent refreshes collapse into one fetch (in-flight guard)", async () => {
-    let fetched = 0;
+  it("concurrent refreshes collapse into one read (in-flight guard)", async () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
     const { cache } = makeCache();
-    const deps: ShieldDeps = {
-      cache,
-      fetch: async () => { fetched++; await gate; return rulesResponse(rules, 7); },
+    const gets: string[] = [];
+    const kv: ShieldKV = {
+      async get(key: string, type: "text") {
+        gets.push(`${key}:${type}`);
+        await gate;
+        return kvPayload(rules, 7);
+      },
     };
-    const first = refreshRules(env, deps);
-    const second = refreshRules(env, deps);
+    const shEnv = withKv(env, kv);
+    const deps: ShieldDeps = { cache, kv };
+    const first = refreshRules(shEnv, deps);
+    const second = refreshRules(shEnv, deps);
     release();
     await Promise.all([first, second]);
-    expect(fetched).toBe(1);
+    expect(gets).toHaveLength(1);
   });
 
   it("failed refreshes do not schedule another attempt until the TTL elapses", async () => {
     // Without this gate, every request past a failed refresh would trigger
-    // another origin fetch — an API brownout would turn request rate into
-    // origin load. The gate bounds origin fetches to ~1/soft-TTL/isolate.
-    let fetched = 0;
+    // another KV read — an outage would turn request rate into billed
+    // reads. The gate bounds KV reads to ~1/soft-TTL/isolate.
     const { cache } = makeCache();
-    const deps: ShieldDeps = {
-      cache,
-      fetch: async () => { fetched++; return new Response("nope", { status: 500 }); },
-    };
+    const { kv, gets } = makeKv([new Error("kv down")]);
+    const shEnv = withKv(env, kv);
+    const deps: ShieldDeps = { cache, kv };
     const first: Promise<unknown>[] = [];
-    expect(await getShieldRules(env, makeContext(first), deps)).toBeNull();
+    expect(await getShieldRules(shEnv, makeContext(first), deps)).toBeNull();
     expect(first).toHaveLength(1);
     await first[0];
-    expect(fetched).toBe(1);
+    expect(gets).toHaveLength(1);
     const second: Promise<unknown>[] = [];
-    expect(await getShieldRules(env, makeContext(second), deps)).toBeNull();
+    expect(await getShieldRules(shEnv, makeContext(second), deps)).toBeNull();
     expect(second).toHaveLength(0);
-    expect(fetched).toBe(1);
+    expect(gets).toHaveLength(1);
     __ageShieldRulesForTests(60_000);
     const third: Promise<unknown>[] = [];
-    expect(await getShieldRules(env, makeContext(third), deps)).toBeNull();
+    expect(await getShieldRules(shEnv, makeContext(third), deps)).toBeNull();
     expect(third).toHaveLength(1);
   });
 
-  it("a slow stale fetch never regresses a newer cached entry", async () => {
-    const { cache, store } = makeCache(rulesResponse(rules, 10));
-    const deps: ShieldDeps = {
-      cache,
-      fetch: async () => rulesResponse([], 3),
-    };
-    await refreshRules(env, deps);
+  it("a slow stale read never regresses a newer cached entry", async () => {
+    const { cache, store } = makeCache(
+      new Response(kvPayload(rules, 10), { headers: { "Content-Type": "application/json" } })
+    );
+    const { kv } = makeKv([kvPayload([], 3)]);
+    const shEnv = withKv(env, kv);
+    await refreshRules(shEnv, { cache, kv });
     const kept = (await store.get("https://shield-internal/rules")!.json()) as { v: number };
     expect(kept.v).toBe(10);
   });
 
-  it("failed fetches fail open and keep serving stale rules", async () => {
+  it("failed reads fail open and keep serving stale rules", async () => {
     const { cache } = makeCache();
-    const good: ShieldDeps = {
-      cache,
-      fetch: async () => rulesResponse(rules, 7),
-    };
-    await refreshRules(env, good);
-    const bad: ShieldDeps = {
-      cache,
-      fetch: async () => new Response("nope", { status: 500 }),
-    };
-    await refreshRules(env, bad);
-    const served = await getShieldRules(env, makeContext([]), bad);
+    const good = makeKv([kvPayload(rules, 7)]);
+    const shEnv = withKv(env, good.kv);
+    await refreshRules(shEnv, { cache, kv: good.kv });
+    const bad = makeKv([new Error("kv down")]);
+    await refreshRules(shEnv, { cache, kv: bad.kv });
+    const served = await getShieldRules(shEnv, makeContext([]), { cache, kv: bad.kv });
     expect(served).not.toBeNull();
     expect(served!.get("chalk")).toHaveLength(1);
   });
 
   it("newer-schema payloads are ignored, keeping current rules", async () => {
     const { cache } = makeCache();
-    const deps: ShieldDeps = { cache, fetch: async () => rulesResponse(rules, 7) };
-    await refreshRules(env, deps);
-    const newer: ShieldDeps = {
-      cache,
-      fetch: async () =>
-        new Response(JSON.stringify({ schema: 99, v: 8, rules: [] }), {
-          headers: { "Content-Type": "application/json" },
-        }),
-    };
-    await refreshRules(env, newer);
-    const served = await getShieldRules(env, makeContext([]), newer);
+    const good = makeKv([kvPayload(rules, 7)]);
+    const shEnv = withKv(env, good.kv);
+    await refreshRules(shEnv, { cache, kv: good.kv });
+    const newer = makeKv([JSON.stringify({ schema: 99, v: 8, rules: [] })]);
+    await refreshRules(shEnv, { cache, kv: newer.kv });
+    const served = await getShieldRules(shEnv, makeContext([]), { cache, kv: newer.kv });
     expect(served!.get("chalk")).toHaveLength(1);
+  });
+});
+
+describe("KV edge cases", () => {
+  const rules = [{ pkg: "chalk", from: ["5.0.1"], to: "5.0.0", domains: ["nytimes.com"] }];
+
+  it("KV null reads as an empty ruleset and does not re-read within the TTL", async () => {
+    const { cache } = makeCache();
+    const { kv, gets } = makeKv([null]);
+    const shEnv = withKv(env, kv);
+    const deps: ShieldDeps = { cache, kv };
+    await refreshRules(shEnv, deps);
+    expect(gets).toHaveLength(1);
+    // An empty map is served (fail-open), not null — and the null result
+    // is cached: no second KV read (null is billable; an uncached null
+    // would re-read per request).
+    const served = await getShieldRules(shEnv, makeContext([]), deps);
+    expect(served).not.toBeNull();
+    expect(served!.size).toBe(0);
+    await getShieldRules(shEnv, makeContext([]), deps);
+    expect(gets).toHaveLength(1);
+  });
+
+  it("corrupt KV values are ignored, keeping stale rules", async () => {
+    const { cache } = makeCache();
+    const good = makeKv([kvPayload(rules, 7)]);
+    const shEnv = withKv(env, good.kv);
+    await refreshRules(shEnv, { cache, kv: good.kv });
+    const corrupt = makeKv(["{not-json"]);
+    await refreshRules(shEnv, { cache, kv: corrupt.kv });
+    const served = await getShieldRules(shEnv, makeContext([]), { cache, kv: corrupt.kv });
+    expect(served!.get("chalk")).toHaveLength(1);
+  });
+
+  it("an older KV version never regresses accepted memory", async () => {
+    const { cache } = makeCache();
+    // Accept v=10 first.
+    const first = makeKv([kvPayload(rules, 10)]);
+    const shEnv = withKv(env, first.kv);
+    await refreshRules(shEnv, { cache, kv: first.kv });
+    // A reordered read hands back v=3 with different content.
+    const { kv, gets } = makeKv([kvPayload([], 3)]);
+    await refreshRules(shEnv, { cache, kv });
+    expect(gets).toHaveLength(1);
+    const served = await getShieldRules(shEnv, makeContext([]), { cache, kv });
+    expect(served!.get("chalk")).toHaveLength(1);
+  });
+
+  it("refresh_s recenters the soft TTL and clamps to 15..600s", async () => {
+    // Adopt 300s: a 60s-old snapshot is still fresh (band is 250-350s).
+    {
+      const { cache } = makeCache();
+      const { kv } = makeKv([kvPayload(rules, 7, 300)]);
+      const shEnv = withKv(env, kv);
+      const deps: ShieldDeps = { cache, kv };
+      await refreshRules(shEnv, deps);
+      __ageShieldRulesForTests(60_000);
+      const captured: Promise<unknown>[] = [];
+      await getShieldRules(shEnv, makeContext(captured), deps);
+      expect(captured).toHaveLength(0);
+    }
+    // Upper clamp: 99999s pins to 600s (band 500-700s); 400s-old is fresh.
+    __resetShieldStateForTests();
+    {
+      const { cache } = makeCache();
+      const { kv } = makeKv([kvPayload(rules, 7, 99999)]);
+      const shEnv = withKv(env, kv);
+      const deps: ShieldDeps = { cache, kv };
+      await refreshRules(shEnv, deps);
+      __ageShieldRulesForTests(400_000);
+      const captured: Promise<unknown>[] = [];
+      await getShieldRules(shEnv, makeContext(captured), deps);
+      expect(captured).toHaveLength(0);
+    }
+    // Lower clamp: 1s pins to 15s (band 12.5-17.5s); 20s-old refreshes.
+    __resetShieldStateForTests();
+    {
+      const { cache } = makeCache();
+      const { kv } = makeKv([kvPayload(rules, 7, 1)]);
+      const shEnv = withKv(env, kv);
+      const deps: ShieldDeps = { cache, kv };
+      await refreshRules(shEnv, deps);
+      __ageShieldRulesForTests(20_000);
+      const captured: Promise<unknown>[] = [];
+      await getShieldRules(shEnv, makeContext(captured), deps);
+      expect(captured).toHaveLength(1);
+    }
+    // Invalid refresh_s is ignored: 60s-old exceeds the default band.
+    __resetShieldStateForTests();
+    {
+      const { cache } = makeCache();
+      const { kv } = makeKv([kvPayload(rules, 7, "soon")]);
+      const shEnv = withKv(env, kv);
+      const deps: ShieldDeps = { cache, kv };
+      await refreshRules(shEnv, deps);
+      __ageShieldRulesForTests(60_000);
+      const captured: Promise<unknown>[] = [];
+      await getShieldRules(shEnv, makeContext(captured), deps);
+      expect(captured).toHaveLength(1);
+    }
   });
 });
