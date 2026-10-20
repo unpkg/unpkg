@@ -1,6 +1,10 @@
 import {
+  BODY_VERIFICATION_HEADER,
+  fetchVerifiedResponse,
   getEsmPackageSubpath,
   getPackageInfo,
+  isCacheableResponse,
+  markBodyVerification,
   normalizeEsmRequestUrl,
   normalizeSearchParams,
   resolvePackageExport,
@@ -236,9 +240,12 @@ async function createBuildResponse(
 ): Promise<Response> {
   let buildSearchParams = new URLSearchParams(searchParams);
   buildSearchParams.set("origin", origin);
-  let buildResponse = await fetch(
-    new URL(`/build/${packageName}@${version}${filename ?? ""}${normalizeSearchParams(buildSearchParams)}`, env.FILES_ORIGIN)
+  let buildUrl = new URL(
+    `/build/${packageName}@${version}${filename ?? ""}${normalizeSearchParams(buildSearchParams)}`,
+    env.FILES_ORIGIN
   );
+  let verified = await fetchVerifiedResponse(() => new Request(buildUrl));
+  let buildResponse = verified.response;
   if (!buildResponse.ok) {
     return jsonError({
       code: "BUILD_FAILED",
@@ -248,6 +255,10 @@ async function createBuildResponse(
   }
 
   let headers = new Headers(buildResponse.headers);
+  // Streamed build artifacts are cached only once verification completes
+  // (the shared helper's contract); outer layers must not store a body
+  // that can still fail verification.
+  headers.set(BODY_VERIFICATION_HEADER, verified.streamed || !verified.bodyVerified ? "pending" : "verified");
   for (let [name, value] of Object.entries(corsHeaders())) {
     headers.set(name, value);
   }
@@ -346,15 +357,13 @@ async function getBuildIntegrity(
   let cache = env.MODE === "development" || env.MODE === "test" ? undefined : getDefaultCache();
   let response = cache != null ? await cache.match(moduleRequest) : undefined;
 
-  if (response == null) {
+  let fromCache = response != null;
+
+  if (!fromCache) {
     try {
       response = await createBuildResponse(env, origin, packageName, version, filename, packageJson, searchParams);
     } catch {
       return { value: null };
-    }
-
-    if (response.ok && cache != null) {
-      context.waitUntil(cache.put(moduleRequest, response.clone()));
     }
   }
 
@@ -373,6 +382,17 @@ async function getBuildIntegrity(
   }
 
   let bytes = await response.arrayBuffer();
+
+  if (!fromCache && cache != null && isCacheableResponse(response)) {
+    // Cache exactly the bytes hashed below. Reading the body to
+    // completion first means a stream that fails verification can never
+    // be stored here, and the stored bytes are the hashed bytes by
+    // construction.
+    let cacheResponse = new Response(bytes, response);
+    cacheResponse.headers.set(BODY_VERIFICATION_HEADER, "verified");
+    context.waitUntil(cache.put(moduleRequest, cacheResponse).catch(() => {}));
+  }
+
   let digest = await crypto.subtle.digest("SHA-384", bytes);
   return { value: `sha384-${base64Encode(new Uint8Array(digest))}` };
 }
@@ -382,7 +402,9 @@ function getDefaultCache(): Cache | undefined {
 }
 
 async function serveRawFile(env: Env, packageName: string, version: string, filename: string): Promise<Response> {
-  let rawResponse = await fetch(new URL(`/file/${packageName}@${version}${filename}`, env.FILES_ORIGIN));
+  let rawUrl = new URL(`/file/${packageName}@${version}${filename}`, env.FILES_ORIGIN);
+  let verified = await fetchVerifiedResponse(() => new Request(rawUrl));
+  let rawResponse = verified.response;
   if (!rawResponse.ok) {
     return jsonError({
       code: "RAW_FILE_NOT_FOUND",
@@ -392,6 +414,7 @@ async function serveRawFile(env: Env, packageName: string, version: string, file
   }
 
   let headers = new Headers(rawResponse.headers);
+  headers.set(BODY_VERIFICATION_HEADER, verified.streamed || !verified.bodyVerified ? "pending" : "verified");
   if (isTypeDeclarationPath(filename)) {
     headers.set("Content-Type", "application/typescript; charset=utf-8");
   } else if (isCssPath(filename)) {
@@ -502,8 +525,12 @@ async function resolveRawPath(
 }
 
 async function rawFileExists(env: Env, packageName: string, version: string, filename: string): Promise<boolean> {
-  let response = await fetch(new URL(`/file/${packageName}@${version}${filename}`, env.FILES_ORIGIN));
-  return response.ok;
+  // A transient origin failure is retried inside the verified fetch; if it
+  // still fails, the error propagates rather than reporting a false
+  // "does not exist" and resolving the wrong file.
+  let url = new URL(`/file/${packageName}@${version}${filename}`, env.FILES_ORIGIN);
+  let verified = await fetchVerifiedResponse(() => new Request(url));
+  return verified.response.ok;
 }
 
 function hasFileExtension(filename: string): boolean {

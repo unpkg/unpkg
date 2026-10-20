@@ -1,3 +1,11 @@
+import {
+  BODY_VERIFICATION_HEADER,
+  getContentLength,
+  isCacheableResponse,
+  parseContentDigest,
+  wrapWithVerificationAudit,
+} from "unpkg-worker";
+
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
 import { withUtf8Charset } from "./response.ts";
@@ -7,6 +15,29 @@ import {
   getShieldRules,
   isPackagePath,
 } from "./shield.ts";
+
+// Audits a caches.default entry as it is served. This is the hot path, so
+// the body is never buffered here: it streams through a counter (and a
+// digest stream where available), and a mismatch at end-of-stream errors
+// the response and evicts the entry so the next request refetches.
+// Entries whose stored headers carry neither Content-Length nor
+// Content-Digest cannot be checked and are served as before.
+function auditCachedResponse(cache: Cache, request: Request, response: Response): Response {
+  let length = getContentLength(response.headers);
+  let digest = parseContentDigest(response.headers);
+
+  if ((length == null && digest == null) || response.body == null) {
+    return response;
+  }
+
+  return new Response(
+    wrapWithVerificationAudit(response.body, response.headers, () => {
+      console.warn(`Evicting corrupt cache entry: ${request.url}`);
+      void cache.delete(request);
+    }),
+    response
+  );
+}
 
 export default {
   async fetch(request, env, context) {
@@ -46,20 +77,34 @@ export default {
       let response = shouldUseCache ? await cache.match(request) : undefined;
       let cacheMiss = response == null;
 
+      if (response) {
+        response = auditCachedResponse(cache, request, response);
+      }
+
       if (!response) {
         response = await handleRequest(request, env, context);
       }
 
       response = withUtf8Charset(response);
 
+      // A streamed file body that is still being verified must not be
+      // written to this cache layer: if its stream later fails, a cache
+      // write can still commit a partial entry. The shared fetch helper
+      // caches such bodies itself once verification completes. The
+      // marker is internal and is stripped before serving.
+      let bodyPendingVerification = response.headers.get(BODY_VERIFICATION_HEADER) === "pending";
+      response.headers.delete(BODY_VERIFICATION_HEADER);
+
       if (
         cacheMiss &&
         shouldUseCache &&
         request.method === "GET" &&
         response.status === 200 &&
-        response.headers.has("Cache-Control")
+        response.headers.has("Cache-Control") &&
+        isCacheableResponse(response) &&
+        !bodyPendingVerification
       ) {
-        context.waitUntil(cache.put(request, response.clone()));
+        context.waitUntil(cache.put(request, response.clone()).catch(() => {}));
       }
 
       if (request.method === "HEAD") {

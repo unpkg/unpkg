@@ -318,10 +318,15 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       headers.set("Access-Control-Expose-Headers", "*");
       headers.set("Cross-Origin-Resource-Policy", "cross-origin");
 
-      let body = await response.arrayBuffer();
+      if (response.body == null) {
+        headers.delete("Content-Length");
+      }
 
+      // Pass the body through as a stream. The shared fetch helper has
+      // already verified it (or is verifying it incrementally), so there
+      // is no need to buffer the whole file in this worker.
       return withUtf8Charset(
-        new Response(body, {
+        new Response(response.body, {
           status: response.status,
           statusText: response.statusText,
           headers,

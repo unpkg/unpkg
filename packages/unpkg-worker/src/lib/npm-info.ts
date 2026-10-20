@@ -1,4 +1,5 @@
-import { createCacheableResponse } from "./cache-utils.ts";
+import { createCacheableResponse, isCacheableResponse } from "./cache-utils.ts";
+import { fetchVerifiedResponse } from "./origin-fetch.ts";
 
 export interface PackageInfo {
   description?: string;
@@ -74,19 +75,34 @@ async function fetchPackageInfo(
   });
 
   let cache = await caches.open("npm-info");
-  let response = await cache.match(request);
+  let cached = await cache.match(request);
 
-  if (!response) {
-    response = await fetch(request);
-
-    if (response && response.ok) {
-      context.waitUntil(cache.put(request, createCacheableResponse(response)));
+  if (cached) {
+    try {
+      let packageInfo = JSON.parse(await cached.text()) as PackageInfo;
+      return { packageInfo, notFound: false };
+    } catch {
+      // A cached packument that no longer parses is corrupt. Evict and
+      // refetch rather than failing every request until it expires.
+      console.warn(`Evicting corrupt npm-info cache entry: ${request.url}`);
+      await cache.delete(request);
     }
   }
 
-  if (response && response.ok) {
-    return { packageInfo: await response.json(), notFound: false };
+  let verified = await fetchVerifiedResponse(() => new Request(request));
+  let response = verified.response;
+
+  if (response.ok) {
+    let text = await response.text();
+    // Parse before caching so an unparseable body is never stored.
+    let packageInfo = JSON.parse(text) as PackageInfo;
+
+    if (verified.bodyVerified && isCacheableResponse(response)) {
+      context.waitUntil(cache.put(request, createCacheableResponse(new Response(text, response))));
+    }
+
+    return { packageInfo, notFound: false };
   }
 
-  return { packageInfo: null, notFound: response?.status === 404 };
+  return { packageInfo: null, notFound: response.status === 404 };
 }
