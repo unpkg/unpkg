@@ -3,6 +3,7 @@ import {
   getContentLength,
   isCacheableResponse,
   parseContentDigest,
+  stripBodyVerificationMarker,
   wrapWithVerificationAudit,
 } from "unpkg-worker";
 
@@ -93,7 +94,7 @@ export default {
       // caches such bodies itself once verification completes. The
       // marker is internal and is stripped before serving.
       let bodyPendingVerification = response.headers.get(BODY_VERIFICATION_HEADER) === "pending";
-      response.headers.delete(BODY_VERIFICATION_HEADER);
+      response = stripBodyVerificationMarker(response);
 
       if (
         cacheMiss &&

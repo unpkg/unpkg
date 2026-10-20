@@ -1,7 +1,14 @@
 import { describe, expect, it } from "bun:test";
 
 import { sha256Base64 } from "./cache-utils.ts";
-import { fetchVerifiedResponse, OriginFetchError, type OriginFetchOptions } from "./origin-fetch.ts";
+import {
+  BODY_VERIFICATION_HEADER,
+  fetchVerifiedResponse,
+  markBodyVerification,
+  OriginFetchError,
+  stripBodyVerificationMarker,
+  type OriginFetchOptions,
+} from "./origin-fetch.ts";
 
 const encoder = new TextEncoder();
 
@@ -329,5 +336,23 @@ describe("fetchVerifiedResponse (streamed)", () => {
 
     await expect(verified.response.text()).rejects.toThrow();
     await expect(verified.done).rejects.toThrow();
+  });
+});
+
+describe("stripBodyVerificationMarker", () => {
+  it("removes the marker without mutating the original response", async () => {
+    let response = markBodyVerification(new Response("hello", { headers: { "Content-Type": "text/javascript" } }), true);
+
+    let stripped = stripBodyVerificationMarker(response);
+
+    expect(stripped.headers.get(BODY_VERIFICATION_HEADER)).toBeNull();
+    expect(response.headers.get(BODY_VERIFICATION_HEADER)).toBe("pending");
+    expect(await stripped.text()).toBe("hello");
+  });
+
+  it("returns the response unchanged when no marker is present", () => {
+    let response = new Response("hello");
+
+    expect(stripBodyVerificationMarker(response)).toBe(response);
   });
 });

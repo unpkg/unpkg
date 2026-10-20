@@ -44,6 +44,19 @@ export function markBodyVerification(response: Response, pendingVerification: bo
   return response;
 }
 
+// Removes the internal verification marker before a response is served.
+// Responses sourced from a cache can carry immutable headers in workerd,
+// so the marker is stripped on a clone rather than by mutating in place.
+export function stripBodyVerificationMarker(response: Response): Response {
+  if (!response.headers.has(BODY_VERIFICATION_HEADER)) {
+    return response;
+  }
+
+  let stripped = new Response(response.body, response);
+  stripped.headers.delete(BODY_VERIFICATION_HEADER);
+  return stripped;
+}
+
 export interface VerifiedResponse {
   response: Response;
   // Settles when the body has been fully verified. Rejects if verification

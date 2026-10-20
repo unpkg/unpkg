@@ -235,4 +235,32 @@ describe("worker", () => {
     await expect(response.text()).rejects.toThrow();
     expect(deleted).toBe(true);
   });
+
+  it("strips the internal verification marker from a cached response", async () => {
+    let cachedResponse = new Response("hello", {
+      headers: {
+        "Cache-Control": "public, max-age=31536000",
+        "Content-Type": "text/javascript",
+        "X-Unpkg-Body-Verification": "verified",
+      },
+    });
+
+    globalThis.caches = {
+      default: {
+        async match() {
+          return cachedResponse;
+        },
+      },
+    } as unknown as CacheStorage;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/index.js"),
+      {} as Env,
+      context
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Unpkg-Body-Verification")).toBeNull();
+    expect(await response.text()).toBe("hello");
+  });
 });

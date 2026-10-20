@@ -3,6 +3,7 @@ import {
   getContentLength,
   isCacheableResponse,
   parseContentDigest,
+  stripBodyVerificationMarker,
   wrapWithVerificationAudit,
 } from "unpkg-worker";
 
@@ -54,7 +55,7 @@ export default {
       // Streamed bodies that are still being verified must not be stored
       // by this layer; the marker is internal and stripped before serving.
       let bodyPendingVerification = response.headers.get(BODY_VERIFICATION_HEADER) === "pending";
-      response.headers.delete(BODY_VERIFICATION_HEADER);
+      response = stripBodyVerificationMarker(response);
 
       if (
         cacheMiss &&

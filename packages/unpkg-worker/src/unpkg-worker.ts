@@ -17,6 +17,7 @@ export {
   OriginFetchError,
   fetchVerifiedResponse,
   markBodyVerification,
+  stripBodyVerificationMarker,
   wrapWithVerificationAudit,
 } from "./lib/origin-fetch.ts";
 
