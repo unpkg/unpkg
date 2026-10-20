@@ -1,3 +1,5 @@
+import { isCacheableResponse } from "unpkg-worker";
+
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
 
@@ -12,8 +14,13 @@ export default {
       if (!response) {
         response = await handleRequest(request, env, context);
 
-        if (request.method === "GET" && response.status === 200 && response.headers.has("Cache-Control")) {
-          context.waitUntil(cache.put(request, response.clone()));
+        if (
+          request.method === "GET" &&
+          response.status === 200 &&
+          response.headers.has("Cache-Control") &&
+          isCacheableResponse(response)
+        ) {
+          context.waitUntil(cache.put(request, response.clone()).catch(() => {}));
         }
       }
 

@@ -22,6 +22,8 @@
     "test:esm-readiness": "bun scripts/esm-beta-readiness.ts",
     "test:esm-compat": "bun scripts/esm-compat-suite.ts",
     "test:esm-compat:local-baseline": "ESM_SH_ORIGIN=http://localhost:8081 bun scripts/esm-compat-suite.ts",
+    "test:resilience": "bun scripts/wrangler-resilience.ts",
+    "test:resilience:real": "bun scripts/wrangler-resilience.ts --real",
     "vendor:esm-sh": "scripts/esm-sh-baseline/run.sh"
   }
 }
