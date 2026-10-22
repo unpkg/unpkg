@@ -20,7 +20,8 @@
     "ESM_ORIGIN": "https://esm.unpkg.com",
     "FILES_ORIGIN": "https://fly.unpkg.com",
     "MODE": "production",
-    "ORIGIN": "https://unpkg.com"
+    "ORIGIN": "https://unpkg.com",
+    "GA_MEASUREMENT_ID": "G-LS43PRL4YE"
   },
 
   "env": {

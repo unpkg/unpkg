@@ -6,11 +6,15 @@ import { type ImportMap } from "../import-map.ts";
 export function Document({
   children,
   description = "The CDN for everything on npm",
+  gaId,
   origin = "https://unpkg.com",
   title = "UNPKG",
 }: {
   children: VNode;
   description?: string;
+  // GA4 measurement ID. Rendered only when set — dev/staging omit it so
+  // non-production traffic never pollutes analytics.
+  gaId?: string;
   origin?: string;
   title?: string;
 }): VNode {
@@ -76,15 +80,17 @@ export function Document({
 
         <title>{title}</title>
 
-        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-140352188-1"></script>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `window.dataLayer = window.dataLayer || [];
+        {gaId != null && <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}></script>}
+        {gaId != null && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
-gtag('config', 'UA-140352188-1');`,
-          }}
-        ></script>
+gtag('config', '${gaId}');`,
+            }}
+          ></script>
+        )}
       </head>
       <body class="bg-white dark:bg-dark-page dark:text-dark-foreground">{children}</body>
     </html>

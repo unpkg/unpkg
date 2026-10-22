@@ -347,6 +347,22 @@ describe("handleRequest", () => {
     expect(await response.text()).toBe("Package not found: robots.txt");
   });
 
+  it("omits analytics when no measurement ID is configured", async () => {
+    let response = await dispatchFetch("https://unpkg.com/");
+    let html = await response.text();
+    expect(html).not.toContain("googletagmanager");
+    expect(html).not.toContain("UA-140352188-1");
+  });
+
+  it("renders GA4 only when a measurement ID is configured", async () => {
+    let gaEnv: Env = { ...env, GA_MEASUREMENT_ID: "G-TEST123456" };
+    let request = new Request("https://unpkg.com/");
+    let response = await handleRequest(request, gaEnv, context);
+    let html = await response.text();
+    expect(html).toContain("googletagmanager.com/gtag/js?id=G-TEST123456");
+    expect(html).toContain("gtag('config', 'G-TEST123456')");
+  });
+
   it("renders canonical and structured data on the home page", async () => {
     let response = await dispatchFetch("https://unpkg.com/");
     let html = await response.text();
