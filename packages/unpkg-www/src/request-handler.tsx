@@ -427,7 +427,9 @@ async function renderPage(env: Env, node: VNode, init?: ResponseInit): Promise<R
 
   let html = render(
     <AssetsContext.Provider value={assetsManifest}>
-      <Document origin={env.ORIGIN}>{node}</Document>
+      <Document origin={env.ORIGIN} gaId={env.GA_MEASUREMENT_ID}>
+        {node}
+      </Document>
     </AssetsContext.Provider>
   );
 
