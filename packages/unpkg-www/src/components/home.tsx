@@ -13,6 +13,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
     "browser-modules": "Browser Modules",
     "metadata-api": "Metadata API",
     "cache-performance": "Cache Performance",
+    "supply-chain-security": "Supply Chain Security",
     about: "About",
   };
   let url = (pathname: string): string => new URL(pathname, origin).href;
@@ -320,6 +321,27 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                   }
                 `}
                 </CodeBlock>
+              </div>
+
+              <div class="mt-12 p-4 bg-slate-100 dark:bg-dark-panel">
+                <p>
+                  <span class="font-semibold">Serving production traffic through UNPKG?</span>{" "}
+                  <a
+                    class="inline-link text-blue-600 dark:text-dark-link hover:underline"
+                    href="https://shield.unpkg.com/"
+                    title="UNPKG Shield"
+                  >
+                    UNPKG Shield
+                  </a>{" "}
+                  (currently in Beta) defends your supply chain at the edge —{" "}
+                  <a
+                    class="inline-link text-blue-600 dark:text-dark-link hover:underline"
+                    href="#supply-chain-security"
+                  >
+                    see how
+                  </a>
+                  .
+                </p>
               </div>
             </section>
 
@@ -837,6 +859,47 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
               </p>
             </section>
 
+            <section id="supply-chain-security">
+              <SectionHeading id="supply-chain-security">Supply Chain Security</SectionHeading>
+
+              <p class="mt-2">
+                <a
+                  class="inline-link text-blue-600 dark:text-dark-link hover:underline"
+                  href="https://shield.unpkg.com/"
+                  title="UNPKG Shield"
+                >
+                  UNPKG Shield
+                </a>{" "}
+                (currently in Beta) defends the supply chain on top of UNPKG. Every npm release is watched the moment it
+                publishes and judged by Shield's own diff-aware classifier — informed by OSV, the GitHub Advisory
+                Database, and the OpenSSF malicious-packages feed — over tarballs, metadata, and install hooks.
+              </p>
+
+              <ul class="mt-4 ml-6 list-disc list-outside">
+                <li class="marker:pr-2">
+                  <span class="font-semibold">Serve production traffic through UNPKG?</span> Arm a domain and
+                  compromised packages are pinned or swapped at the edge before they reach a browser. Every verdict
+                  lands in a full audit trail, with a threat feed and per-package incident reports.
+                </li>
+                <li class="marker:pr-2">
+                  <span class="font-semibold">Publish packages?</span> See where your code actually runs: which domains
+                  serve your packages and which versions are live, so a hijacked release or a stale, vulnerable pin
+                  stops being invisible.
+                </li>
+                <li>
+                  <span class="font-semibold">Enforcement is your call —</span> unarmed domains stay in monitoring, so
+                  you can watch first and enforce when you're ready.{" "}
+                  <a
+                    class="inline-link text-blue-600 dark:text-dark-link hover:underline"
+                    href="https://shield.unpkg.com/register"
+                    title="Join the UNPKG Shield Beta waitlist"
+                  >
+                    Join the Beta waitlist →
+                  </a>
+                </li>
+              </ul>
+            </section>
+
             <section id="about">
               <SectionHeading id="about">About</SectionHeading>
 
@@ -870,6 +933,11 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
       </main>
 
       <footer class="mx-auto lg:max-w-screen-md px-8 pt-8 pb-24 border-t border-slate-200 dark:border-dark-border text-slate-600 dark:text-dark-secondary">
+        <p class="text-center text-sm mb-6">
+          <a class="hover:underline" href="https://shield.unpkg.com/" title="UNPKG Shield">
+            UNPKG Shield
+          </a>
+        </p>
         <p class="flex items-center justify-center gap-4">
           <a
             class="text-slate-600 dark:text-dark-foreground hover:text-slate-950 dark:hover:text-dark-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-slate-500 dark:focus-visible:outline-dark-muted"

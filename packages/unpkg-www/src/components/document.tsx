@@ -44,6 +44,29 @@ export function Document({
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 
         <link rel="icon" type="image/png" href="/favicon.png" />
+        <link rel="canonical" href={new URL("/", origin).href} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  "@id": new URL("/#org", origin).href,
+                  name: "UNPKG",
+                  url: new URL("/", origin).href,
+                  sameAs: ["https://github.com/unpkg", "https://x.com/unpkg"],
+                },
+                {
+                  "@type": "WebSite",
+                  name: "UNPKG",
+                  url: new URL("/", origin).href,
+                },
+              ],
+            }),
+          }}
+        />
         <link rel="stylesheet" href={useAsset("assets/styles.css")} />
         <link rel="stylesheet" href={useAsset("assets/code-light.css")} />
         <link rel="stylesheet" href={useAsset("assets/code-dark.css")} media="(prefers-color-scheme: dark)" />

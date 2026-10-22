@@ -15,6 +15,7 @@ import { AssetsContext } from "./assets-context.ts";
 import { loadAssetsManifest } from "./assets-manifest.ts";
 import type { Env } from "./env.ts";
 import { withUtf8Charset } from "./response.ts";
+import { llmsFullTxt, llmsTxt, robotsTxt, sitemapXml } from "./seo.ts";
 import { Document } from "./components/document.tsx";
 import { Home } from "./components/home.tsx";
 
@@ -59,7 +60,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   }
 
   if (url.pathname === "/favicon.ico") {
-    return notFound();
+    return redirect("/favicon.png", 301);
   }
   if (url.pathname === "/index.html") {
     return redirect("/", 301);
@@ -68,6 +69,42 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     return renderPage(env, <Home esmOrigin={env.ESM_ORIGIN} origin={env.ORIGIN} />, {
       headers: {
         "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+      },
+    });
+  }
+
+  // Crawler and agent files. Exact paths only — everything else (including
+  // versioned lookalikes like /robots.txt@1.0.0/index.js) still falls through
+  // to package parsing below, unchanged.
+  if (url.pathname === "/robots.txt") {
+    return new Response(robotsTxt(env.ORIGIN), {
+      headers: {
+        "Cache-Control": runtimeCacheControl,
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    });
+  }
+  if (url.pathname === "/sitemap.xml") {
+    return new Response(sitemapXml(env.ORIGIN), {
+      headers: {
+        "Cache-Control": runtimeCacheControl,
+        "Content-Type": "application/xml; charset=utf-8",
+      },
+    });
+  }
+  if (url.pathname === "/llms.txt") {
+    return new Response(llmsTxt(env.ORIGIN), {
+      headers: {
+        "Cache-Control": runtimeCacheControl,
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    });
+  }
+  if (url.pathname === "/llms-full.txt") {
+    return new Response(llmsFullTxt(env.ORIGIN), {
+      headers: {
+        "Cache-Control": runtimeCacheControl,
+        "Content-Type": "text/plain; charset=utf-8",
       },
     });
   }

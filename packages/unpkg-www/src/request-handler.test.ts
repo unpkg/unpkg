@@ -217,6 +217,8 @@ describe("handleRequest", () => {
           return fileResponse(packageInfo.react);
         case "https://registry.npmjs.org/run":
           return new Response("Not found", { status: 404 });
+        case "https://registry.npmjs.org/robots.txt":
+          return new Response("Not found", { status: 404 });
         case "https://registry.npmjs.org/vitessce":
           return fileResponse(packageInfo.vitessce);
         case "https://registry.npmjs.org/lodash/-/lodash-4.17.21.tgz":
@@ -309,6 +311,50 @@ describe("handleRequest", () => {
     response = await dispatchFetch("https://unpkg.com/run@1.0.0");
     expect(response.status).toBe(404);
     expect(await response.text()).toBe("Package not found: run");
+  });
+
+  it("serves crawler and agent files from exact paths", async () => {
+    let response = await dispatchFetch("https://unpkg.com/robots.txt");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+    let robots = await response.text();
+    expect(robots).toContain("Sitemap: https://unpkg.com/sitemap.xml");
+
+    response = await dispatchFetch("https://unpkg.com/sitemap.xml");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/xml; charset=utf-8");
+    expect(await response.text()).toContain("<loc>https://unpkg.com/</loc>");
+
+    for (let path of ["/llms.txt", "/llms-full.txt"]) {
+      response = await dispatchFetch(`https://unpkg.com${path}`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+      let body = await response.text();
+      expect(body).toContain("UNPKG Shield");
+      expect(body).toContain("https://shield.unpkg.com/");
+    }
+  });
+
+  it("redirects /favicon.ico to the png icon", async () => {
+    let response = await dispatchFetch("https://unpkg.com/favicon.ico");
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("/favicon.png");
+  });
+
+  it("does not intercept versioned lookalikes of crawler paths", async () => {
+    let response = await dispatchFetch("https://unpkg.com/robots.txt@1.1.0/index.js");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Package not found: robots.txt");
+  });
+
+  it("renders canonical and structured data on the home page", async () => {
+    let response = await dispatchFetch("https://unpkg.com/");
+    let html = await response.text();
+    expect(html).toContain('<link rel="canonical" href="https://unpkg.com/"/>');
+    expect(html).toContain('type="application/ld+json"');
+    expect(html).toContain('"@type":"Organization"');
+    expect(html).toContain('section id="supply-chain-security"');
+    expect(html).toContain('href="https://shield.unpkg.com/"');
   });
 
   describe("file requests", () => {
