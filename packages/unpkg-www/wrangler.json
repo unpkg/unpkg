@@ -7,7 +7,8 @@
   "name": "unpkg-www",
   "observability": { "enabled": true, "head_sampling_rate": 0.001 },
   "kv_namespaces": [
-    { "binding": "SHIELD_RULES", "id": "3a1a277aa6f34659be126b05eab2f0a5" }
+    { "binding": "SHIELD_RULES", "id": "3a1a277aa6f34659be126b05eab2f0a5" },
+    { "binding": "CACHE_GENERATIONS", "id": "3691adadda9b45e1b90a245f3d799d68" }
   ],
   "routes": [
     { "pattern": "www.unpkg.com", "custom_domain": true },
@@ -43,7 +44,8 @@
       "name": "unpkg-www-staging",
       "observability": { "enabled": true },
       "kv_namespaces": [
-        { "binding": "SHIELD_RULES", "id": "52069581860c484da319cd507d17eaf3" }
+        { "binding": "SHIELD_RULES", "id": "52069581860c484da319cd507d17eaf3" },
+        { "binding": "CACHE_GENERATIONS", "id": "498d5bb57a2e491a920bc58563ee7a42" }
       ],
       "routes": [
         { "pattern": "www.unpkg.dev", "custom_domain": true },

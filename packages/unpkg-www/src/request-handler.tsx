@@ -11,6 +11,7 @@ import {
   rewriteImports,
 } from "unpkg-worker";
 
+import { getRequestCacheGeneration } from "./cache-generations.ts";
 import { AssetsContext } from "./assets-context.ts";
 import { loadAssetsManifest } from "./assets-manifest.ts";
 import type { Env } from "./env.ts";
@@ -150,7 +151,9 @@ export async function handleRequest(request: Request, env: Env, context: Executi
       });
     }
 
-    let files = await listFiles(context, env.FILES_ORIGIN, packageName, version, prefix);
+    let files = await listFiles(context, env.FILES_ORIGIN, packageName, version, prefix, {
+      cacheGeneration: getRequestCacheGeneration(request),
+    });
     let fileListing = {
       package: packageName,
       version,
@@ -208,7 +211,9 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   // package export resolution after a redirect. When an explicit request matches an
   // export, use the file listing to distinguish a real file from an export subpath.
   let files = filename != null && resolvedFilename != null && resolvedFilename !== filename
-    ? await listFiles(context, env.FILES_ORIGIN, packageName, version)
+    ? await listFiles(context, env.FILES_ORIGIN, packageName, version, "/", {
+        cacheGeneration: getRequestCacheGeneration(request),
+      })
     : undefined;
 
   if (files != null && resolvedFilename != null && filename != null) {
@@ -310,10 +315,14 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     });
   }
 
-  files ??= await listFiles(context, env.FILES_ORIGIN, packageName, version);
+  files ??= await listFiles(context, env.FILES_ORIGIN, packageName, version, "/", {
+    cacheGeneration: getRequestCacheGeneration(request),
+  });
 
   if (filename != null && files.some((file) => file.path.toLowerCase() === filename.toLowerCase())) {
-    let response = await fetchFile(context, env.FILES_ORIGIN, packageName, version, filename);
+    let response = await fetchFile(context, env.FILES_ORIGIN, packageName, version, filename, {
+      cacheGeneration: getRequestCacheGeneration(request),
+    });
 
     if (response != null) {
       // In ?module requests, rewrite imports to unpkg.com/* URLs in JavaScript modules

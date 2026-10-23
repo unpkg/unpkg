@@ -110,6 +110,9 @@ export async function fetchFile(
   }
 
   let url = new URL(`/file/${packageName.toLowerCase()}@${version}${filename}`, origin);
+  if (options.cacheGeneration != null && options.cacheGeneration > 0) {
+    url.searchParams.set("g", String(options.cacheGeneration));
+  }
   let request = new Request(url);
 
   let cache = await caches.open("npm-files");
@@ -212,6 +215,9 @@ export async function listFiles(
   options: OriginFetchOptions = {}
 ): Promise<PackageFileMetadata[]> {
   let url = new URL(`/list/${packageName.toLowerCase()}@${version}${prefix}`, origin);
+  if (options.cacheGeneration != null && options.cacheGeneration > 0) {
+    url.searchParams.set("g", String(options.cacheGeneration));
+  }
   let request = new Request(url);
 
   let cache = await caches.open("npm-file-listings");

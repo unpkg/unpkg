@@ -181,6 +181,38 @@ describe("fetchFile", () => {
     await flushWaitUntil();
   });
 
+  it("scopes the cache key by generation when one is supplied", async () => {
+    let body = encoder.encode("export const x = 1;");
+    let headers = await fullHeaders(body);
+    let calls = 0;
+    let urls: string[] = [];
+    let fetchFn = (async (input: RequestInfo | URL) => {
+      calls++;
+      urls.push(input instanceof Request ? input.url : String(input));
+      return new Response(body, { headers });
+    }) as typeof fetch;
+
+    await fetchFile(context, ORIGIN, "pkg", "1.0.0", "/index.js", fetchOptions(fetchFn));
+    await flushWaitUntil();
+    expect(calls).toBe(1);
+
+    // A bumped generation must not see the generation-0 entry.
+    await fetchFile(context, ORIGIN, "pkg", "1.0.0", "/index.js", {
+      ...fetchOptions(fetchFn),
+      cacheGeneration: 2,
+    });
+    await flushWaitUntil();
+    expect(calls).toBe(2);
+    expect(urls[1]).toContain("?g=2");
+
+    // The generation-2 entry is then served from cache.
+    await fetchFile(context, ORIGIN, "pkg", "1.0.0", "/index.js", {
+      ...fetchOptions(fetchFn),
+      cacheGeneration: 2,
+    });
+    expect(calls).toBe(2);
+  });
+
   it("returns null for a 404 without caching or retrying", async () => {
     let calls = 0;
     let fetchFn = (async () => {

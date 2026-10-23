@@ -13,6 +13,13 @@ export interface OriginFetchOptions {
   bufferThresholdBytes?: number;
   fetchFn?: typeof fetch;
   sleepFn?: (ms: number) => Promise<void>;
+  /**
+   * Cache generation for the requested package version (0 = none). When
+   * positive, callers append it to the origin URL so Cache API entries
+   * written under older generations are orphaned. The fetch itself and
+   * the origin ignore this parameter.
+   */
+  cacheGeneration?: number;
 }
 
 export const DEFAULT_BUFFER_THRESHOLD_BYTES = 4 * 1024 * 1024;

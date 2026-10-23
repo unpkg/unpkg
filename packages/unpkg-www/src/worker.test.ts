@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
 import type { Env, ShieldKV } from "./env.ts";
+import { __resetCacheGenerationsForTests } from "./cache-generations.ts";
 import { __resetShieldStateForTests } from "./shield.ts";
 import worker from "./worker.ts";
 
@@ -33,6 +34,7 @@ afterEach(() => {
   globalThis.caches = originalCaches;
   globalThis.fetch = originalFetch;
   __resetShieldStateForTests();
+  __resetCacheGenerationsForTests();
 });
 
 function shieldRulesResponse(rules: unknown[]): Response {
@@ -403,6 +405,104 @@ describe("worker", () => {
     expect(puts[0].url).toBe("https://unpkg.com/example@1.0.1/index.js");
     expect(puts[0].cacheControl).toBe("public, max-age=31536000");
     expect(await puts[0].body).toBe(body);
+  });
+
+  it("serves a generation-scoped cache entry after an eviction bump", async () => {
+    const generations = {
+      schema: 1,
+      v: 1,
+      generations: {
+        "example@1.0.0": { gen: 2, expires_at: "2027-12-01T00:00:00Z" },
+      },
+    };
+    const matchedPackageUrls: string[] = [];
+    const puts: string[] = [];
+
+    globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          if (request.url.includes("cache-generations")) {
+            return new Response(JSON.stringify(generations), {
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          if (request.url.includes("shield-internal")) {
+            return shieldRulesResponse([]).clone();
+          }
+          matchedPackageUrls.push(request.url);
+          const body = request.url.includes("__unpkg_g=2") ? "fresh-body" : "stale-body";
+          return new Response(body, {
+            headers: {
+              "Cache-Control": "public, max-age=31536000",
+              "Content-Length": "10",
+              "Content-Type": "text/javascript",
+            },
+          });
+        },
+        async put(request: Request) {
+          if (request.url.includes("cache-generations") || request.url.includes("shield-internal")) return;
+          puts.push(request.url);
+        },
+      },
+    } as unknown as CacheStorage;
+
+    const waited: Promise<unknown>[] = [];
+    const ctx = {
+      waitUntil(promise: Promise<unknown>) {
+        waited.push(promise);
+      },
+    } as unknown as ExecutionContext;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/index.js"),
+      {
+        ...shieldEnv,
+        CACHE_GENERATIONS: {
+          async get() {
+            return JSON.stringify(generations);
+          },
+        },
+      } as Env,
+      ctx
+    );
+    await Promise.all(waited);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("fresh-body");
+    expect(matchedPackageUrls).toEqual(["https://unpkg.com/example@1.0.0/index.js?__unpkg_g=2"]);
+    expect(puts).toEqual([]);
+  });
+
+  it("ignores a client-supplied generation parameter on cache keys", async () => {
+    const matchedPackageUrls: string[] = [];
+    globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          if (request.url.includes("cache-generations") || request.url.includes("shield-internal")) {
+            return shieldRulesResponse([]).clone();
+          }
+          matchedPackageUrls.push(request.url);
+          return new Response("canonical!", {
+            headers: {
+              "Cache-Control": "public, max-age=31536000",
+              "Content-Length": "10",
+              "Content-Type": "text/javascript",
+            },
+          });
+        },
+        async put() {},
+      },
+    } as unknown as CacheStorage;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/index.js?__unpkg_g=7"),
+      shieldEnv,
+      context
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("canonical!");
+    expect(matchedPackageUrls).toEqual(["https://unpkg.com/example@1.0.0/index.js"]);
   });
 
   it("serves a cached response whose body matches its Content-Length", async () => {
