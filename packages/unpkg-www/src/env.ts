@@ -19,4 +19,10 @@ export interface Env {
   // contacts the API. When unset, the worker behaves exactly as if
   // shield.ts did not exist. Bound in wrangler.json (`kv_namespaces`).
   SHIELD_RULES?: ShieldKV;
+  // Cache generations (optional, independent of Shield). unpkg ops
+  // publishes per-version cache generations to this Workers KV namespace;
+  // the worker reads it from this binding. When unset, every version is
+  // generation 0 and cache keys are exactly as before.
+  // Bound in wrangler.json (`kv_namespaces`).
+  CACHE_GENERATIONS?: ShieldKV;
 }

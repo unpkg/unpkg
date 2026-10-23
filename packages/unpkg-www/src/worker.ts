@@ -3,10 +3,12 @@ import {
   getContentLength,
   isCacheableResponse,
   parseContentDigest,
+  parsePackagePathname,
   stripBodyVerificationMarker,
   wrapWithVerificationAudit,
 } from "unpkg-worker";
 
+import { getCacheGeneration, setRequestCacheGeneration } from "./cache-generations.ts";
 import type { Env } from "./env.ts";
 import { handleRequest } from "./request-handler.tsx";
 import { withUtf8Charset } from "./response.ts";
@@ -79,12 +81,60 @@ export default {
         }
       }
 
-      let shouldUseCache = url.pathname !== "/" && url.pathname !== "/index.html";
-      let response = shouldUseCache ? await cache.match(request) : undefined;
+      // Cache generations (independent of Shield): if ops has evicted
+      // this exact package version, derive the public cache key with its
+      // generation so entries written under older keys are orphaned.
+      // Generation 0 — the overwhelming majority — keeps today's key
+      // byte-for-byte. Fail-open: any problem degrades to generation 0.
+      //
+      // `__unpkg_g` is a reserved parameter: it is stripped from the
+      // request whenever present so clients can neither fragment cache
+      // keys nor pre-seed a future generation's key with stale bytes,
+      // and so it never rides handler redirects into shared URLs.
+      let cacheRequest = request;
+      let exactVersionPath = false;
+      if (isPackagePath(url.pathname)) {
+        try {
+          let parsed = parsePackagePathname(url.pathname);
+          exactVersionPath =
+            parsed?.version != null &&
+            /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(parsed.version);
+          let generation = 0;
+          if (exactVersionPath && env.CACHE_GENERATIONS) {
+            generation = await getCacheGeneration(env, context, parsed!.package, parsed!.version!);
+          }
+          if (generation > 0) {
+            setRequestCacheGeneration(request, generation);
+            let cacheUrl = new URL(request.url);
+            cacheUrl.searchParams.set("__unpkg_g", String(generation));
+            // Cast: same workerd Request typing note as the Shield rewrite.
+            cacheRequest = new Request(cacheUrl, request) as typeof request;
+          }
+          if (url.searchParams.has("__unpkg_g")) {
+            let strippedUrl = new URL(request.url);
+            strippedUrl.searchParams.delete("__unpkg_g");
+            request = new Request(strippedUrl, request) as typeof request;
+            url = new URL(request.url);
+            if (generation > 0) setRequestCacheGeneration(request, generation);
+            else cacheRequest = request;
+          }
+        } catch (error) {
+          console.error("Cache generation lookup failed (fail-open):", error);
+          cacheRequest = request;
+        }
+      }
+
+      // Non-exact versions (ranges, tags) always redirect to the exact
+      // URL in the handler, so no cacheable entry can exist under them;
+      // skipping the lookup keeps evicted versions unreachable here too.
+      let hasVersionToken = isPackagePath(url.pathname) && parsePackagePathname(url.pathname)?.version != null;
+      let shouldUseCache =
+        url.pathname !== "/" && url.pathname !== "/index.html" && (!hasVersionToken || exactVersionPath);
+      let response = shouldUseCache ? await cache.match(cacheRequest) : undefined;
       let cacheMiss = response == null;
 
       if (response) {
-        response = auditCachedResponse(cache, request, response);
+        response = auditCachedResponse(cache, cacheRequest, response);
       }
 
       if (!response) {
@@ -112,7 +162,8 @@ export default {
       ) {
         // Clone before any shielded-response mutation below: the edge entry
         // belongs to the rewritten (clean) URL and keeps its normal lifetime.
-        context.waitUntil(cache.put(request, response.clone()).catch(() => {}));
+        // Stored under cacheRequest, which carries any cache generation.
+        context.waitUntil(cache.put(cacheRequest, response.clone()).catch(() => {}));
       }
 
       if (shielded) {
