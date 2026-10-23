@@ -25,8 +25,13 @@ import type { Env, ShieldKV } from "./env.ts";
  *    serves a static 403 stub. Unknown actions are IGNORED (fail-open),
  *    so the feed can introduce new actions without breaking older
  *    workers. Unknown fields are likewise ignored.
- * 6. Overlapping rules match first-wins: servers order
- *    specific-before-general.
+ * 6. Precedence among rules covering the same package+version: the rule
+ *    with the most specific domain match for the requesting host wins
+ *    (a matching named domain beats `*`; a longer matching domain beats
+ *    a shorter parent domain; a rule's specificity is its strongest
+ *    matching domain). At equal specificity, `block` beats `pin`.
+ *    Remaining ties keep feed order. Matchers apply precedence
+ *    themselves, so decisions do not depend on publisher ordering.
  *
  * Failure philosophy (stated in both repos):
  *     The edge degrades to plain unpkg; the API degrades to human review.
@@ -192,13 +197,18 @@ export function buildRulesMap(rules: unknown): { map: ShieldRulesMap; hash: stri
     if (typeof entry["pkg"] !== "string") continue;
     const action = entry["action"] == null ? "pin" : entry["action"];
     if (action !== "pin" && action !== "block") continue; // unknown future action: ignore
-    if (action === "pin" && typeof entry["to"] !== "string") continue; // malformed pin: ignore
+    if (action === "pin" && (typeof entry["to"] !== "string" || entry["to"] === "")) continue; // malformed pin: ignore
     const pkg = entry["pkg"].toLowerCase();
     const from = Array.isArray(entry["from"]) ? entry["from"].filter((v): v is string => typeof v === "string") : [];
-    // Absent domains list means global (same as ["*"]).
-    const domains = Array.isArray(entry["domains"])
-      ? entry["domains"].filter((d): d is string => typeof d === "string").map((d) => d.toLowerCase())
-      : ["*"];
+    // Absent domains list means global (same as ["*"]). A present but
+    // non-list domains value is malformed and covers nothing, rather than
+    // silently widening a scoped rule to global.
+    const domains =
+      entry["domains"] == null
+        ? ["*"]
+        : Array.isArray(entry["domains"])
+          ? entry["domains"].filter((d): d is string => typeof d === "string").map((d) => d.toLowerCase())
+          : [];
     const shieldRule: ShieldRule = {
       action,
       from: new Set(from),
@@ -384,10 +394,40 @@ export function domainMatches(ruleDomain: string, host: string): boolean {
 }
 
 /**
+ * Specificity of one rule domain for `host`, or null if it does not cover.
+ * `*` covers everything at specificity 0. A named domain scores by its
+ * label count, so an exact/subdomain token (`app.example.com`) beats a
+ * parent token (`example.com`) for the same host. Mirrors the Python
+ * matcher's `_domain_specificity` in `edge_matching.py`.
+ */
+export function domainSpecificity(ruleDomain: string, host: string): number | null {
+  const normalized = ruleDomain.toLowerCase().replace(/\.$/, "");
+  if (normalized === "*") return 0;
+  if (host === normalized || host.endsWith(`.${normalized}`)) {
+    return normalized.split(".").length;
+  }
+  return null;
+}
+
+/** Strongest domain match a rule has for `host` (null = not covered). */
+export function ruleSpecificity(rule: ShieldRule, host: string): number | null {
+  let best: number | null = null;
+  for (const domain of rule.domains) {
+    const score = domainSpecificity(domain, host);
+    if (score != null && (best == null || score > best)) {
+      best = score;
+    }
+  }
+  return best;
+}
+
+/**
  * Match one request against the rules. Pin rules return the rewritten
  * path+search (only the version token changes; the package segment keeps
  * its original case). Block rules return the matched rule so the caller
- * can serve the static block stub. Overlapping rules match first-wins.
+ * can serve the static block stub. Among rules covering this host for
+ * the same package+version, precedence (contract rule 6) picks the most
+ * specific domain match, then block over pin, then feed order.
  */
 export function evaluateShieldRequest(
   url: URL,
@@ -403,20 +443,28 @@ export function evaluateShieldRequest(
   const packageRules = rules.get(rawPackage.toLowerCase());
   if (!packageRules) return { type: "none" };
 
-  const rule = packageRules.find((r) => r.from.has(version));
-  if (!rule) return { type: "none" };
-
   const host = normalizeHost(request.headers.get("Referer")) ?? normalizeHost(request.headers.get("Origin"));
   if (!host) return { type: "none" };
 
-  let covered = false;
-  for (const domain of rule.domains) {
-    if (domainMatches(domain, host)) {
-      covered = true;
-      break;
+  // Precedence (contract rule 6): most specific domain match wins; at
+  // equal specificity block beats pin; remaining ties keep feed order.
+  let rule: ShieldRule | null = null;
+  let bestKey: [number, number, number] | null = null;
+  for (const [index, candidate] of packageRules.entries()) {
+    if (!candidate.from.has(version)) continue;
+    const specificity = ruleSpecificity(candidate, host);
+    if (specificity == null) continue;
+    const key: [number, number, number] = [specificity, candidate.action === "block" ? 1 : 0, -index];
+    if (
+      bestKey == null ||
+      key[0] > bestKey[0] ||
+      (key[0] === bestKey[0] && (key[1] > bestKey[1] || (key[1] === bestKey[1] && key[2] > bestKey[2])))
+    ) {
+      bestKey = key;
+      rule = candidate;
     }
   }
-  if (!covered) return { type: "none" };
+  if (!rule) return { type: "none" };
 
   if (rule.action === "block" || rule.to == null) {
     return { type: "block", rule, pkg: rawPackage.toLowerCase(), version };
