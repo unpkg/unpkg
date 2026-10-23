@@ -173,6 +173,238 @@ describe("worker", () => {
     expect(gets).toEqual(["shield:edge-rules:v1:text"]);
   });
 
+  it("serves a Shield pin as no-store while caching the clean URL normally", async () => {
+    const rules = [{ pkg: "example", from: ["1.0.0"], to: "1.0.1", domains: ["customer.test"] }];
+    const kv: ShieldKV = {
+      async get() {
+        return JSON.stringify({ schema: 1, v: 9, rules });
+      },
+    };
+
+    const matchedPackageUrls: string[] = [];
+    const puts: string[] = [];
+    const cleanCachedResponse = new Response("clean-body", {
+      headers: {
+        "Cache-Control": "public, max-age=31536000",
+        "Content-Length": "10",
+        "Content-Type": "text/javascript",
+      },
+    });
+
+    globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          if (request.url.includes("shield-internal")) {
+            return shieldRulesResponse(rules).clone();
+          }
+          matchedPackageUrls.push(request.url);
+          if (request.url === "https://unpkg.com/example@1.0.1/index.js") {
+            return cleanCachedResponse;
+          }
+          return new Response("malicious-body", {
+            headers: {
+              "Cache-Control": "public, max-age=31536000",
+              "Content-Length": "14",
+              "Content-Type": "text/javascript",
+            },
+          });
+        },
+        async put(request: Request) {
+          if (request.url.includes("shield-internal")) return;
+          puts.push(request.url);
+        },
+      },
+    } as unknown as CacheStorage;
+
+    const waited: Promise<unknown>[] = [];
+    const ctx = {
+      waitUntil(promise: Promise<unknown>) {
+        waited.push(promise);
+      },
+    } as unknown as ExecutionContext;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/index.js", {
+        headers: { Referer: "https://customer.test/" },
+      }),
+      { ...shieldEnv, SHIELD_RULES: kv },
+      ctx
+    );
+    await Promise.all(waited);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("clean-body");
+    // The browser must not retain substitute bytes under the malicious URL.
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    // Only the rewritten (clean) URL is looked up; the malicious cache
+    // entry is never consulted for a shielded request.
+    expect(matchedPackageUrls).toEqual(["https://unpkg.com/example@1.0.1/index.js"]);
+    // A cache hit is not rewritten to the cache, and the stored clean entry
+    // keeps its normal lifetime — only the browser-facing copy changes.
+    expect(puts).toHaveLength(0);
+    expect(cleanCachedResponse.headers.get("Cache-Control")).toBe("public, max-age=31536000");
+  });
+
+  it("leaves non-matched domains on the original response and headers", async () => {
+    const rules = [{ pkg: "example", from: ["1.0.0"], to: "1.0.1", domains: ["customer.test"] }];
+    const kv: ShieldKV = {
+      async get() {
+        return JSON.stringify({ schema: 1, v: 9, rules });
+      },
+    };
+
+    globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          if (request.url.includes("shield-internal")) {
+            return shieldRulesResponse(rules).clone();
+          }
+          return new Response("malicious-body", {
+            headers: {
+              "Cache-Control": "public, max-age=31536000",
+              "Content-Length": "14",
+              "Content-Type": "text/javascript",
+            },
+          });
+        },
+        async put() {},
+      },
+    } as unknown as CacheStorage;
+
+    const waited: Promise<unknown>[] = [];
+    const ctx = {
+      waitUntil(promise: Promise<unknown>) {
+        waited.push(promise);
+      },
+    } as unknown as ExecutionContext;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/index.js", {
+        headers: { Referer: "https://other.test/" },
+      }),
+      { ...shieldEnv, SHIELD_RULES: kv },
+      ctx
+    );
+    await Promise.all(waited);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("malicious-body");
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000");
+  });
+
+  it("on a cache miss, stores the clean URL with its normal lifetime and serves no-store", async () => {
+    const rules = [{ pkg: "example", from: ["1.0.0"], to: "1.0.1", domains: ["customer.test"] }];
+    const kv: ShieldKV = {
+      async get() {
+        return JSON.stringify({ schema: 1, v: 9, rules });
+      },
+    };
+
+    const body = "clean-body";
+    const digest = new Bun.CryptoHasher("sha256").update(body).digest("base64");
+    const puts: { url: string; cacheControl: string | null; body: Promise<string> }[] = [];
+
+    globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          if (request.url.includes("shield-internal")) {
+            return shieldRulesResponse(rules).clone();
+          }
+          return undefined;
+        },
+        async put(request: Request, response: Response) {
+          if (request.url.includes("shield-internal")) return;
+          puts.push({
+            url: request.url,
+            cacheControl: response.headers.get("Cache-Control"),
+            body: response.text(),
+          });
+        },
+      },
+      async open() {
+        return {
+          async match() {
+            return null;
+          },
+          async put() {},
+          async delete() {
+            return true;
+          },
+        };
+      },
+    } as unknown as CacheStorage;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      let request = input instanceof Request ? input : new Request(input, init);
+      let url = new URL(request.url);
+
+      if (url.href === "https://registry.npmjs.org/example") {
+        return Response.json({
+          name: "example",
+          "dist-tags": { latest: "1.0.1" },
+          versions: {
+            "1.0.1": { name: "example", version: "1.0.1", main: "index.js" },
+          },
+          time: { "1.0.1": "2024-01-01T00:00:00.000Z" },
+        });
+      }
+      if (url.origin === "https://files.test" && url.pathname === "/list/example@1.0.1/") {
+        return Response.json({
+          package: "example",
+          version: "1.0.1",
+          prefix: "/",
+          files: [{ path: "/index.js", size: body.length, type: "text/javascript", integrity: `sha256-${digest}` }],
+        });
+      }
+      if (url.origin === "https://files.test" && url.pathname === "/file/example@1.0.1/index.js") {
+        return new Response(body, {
+          headers: {
+            "Content-Digest": `sha256=:${digest}:`,
+            "Content-Length": String(body.length),
+            "Content-Type": "text/javascript",
+          },
+        });
+      }
+      throw new Error(`Unexpected URL: ${url.href}`);
+    }) as unknown as typeof fetch;
+
+    const waited: Promise<unknown>[] = [];
+    const ctx = {
+      waitUntil(promise: Promise<unknown>) {
+        waited.push(promise);
+      },
+    } as unknown as ExecutionContext;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/index.js", {
+        headers: { Referer: "https://customer.test/" },
+      }),
+      {
+        ...shieldEnv,
+        SHIELD_RULES: kv,
+        APP_ORIGIN: "https://app.unpkg.com",
+        ASSETS_ORIGIN: "https://unpkg.com",
+        DEV: false,
+        ESM_ORIGIN: "https://esm.unpkg.com",
+        FILES_ORIGIN: "https://files.test",
+        MODE: "test",
+        ORIGIN: "https://unpkg.com",
+      } as Env,
+      ctx
+    );
+    await Promise.all(waited);
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(body);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    // The cache.put clone is taken before the no-store mutation: the edge
+    // entry belongs to the clean URL and keeps its normal lifetime.
+    expect(puts).toHaveLength(1);
+    expect(puts[0].url).toBe("https://unpkg.com/example@1.0.1/index.js");
+    expect(puts[0].cacheControl).toBe("public, max-age=31536000");
+    expect(await puts[0].body).toBe(body);
+  });
+
   it("serves a cached response whose body matches its Content-Length", async () => {
     let cachedResponse = new Response("hello", {
       headers: {

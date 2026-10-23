@@ -54,6 +54,7 @@ export default {
       // must never break a request, including via its own bugs — an API
       // outage, a corrupt cache entry, or an unexpected exception all
       // degrade to plain unpkg.
+      let shielded = false;
       if (isPackagePath(url.pathname)) {
         try {
           let shieldRules = await getShieldRules(env, context);
@@ -67,6 +68,10 @@ export default {
               // CfProperties typing is only relevant to incoming requests.
               request = new Request(new URL(decision.location, url.origin), request) as typeof request;
               url = new URL(request.url);
+              // Only mark shielded once the rewrite has actually been applied,
+              // so a failure above degrades to serving the original request
+              // with its original headers.
+              shielded = true;
             }
           }
         } catch (error) {
@@ -105,7 +110,19 @@ export default {
         isCacheableResponse(response) &&
         !bodyPendingVerification
       ) {
+        // Clone before any shielded-response mutation below: the edge entry
+        // belongs to the rewritten (clean) URL and keeps its normal lifetime.
         context.waitUntil(cache.put(request, response.clone()).catch(() => {}));
+      }
+
+      if (shielded) {
+        // The browser asked for the malicious URL and cannot see the internal
+        // rewrite, so it would store substitute bytes under that URL for the
+        // response's normal lifetime. Never let it: a lifted pin must take
+        // effect on the next request. Only this browser-facing copy changes;
+        // the edge entry above is stored under the clean URL as usual.
+        response = new Response(response.body, response);
+        response.headers.set("Cache-Control", "no-store");
       }
 
       if (request.method === "HEAD") {
