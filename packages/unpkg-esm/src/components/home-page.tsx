@@ -24,8 +24,8 @@ export function createHomePage(env: Env): string {
   return (
     "<!DOCTYPE html>" +
     render(
-      <Document origin={esmOrigin}>
-        <Header />
+      <Document origin={esmOrigin} wwwOrigin={wwwOrigin}>
+        <Header wwwOrigin={wwwOrigin} />
         <main>
           <div class="content">
             <section>
@@ -73,12 +73,11 @@ export function createHomePage(env: Env): string {
             <section>
               <h2>Documentation</h2>
               <p>
-                For official UNPKG documentation, including package URLs, exports, metadata, import maps, and browser
-                module options, visit the <a class="inline-link text-blue-600" href={`${wwwOrigin}/`}>main UNPKG home
-                page</a>. The browser modules section is available at{" "}
-                <a class="inline-link text-blue-600" href={`${wwwOrigin}/#browser-modules`}>
-                  {wwwOrigin}/#browser-modules
-                </a>.
+                The full reference — every parameter, stylesheet handling, and error format — lives in the{" "}
+                <a class="inline-link" href={`${wwwOrigin}/guides/browser-modules`}>
+                  browser modules guide
+                </a>{" "}
+                on the main UNPKG site. This page is only a pointer; the guide is the canonical documentation.
               </p>
             </section>
           </div>
@@ -89,18 +88,19 @@ export function createHomePage(env: Env): string {
   );
 }
 
-function Document({ children, origin }: { children: ComponentChildren; origin: string }): VNode {
+function Document({ children, origin, wwwOrigin }: { children: ComponentChildren; origin: string; wwwOrigin: string }): VNode {
   return (
     <html lang="en">
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="description" content="Browser-ready npm package imports from UNPKG." />
+        <meta name="description" content="Browser-ready ES modules from npm packages, served by UNPKG. Full documentation lives in the UNPKG browser modules guide." />
+        <link rel="canonical" href={`${wwwOrigin}/guides/browser-modules`} />
         <meta name="color-scheme" content="light dark" />
 
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="UNPKG" />
-        <meta property="og:title" content="UNPKG ESM" />
+        <meta property="og:title" content="UNPKG ESM — Browser-ready ES modules from npm" />
         <meta property="og:description" content="Browser-ready npm package imports from UNPKG." />
         <meta property="og:image" content={new URL("/social-card.png", origin).href} />
         <meta property="og:image:width" content="1200" />
@@ -111,7 +111,7 @@ function Document({ children, origin }: { children: ComponentChildren; origin: s
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
         <link rel="icon" type="image/png" href="/favicon.png" />
-        <title>UNPKG ESM</title>
+        <title>UNPKG ESM — Browser-ready ES modules from npm</title>
         <style dangerouslySetInnerHTML={{ __html: pageStyles }} />
       </head>
       <body>{children}</body>
@@ -119,9 +119,15 @@ function Document({ children, origin }: { children: ComponentChildren; origin: s
   );
 }
 
-function Header(): VNode {
+function Header({ wwwOrigin }: { wwwOrigin: string }): VNode {
   return (
     <header>
+      <nav>
+        <a class="brand" href={`${wwwOrigin}/`}>
+          UNPKG
+        </a>
+        <a href={`${wwwOrigin}/guides/browser-modules`}>Browser modules guide →</a>
+      </nav>
       <h1>UNPKG ESM</h1>
     </header>
   );
@@ -144,8 +150,8 @@ const pageStyles = `
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  color: #0f172a;
-  background: white;
+  color: #0e1a23;
+  background: #fbfaf7;
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.625;
 }
@@ -157,6 +163,24 @@ header, main, footer {
 header {
   padding: 8rem 2rem 0;
   text-align: center;
+}
+header nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 1rem 2rem;
+  font-size: 0.95rem;
+}
+header nav .brand {
+  color: #0e1a23;
+  font-weight: 900;
+  font-size: 1.25rem;
 }
 h1 {
   margin: 0;
@@ -197,7 +221,7 @@ li + li {
   margin-top: 0.35rem;
 }
 a {
-  color: #2563eb;
+  color: #3a6b7a;
   text-decoration: none;
 }
 a:hover {
@@ -205,7 +229,7 @@ a:hover {
 }
 code {
   border-radius: 0;
-  background: #f1f5f9;
+  background: #f4f1eb;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.875rem;
   padding: 0.1rem 0.25rem;
@@ -285,12 +309,12 @@ code {
 }
 .callout {
   margin-top: 3rem;
-  background: #f1f5f9;
+  background: #e8f0f2;
   padding: 1rem;
   text-align: center;
 }
 footer {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid #ede7dc;
   color: #475569;
   display: flex;
   align-items: center;
@@ -324,7 +348,7 @@ footer svg {
 @media (prefers-color-scheme: dark) {
   body {
     color: #fff;
-    background: #1a1a1a;
+    background: #0e1a23;
   }
   h1 {
     color: #fff;
@@ -332,8 +356,11 @@ footer svg {
   h2 {
     color: #fff;
   }
-  .text-blue-600 {
-    color: #7cb7ff;
+  a {
+    color: #9cc2cc;
+  }
+  header nav .brand {
+    color: #fff;
   }
   p,
   li {
@@ -349,10 +376,10 @@ footer svg {
   }
   code,
   .callout {
-    background: #000;
+    background: #081118;
   }
   .hljs-listing {
-    background: #000;
+    background: #081118;
     color: #d5ced9;
   }
   .hljs-comment,
@@ -420,7 +447,7 @@ footer svg {
     color: #f39c12;
   }
   footer {
-    border-color: #262626;
+    border-color: #223645;
     color: rgb(255 255 255 / 70%);
   }
   footer a {

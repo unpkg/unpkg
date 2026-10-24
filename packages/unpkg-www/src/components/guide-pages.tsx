@@ -405,7 +405,11 @@ export function BrowserModulesGuide({ esmOrigin }: { esmOrigin: string }): VNode
         </p>
       </PageSection>
 
-      <PageSection id="parameters" title="Key parameters">
+      <PageSection id="parameters" title="All parameters">
+        <p class="mt-4">
+          Requests are normalized and redirected to a canonical URL, so equivalent spellings share one cache entry.
+          Unknown parameters are stripped rather than honored. The full set:
+        </p>
         <div class="mt-4 overflow-x-auto">
           <table class="w-full text-left text-sm border-collapse">
             <thead>
@@ -415,49 +419,39 @@ export function BrowserModulesGuide({ esmOrigin }: { esmOrigin: string }): VNode
               </tr>
             </thead>
             <tbody>
-              <tr class="border-b border-hairline dark:border-dark-border">
-                <td class="py-2 pr-4">
-                  <code class={code}>?target=es2015…esnext</code>
-                </td>
-                <td class="py-2">Chooses the output target.</td>
-              </tr>
-              <tr class="border-b border-hairline dark:border-dark-border">
-                <td class="py-2 pr-4">
-                  <code class={code}>?dev</code>
-                </td>
-                <td class="py-2">Development conditions and NODE_ENV.</td>
-              </tr>
-              <tr class="border-b border-hairline dark:border-dark-border">
-                <td class="py-2 pr-4">
-                  <code class={code}>?conditions=…</code>
-                </td>
-                <td class="py-2">Adds custom export conditions.</td>
-              </tr>
-              <tr class="border-b border-hairline dark:border-dark-border">
-                <td class="py-2 pr-4">
-                  <code class={code}>?deps=…</code> / <code class={code}>?external=…</code>
-                </td>
-                <td class="py-2">Overrides dependency versions, or leaves dependencies as bare imports.</td>
-              </tr>
-              <tr class="border-b border-hairline dark:border-dark-border">
-                <td class="py-2 pr-4">
-                  <code class={code}>?jsx=…</code>
-                </td>
-                <td class="py-2">Selects JSX transform mode and import source.</td>
-              </tr>
-              <tr>
-                <td class="py-2 pr-4">
-                  <code class={code}>?meta</code> / <code class={code}>?raw</code>
-                </td>
-                <td class="py-2">Returns module metadata as JSON, or serves the raw file untransformed.</td>
-              </tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?target=…</code></td><td class="py-2">Output target: <code class={code}>es2015</code>–<code class={code}>es2024</code>, <code class={code}>esnext</code>, <code class={code}>deno</code>, or <code class={code}>node</code>. Defaults to <code class={code}>es2022</code>.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?dev</code></td><td class="py-2">Development export conditions and <code class={code}>NODE_ENV</code>.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?conditions=…</code></td><td class="py-2">Comma-separated custom export conditions.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?exports=…</code></td><td class="py-2">Restricts which export conditions/subpaths are considered.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?deps=…</code></td><td class="py-2">Pins or overrides dependency versions used by the build.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?external=…</code></td><td class="py-2">Leaves listed dependencies as bare imports instead of rewriting them. A <code class={code}>/*</code> path prefix keeps every dependency external.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?alias=…</code></td><td class="py-2">Rewrites one package specifier to another during resolution.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?jsx=…</code></td><td class="py-2">JSX transform mode (for example <code class={code}>automatic</code>).</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?jsxImportSource=…</code></td><td class="py-2">JSX import source, such as <code class={code}>preact</code>.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?min</code></td><td class="py-2">Minifies the output.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?sourcemap</code></td><td class="py-2">Emits a source map with the module.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?worker</code></td><td class="py-2">Builds the worker variant of the module.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?no-dts</code></td><td class="py-2">Skips TypeScript declaration handling.</td></tr>
+              <tr class="border-b border-hairline dark:border-dark-border"><td class="py-2 pr-4"><code class={code}>?meta</code></td><td class="py-2">Returns JSON metadata about the built module instead of code. Cannot be combined with <code class={code}>?css</code>, <code class={code}>?module</code>, or <code class={code}>?worker</code>.</td></tr>
+              <tr><td class="py-2 pr-4"><code class={code}>?raw</code></td><td class="py-2">Serves the underlying file untransformed. Cannot be combined with build parameters.</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="mt-6">
-          Stylesheets work too: direct <code class={code}>.css</code> files serve as CSS, and{" "}
-          <code class={code}>?module</code> turns a stylesheet into a constructable{" "}
-          <code class={code}>CSSStyleSheet</code> module.
+      </PageSection>
+
+      <PageSection id="css" title="Stylesheets">
+        <p class="mt-4">
+          Direct <code class={code}>.css</code> files serve as CSS. With <code class={code}>?module</code>, a
+          stylesheet becomes a constructable <code class={code}>CSSStyleSheet</code> module you can adopt;{" "}
+          <code class={code}>?css</code> controls how imported stylesheets are handled by the build.
+        </p>
+      </PageSection>
+
+      <PageSection id="errors" title="Errors and redirects">
+        <p class="mt-4">
+          Invalid specifiers and unsupported combinations return JSON errors with a machine-readable{" "}
+          <code class={code}>code</code>. Unpinned or non-canonical requests redirect (301) to the resolved,
+          version-pinned URL so generated imports stay stable and cacheable for a year.
         </p>
       </PageSection>
     </GuideShell>
