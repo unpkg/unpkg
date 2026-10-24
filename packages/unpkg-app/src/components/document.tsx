@@ -27,7 +27,7 @@ export function Document({
   };
 
   return (
-    <html lang="en" class="bg-white dark:bg-dark-page">
+    <html lang="en" class="bg-paper dark:bg-dark-page">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -48,9 +48,14 @@ export function Document({
         <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
 
         <link rel="icon" type="image/png" href="/favicon.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("unpkg-theme");if(t!=="light"&&t!=="dark"){var m=document.cookie.match(/(?:^|; )unpkg-theme=(light|dark)/);t=m?m[1]:(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="light";}`,
+          }}
+        />
         <link rel="stylesheet" href={useAsset("assets/styles.css")} />
         <link rel="stylesheet" href={useAsset("assets/code-light.css")} />
-        <link rel="stylesheet" href={useAsset("assets/code-dark.css")} media="(prefers-color-scheme: dark)" />
+        <link rel="stylesheet" href={useAsset("assets/code-dark.css")} />
 
         <script type="importmap" dangerouslySetInnerHTML={{ __html: JSON.stringify(importMap) }} />
         <script type="module" src={useAsset("assets/scripts.ts")} defer></script>
@@ -67,7 +72,7 @@ gtag('config', 'UA-140352188-1');`,
           }}
         ></script>
       </head>
-      <body class="bg-white dark:bg-dark-page dark:text-dark-foreground">{children}</body>
+      <body class="bg-paper dark:bg-dark-page text-slate-900 dark:text-dark-foreground">{children}</body>
     </html>
   );
 }

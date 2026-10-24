@@ -128,8 +128,16 @@ describe("handleRequest", () => {
 
     expect(html).toContain('<meta name="color-scheme" content="light dark"/>');
     expect(html).toContain('media="(prefers-color-scheme: dark)"');
-    expect(html).toContain('code-dark.css" media="(prefers-color-scheme: dark)"');
+    expect(html).toContain('code-dark.css"');
+    expect(html).toContain("document.documentElement.dataset.theme");
+    expect(html).toContain('id="theme-toggle"');
     expect(html).toContain("inline-link");
+  });
+
+  it("serves browse pages with X-Robots-Tag noindex", async () => {
+    let response = await dispatchFetch("https://app.unpkg.com/react@18.2.0");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex");
   });
 
   it("renders a content-sized version selector", async () => {

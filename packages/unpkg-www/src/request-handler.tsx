@@ -19,6 +19,17 @@ import { withUtf8Charset } from "./response.ts";
 import { llmsFullTxt, llmsTxt, robotsTxt, sitemapXml } from "./seo.ts";
 import { Document } from "./components/document.tsx";
 import { Home } from "./components/home.tsx";
+import {
+  BrowserModulesGuide,
+  CachePerformanceGuide,
+  GUIDES,
+  InlineScriptsGuide,
+  LoadingFilesGuide,
+  MetadataApiGuide,
+  NobuildAppsGuide,
+  SupplyChainSecurityGuide,
+} from "./components/guide-pages.tsx";
+import { AboutPage, GuidesPage, NetworkPage, StatusPage } from "./components/marketing-pages.tsx";
 
 const publicNpmRegistry = "https://registry.npmjs.org";
 const runtimeCacheControl = "public, max-age=60, s-maxage=300";
@@ -68,6 +79,106 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   }
   if (url.pathname === "/") {
     return renderPage(env, <Home esmOrigin={env.ESM_ORIGIN} origin={env.ORIGIN} />, {
+      page: {
+        path: "/",
+        title: "UNPKG — The CDN for everything on npm",
+        description:
+          "UNPKG is a fast, global content delivery network for everything on npm. Load any file from any package with a URL — no build step, served from the edge, with supply-chain defense built in.",
+      },
+      headers: {
+        "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+      },
+    });
+  }
+
+  // Marketing pages. Exact paths only, like the crawler files below: a
+  // small accepted shadowing list (checked 2026-10-23 — `network`,
+  // `status`, `guides`, `about` are tail npm packages, 16k/2.6k/0.3k/0.6k
+  // downloads per month; genuinely popular names such as `documentation`
+  // and `platform` were deliberately not used). Versioned lookalikes
+  // (/network@1.0.0/…) still fall through to package parsing.
+  const marketingPages: Record<string, { node: VNode; page: PageMeta }> = {
+    "/network": {
+      node: <NetworkPage origin={env.ORIGIN} />,
+      page: {
+        path: "/network",
+        title: "Network & Architecture — UNPKG",
+        description:
+          "How UNPKG serves npm files: Cloudflare's global edge, digest-verified origin fetches from 11 regions worldwide, self-healing caches, and Shield supply-chain defense.",
+      },
+    },
+    "/status": {
+      node: <StatusPage appOrigin={env.APP_ORIGIN} esmOrigin={env.ESM_ORIGIN} />,
+      page: {
+        path: "/status",
+        title: "Status & Reliability — UNPKG",
+        description:
+          "The surfaces behind UNPKG, how changes ship safely to production, and how to check the service's health yourself.",
+      },
+    },
+    "/guides": {
+      node: <GuidesPage origin={env.ORIGIN} />,
+      page: {
+        path: "/guides",
+        title: "Guides — UNPKG",
+        description:
+          "UNPKG guides: loading files from npm, nobuild apps, inline scripts, browser modules with ?module, the ?meta metadata API, cache performance, and supply-chain security.",
+      },
+    },
+    "/about": {
+      node: <AboutPage />,
+      page: {
+        path: "/about",
+        title: "About & Trust — UNPKG",
+        description:
+          "About the UNPKG open source project: who maintains it, how to report abuse or security issues, and the plain-language terms of the free service.",
+      },
+    },
+  };
+  const guideNodes: Record<string, VNode> = {
+    "loading-files": <LoadingFilesGuide />,
+    "nobuild-apps": <NobuildAppsGuide />,
+    "inline-scripts": <InlineScriptsGuide origin={env.ORIGIN} />,
+    "browser-modules": <BrowserModulesGuide esmOrigin={env.ESM_ORIGIN} />,
+    "metadata-api": <MetadataApiGuide />,
+    "cache-performance": <CachePerformanceGuide />,
+    "supply-chain-security": <SupplyChainSecurityGuide />,
+  };
+  let guideMatch = /^\/guides\/([a-z-]+)$/.exec(url.pathname);
+  let guide = guideMatch ? GUIDES.find((entry) => entry.slug === guideMatch[1]) : undefined;
+  if (guide && guideNodes[guide.slug]) {
+    return renderPage(env, guideNodes[guide.slug], {
+      page: {
+        path: `/guides/${guide.slug}`,
+        title: guide.title,
+        description: guide.description,
+        breadcrumbs: [
+          { name: "UNPKG", path: "/" },
+          { name: "Guides", path: "/guides" },
+          { name: guide.heading, path: `/guides/${guide.slug}` },
+        ],
+      },
+      headers: {
+        "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+      },
+    });
+  }
+
+  if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
+    let trimmed = url.pathname.replace(/\/+$/, "");
+    let guideSlug = /^\/guides\/([a-z-]+)$/.exec(trimmed)?.[1];
+    if (marketingPages[trimmed] || trimmed === "/guides" || (guideSlug && GUIDES.some((entry) => entry.slug === guideSlug))) {
+      return new Response(null, {
+        status: 301,
+        headers: { Location: `${env.ORIGIN}${trimmed}${url.search}` },
+      });
+    }
+  }
+
+  let marketingPage = marketingPages[url.pathname];
+  if (marketingPage) {
+    return renderPage(env, marketingPage.node, {
+      page: marketingPage.page,
       headers: {
         "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
       },
@@ -357,6 +468,14 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         headers.set("Cache-Control", "public, max-age=31536000");
       }
 
+      // Package HTML is third-party content hosted under our domain
+      // (sometimes whole apps). Keep it out of search indexes so the
+      // marketing site is what search engines associate with unpkg.com.
+      // Scripts and styles stay crawlable; they are not landing pages.
+      if (headers.get("Content-Type")?.startsWith("text/html")) {
+        headers.set("X-Robots-Tag", "noindex");
+      }
+
       // Add CORS headers
       headers.set("Access-Control-Allow-Headers", "*");
       headers.set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
@@ -431,22 +550,41 @@ function redirect(location: string | URL, init?: ResponseInit | number): Respons
   });
 }
 
-async function renderPage(env: Env, node: VNode, init?: ResponseInit): Promise<Response> {
+interface PageMeta {
+  title: string;
+  description: string;
+  path: string;
+  breadcrumbs?: { name: string; path: string }[];
+}
+
+async function renderPage(
+  env: Env,
+  node: VNode,
+  init?: ResponseInit & { page?: PageMeta }
+): Promise<Response> {
   let assetsManifest = await loadAssetsManifest(env);
+  let { page, ...responseInit } = init ?? {};
 
   let html = render(
     <AssetsContext.Provider value={assetsManifest}>
-      <Document origin={env.ORIGIN} gaId={env.GA_MEASUREMENT_ID}>
+      <Document
+        origin={env.ORIGIN}
+        gaId={env.GA_MEASUREMENT_ID}
+        title={page?.title}
+        description={page?.description}
+        path={page?.path}
+        breadcrumbs={page?.breadcrumbs}
+      >
         {node}
       </Document>
     </AssetsContext.Provider>
   );
 
   return new Response("<!DOCTYPE html>" + html, {
-    ...init,
+    ...responseInit,
     headers: {
       "Content-Type": "text/html",
-      ...init?.headers,
+      ...responseInit.headers,
     },
   });
 }

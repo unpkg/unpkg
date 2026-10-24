@@ -1,81 +1,81 @@
-.hljs-dark-listing {
+[data-theme="dark"] .hljs-dark-listing{
   color: #d5ced9;
 }
-.hljs-frame {
+[data-theme="dark"] .hljs-frame {
   background: var(--color-dark-code);
 }
-.hljs-frame,
-.hljs-frame > * {
+[data-theme="dark"] .hljs-frame,
+[data-theme="dark"] .hljs-frame > * {
   border-color: var(--color-dark-border);
 }
-.hljs-comment,
-.hljs-quote {
+[data-theme="dark"] .hljs-comment,
+[data-theme="dark"] .hljs-quote {
   color: #a0a1a7cc;
   font-style: italic;
 }
-.hljs-doctag,
-.hljs-keyword,
-.hljs-link,
-.hljs-formula {
+[data-theme="dark"] .hljs-doctag,
+[data-theme="dark"] .hljs-keyword,
+[data-theme="dark"] .hljs-link,
+[data-theme="dark"] .hljs-formula {
   color: #c74ded;
 }
-.hljs-section {
+[data-theme="dark"] .hljs-section {
   color: #ff00aa;
 }
-.hljs-name,
-.hljs-selector-tag {
+[data-theme="dark"] .hljs-name,
+[data-theme="dark"] .hljs-selector-tag {
   color: #f92672;
 }
-.hljs-deletion {
+[data-theme="dark"] .hljs-deletion {
   color: #ee5d43;
 }
-.hljs-subst {
+[data-theme="dark"] .hljs-subst {
   color: #d5ced9;
 }
-.hljs-literal {
+[data-theme="dark"] .hljs-literal {
   color: #ee5d43;
 }
-.hljs-string,
-.hljs-addition,
-.hljs-meta-string {
+[data-theme="dark"] .hljs-string,
+[data-theme="dark"] .hljs-addition,
+[data-theme="dark"] .hljs-meta-string {
   color: #96e072;
 }
-.hljs-regexp {
+[data-theme="dark"] .hljs-regexp {
   color: #7cb7ff;
 }
-.hljs-attribute {
+[data-theme="dark"] .hljs-attribute {
   color: #ffe66d;
 }
-.hljs-built_in,
-.hljs-class .hljs-title,
-.hljs-title {
+[data-theme="dark"] .hljs-built_in,
+[data-theme="dark"] .hljs-class .hljs-title,
+[data-theme="dark"] .hljs-title {
   color: #ffe66d;
 }
-.hljs-attr,
-.hljs-variable,
-.hljs-template-variable,
-.hljs-type,
-.hljs-selector-class,
-.hljs-selector-attr,
-.hljs-selector-pseudo {
+[data-theme="dark"] .hljs-attr,
+[data-theme="dark"] .hljs-variable,
+[data-theme="dark"] .hljs-template-variable,
+[data-theme="dark"] .hljs-type,
+[data-theme="dark"] .hljs-selector-class,
+[data-theme="dark"] .hljs-selector-attr,
+[data-theme="dark"] .hljs-selector-pseudo {
   color: #00e8c6;
 }
-.hljs-number {
+[data-theme="dark"] .hljs-number {
   color: #f39c12;
 }
-.hljs-symbol,
-.hljs-selector-id {
+[data-theme="dark"] .hljs-symbol,
+[data-theme="dark"] .hljs-selector-id {
   color: #ee5d43;
 }
-.hljs-bullet {
+[data-theme="dark"] .hljs-bullet {
   color: #ffe66d;
 }
-.hljs-meta {
+[data-theme="dark"] .hljs-meta {
   color: #c74ded;
 }
-.hljs-emphasis {
+[data-theme="dark"] .hljs-emphasis {
   font-style: italic;
 }
-.hljs-strong {
+[data-theme="dark"] .hljs-strong {
   font-weight: bold;
 }

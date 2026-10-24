@@ -9,6 +9,18 @@ const StatefulComponents: HydrateComponentTable = {
 };
 
 hydrateAll(StatefulComponents);
+let themeToggle = document.getElementById("theme-toggle");
+themeToggle?.addEventListener("click", () => {
+  let next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try {
+    localStorage.setItem("unpkg-theme", next);
+  } catch {}
+  let cookie = `unpkg-theme=${next}; path=/; max-age=31536000; SameSite=Lax`;
+  let parts = location.hostname.split(".");
+  if (parts.length >= 2) cookie += `; domain=.${parts.slice(-2).join(".")}`;
+  document.cookie = cookie;
+});
 
 declare global {
   interface Window {

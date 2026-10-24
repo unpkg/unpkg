@@ -11,12 +11,26 @@ Sitemap: ${origin}/sitemap.xml
 `;
 }
 
+export const MARKETING_PATHS = [
+  "/",
+  "/network",
+  "/guides",
+  "/guides/loading-files",
+  "/guides/nobuild-apps",
+  "/guides/inline-scripts",
+  "/guides/browser-modules",
+  "/guides/metadata-api",
+  "/guides/cache-performance",
+  "/guides/supply-chain-security",
+  "/status",
+  "/about",
+] as const;
+
 export function sitemapXml(origin: string): string {
+  let urls = MARKETING_PATHS.map((path) => `  <url>\n    <loc>${origin}${path}</loc>\n  </url>`).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${origin}/</loc>
-  </url>
+${urls}
 </urlset>
 `;
 }
@@ -29,7 +43,11 @@ export function llmsTxt(origin: string): string {
 ## Use UNPKG
 
 - [UNPKG home](${origin}/): URL pattern, semver ranges, nobuild apps, inline scripts, browser modules, metadata API, cache performance
-- [Supply Chain Security](${origin}/#supply-chain-security): UNPKG Shield (currently in Beta) — edge defense for production traffic, adoption visibility for package owners
+- [Guides](${origin}/guides): a map of the UNPKG guides — files, nobuild apps, inline scripts, browser modules, metadata API, caching
+- [Network](${origin}/network): how files are served — Cloudflare edge, digest-verified origin fetches, self-healing caches
+- [Status](${origin}/status): the surfaces behind UNPKG and how changes ship safely
+- [About](${origin}/about): the open source project, contacts, abuse and security reporting
+- [Supply Chain Security](${origin}/guides/supply-chain-security): UNPKG Shield (currently in Beta) — edge defense for production traffic, adoption visibility for package owners
 
 ## Related
 
@@ -65,7 +83,11 @@ Append \`?meta\` to any file URL for JSON metadata about the package, version, a
 ## Pages
 
 - Home: ${origin}/
-- Supply Chain Security: ${origin}/#supply-chain-security
+- Guides: ${origin}/guides
+- Network: ${origin}/network
+- Status: ${origin}/status
+- About: ${origin}/about
+- Supply Chain Security: ${origin}/guides/supply-chain-security
 - UNPKG Shield: https://shield.unpkg.com/
 - Shield agent brief: https://shield.unpkg.com/llms.txt
 `;

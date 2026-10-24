@@ -10,11 +10,18 @@ export function CodeBlock({ children }: { children: string }): VNode {
   let html = highlightCode(code);
 
   return (
-    <div
-      class="hljs-frame hljs-dark-listing p-4 font-mono text-sm leading-6 bg-white dark:bg-dark-page border border-slate-300 dark:border-dark-border-strong whitespace-pre overflow-x-auto"
-      style={{ tabSize }}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div class="hljs-frame border border-hairline-strong dark:border-dark-border-strong bg-white dark:bg-dark-page">
+      <div aria-hidden="true" class="flex items-center gap-1.5 px-4 py-2 border-b border-hairline dark:border-dark-border">
+        <span class="w-2.5 h-2.5 rounded-full bg-hairline-strong dark:bg-dark-border-strong" />
+        <span class="w-2.5 h-2.5 rounded-full bg-hairline-strong dark:bg-dark-border-strong" />
+        <span class="w-2.5 h-2.5 rounded-full bg-accent dark:bg-dark-link" />
+      </div>
+      <div
+        class="hljs-dark-listing p-4 font-mono text-sm leading-6 whitespace-pre overflow-x-auto"
+        style={{ tabSize }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </div>
   );
 }
 
