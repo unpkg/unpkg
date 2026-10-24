@@ -456,6 +456,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Expose-Headers": "*",
             "Cross-Origin-Resource-Policy": "cross-origin",
+            "X-Robots-Tag": "noindex",
           },
         });
       }
@@ -468,13 +469,13 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         headers.set("Cache-Control", "public, max-age=31536000");
       }
 
-      // Package HTML is third-party content hosted under our domain
-      // (sometimes whole apps). Keep it out of search indexes so the
-      // marketing site is what search engines associate with unpkg.com.
-      // Scripts and styles stay crawlable; they are not landing pages.
-      if (headers.get("Content-Type")?.startsWith("text/html")) {
-        headers.set("X-Robots-Tag", "noindex");
-      }
+      // Everything served from a package path is package content, not
+      // our site: HTML apps, READMEs, type definitions, all of it gets
+      // indexed under unpkg.com today. Keep all of it out of search
+      // indexes so the marketing site is what search engines associate
+      // with this domain. Crawling/loading is unaffected — noindex only
+      // removes these URLs from search results.
+      headers.set("X-Robots-Tag", "noindex");
 
       // Add CORS headers
       headers.set("Access-Control-Allow-Headers", "*");

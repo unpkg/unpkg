@@ -460,13 +460,17 @@ describe("handleRequest", () => {
       expect(response.status).toBe(404);
     });
 
-    it("serves HTML package files with X-Robots-Tag noindex, but not scripts", async () => {
+    it("serves package files of any type with X-Robots-Tag noindex", async () => {
       let html = await dispatchFetch("https://unpkg.com/htmlpkg@1.0.0/index.html");
       expect(html.status).toBe(200);
       expect(html.headers.get("X-Robots-Tag")).toBe("noindex");
 
       let js = await dispatchFetch("https://unpkg.com/react@18.2.0/package.json");
-      expect(js.headers.get("X-Robots-Tag")).toBeNull();
+      expect(js.headers.get("X-Robots-Tag")).toBe("noindex");
+
+      // Marketing pages stay indexable.
+      let page = await dispatchFetch("https://unpkg.com/network");
+      expect(page.headers.get("X-Robots-Tag")).toBeNull();
     });
 
     it("serves a file", async () => {
