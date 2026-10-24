@@ -4,9 +4,18 @@
 // as before. Only these four exact paths are intercepted.
 
 export function robotsTxt(origin: string): string {
+  // AI training/retrieval crawlers are explicitly welcome on the marketing
+  // site (package content is kept out of search indexes via X-Robots-Tag
+  // noindex response headers, not robots rules, so crawlers still see the
+  // noindex). A bot with its own group ignores the * group, so each needs
+  // its own Allow.
+  let aiAgents = ["GPTBot", "ClaudeBot", "Google-Extended", "CCBot", "PerplexityBot", "Applebot-Extended", "Meta-ExternalAgent"]
+    .map((agent) => `User-agent: ${agent}\nAllow: /\n`)
+    .join("\n");
   return `User-agent: *
 Allow: /
 
+${aiAgents}
 Sitemap: ${origin}/sitemap.xml
 `;
 }
@@ -42,12 +51,18 @@ export function llmsTxt(origin: string): string {
 
 ## Use UNPKG
 
-- [UNPKG home](${origin}/): URL pattern, semver ranges, nobuild apps, inline scripts, browser modules, metadata API, cache performance
-- [Guides](${origin}/guides): a map of the UNPKG guides — files, nobuild apps, inline scripts, browser modules, metadata API, caching
-- [Network](${origin}/network): how files are served — Cloudflare edge, digest-verified origin fetches, self-healing caches
-- [Status](${origin}/status): the surfaces behind UNPKG and how changes ship safely
-- [About](${origin}/about): the open source project, contacts, abuse and security reporting
-- [Supply Chain Security](${origin}/guides/supply-chain-security): UNPKG Shield (currently in Beta) — edge defense for production traffic, adoption visibility for package owners
+Every page below is also served as Markdown: append .md to the URL, or send an Accept: text/markdown header on the HTML URL. Markdown URLs are the preferred form for agents.
+
+- [UNPKG home](${origin}/index.md): URL pattern, semver ranges, nobuild apps, inline scripts, browser modules, metadata API, cache performance
+- [Guides](${origin}/guides.md): a map of the UNPKG guides — files, nobuild apps, inline scripts, browser modules, metadata API, caching
+- [Loading files](${origin}/guides/loading-files.md): the URL pattern, versions and tags, entry points and exports
+- [Browser modules](${origin}/guides/browser-modules.md): esm.unpkg.com — every parameter, stylesheet handling, errors
+- [Metadata API](${origin}/guides/metadata-api.md): the ?meta JSON format for discovering package contents
+- [Cache performance](${origin}/guides/cache-performance.md): permanent URLs and the pinning trade-off
+- [Network](${origin}/network.md): how files are served — Cloudflare edge, digest-verified origin fetches, self-healing caches
+- [Status](${origin}/status.md): the surfaces behind UNPKG and how changes ship safely
+- [About](${origin}/about.md): the open source project, contacts, abuse and security reporting
+- [Supply Chain Security](${origin}/guides/supply-chain-security.md): UNPKG Shield (currently in Beta) — edge defense for production traffic, adoption visibility for package owners
 
 ## Related
 
@@ -82,12 +97,18 @@ Append \`?meta\` to any file URL for JSON metadata about the package, version, a
 
 ## Pages
 
-- Home: ${origin}/
-- Guides: ${origin}/guides
-- Network: ${origin}/network
-- Status: ${origin}/status
-- About: ${origin}/about
-- Supply Chain Security: ${origin}/guides/supply-chain-security
+- Home: ${origin}/ (Markdown: ${origin}/index.md)
+- Guides: ${origin}/guides (Markdown: ${origin}/guides.md)
+- Network: ${origin}/network (Markdown: ${origin}/network.md)
+- Status: ${origin}/status (Markdown: ${origin}/status.md)
+- About: ${origin}/about (Markdown: ${origin}/about.md)
+- Loading Files: ${origin}/guides/loading-files (Markdown: ${origin}/guides/loading-files.md)
+- Nobuild Apps: ${origin}/guides/nobuild-apps (Markdown: ${origin}/guides/nobuild-apps.md)
+- Inline Scripts: ${origin}/guides/inline-scripts (Markdown: ${origin}/guides/inline-scripts.md)
+- Browser Modules: ${origin}/guides/browser-modules (Markdown: ${origin}/guides/browser-modules.md)
+- Metadata API: ${origin}/guides/metadata-api (Markdown: ${origin}/guides/metadata-api.md)
+- Cache Performance: ${origin}/guides/cache-performance (Markdown: ${origin}/guides/cache-performance.md)
+- Supply Chain Security: ${origin}/guides/supply-chain-security (Markdown: ${origin}/guides/supply-chain-security.md)
 - UNPKG Shield: https://shield.unpkg.com/
 - Shield agent brief: https://shield.unpkg.com/llms.txt
 `;

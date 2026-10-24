@@ -423,6 +423,58 @@ describe("handleRequest", () => {
     }
   });
 
+  it("serves Markdown for agents via .md paths and Accept negotiation, with SEO guards", async () => {
+    let response = await dispatchFetch("https://unpkg.com/guides/loading-files.md");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("text/markdown; charset=utf-8");
+    expect(response.headers.get("Link")).toBe("<https://unpkg.com/guides/loading-files>; rel=\"canonical\"");
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex");
+    expect(response.headers.get("Vary")).toBe("Accept");
+    let body = await response.text();
+    expect(body).toContain("# Loading Files");
+    expect(body).toContain("unpkg.com/:package@:version/:file");
+
+    response = await dispatchFetch("https://unpkg.com/index.md");
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("# UNPKG");
+
+    response = await dispatchFetch("https://unpkg.com/network", { headers: { Accept: "text/markdown" } });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("text/markdown; charset=utf-8");
+    expect(await response.text()).toContain("# Network & Architecture");
+
+    // Browsers prefer HTML and keep getting the formatted page, which
+    // advertises the Markdown alternate in its head.
+    response = await dispatchFetch("https://unpkg.com/network", {
+      headers: { Accept: "text/html,application/xhtml+xml" },
+    });
+    expect(response.headers.get("Content-Type")).toBe("text/html");
+    expect(response.headers.get("Vary")).toBe("Accept");
+    expect(await response.text()).toContain(
+      '<link rel="alternate" type="text/markdown" href="https://unpkg.com/network.md"/>',
+    );
+
+    // Package files that end in .md are still package traffic, not site pages.
+    response = await dispatchFetch("https://unpkg.com/react@18.2.0/readme.md");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Link")).toBeNull();
+    expect(await response.text()).not.toContain("# Loading Files");
+  });
+
+  it("welcomes AI crawlers in robots.txt and keeps Markdown out of the sitemap", async () => {
+    let response = await dispatchFetch("https://unpkg.com/robots.txt");
+    let robots = await response.text();
+    for (let agent of ["GPTBot", "ClaudeBot", "Google-Extended", "CCBot"]) {
+      expect(robots).toContain(`User-agent: ${agent}`);
+    }
+
+    response = await dispatchFetch("https://unpkg.com/sitemap.xml");
+    expect(await response.text()).not.toContain(".md<");
+
+    response = await dispatchFetch("https://unpkg.com/llms.txt");
+    expect(await response.text()).toContain("https://unpkg.com/guides/loading-files.md");
+  });
+
   it("redirects /favicon.ico to the png icon", async () => {
     let response = await dispatchFetch("https://unpkg.com/favicon.ico");
     expect(response.status).toBe(301);

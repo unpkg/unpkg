@@ -17,6 +17,7 @@ import { loadAssetsManifest } from "./assets-manifest.ts";
 import type { Env } from "./env.ts";
 import { withUtf8Charset } from "./response.ts";
 import { llmsFullTxt, llmsTxt, robotsTxt, sitemapXml } from "./seo.ts";
+import { MARKETING_MARKDOWN } from "./markdown.ts";
 import { Document } from "./components/document.tsx";
 import { Home } from "./components/home.tsx";
 import {
@@ -33,6 +34,26 @@ import { AboutPage, GuideNotFoundPage, GuidesPage, NetworkPage, StatusPage } fro
 
 const publicNpmRegistry = "https://registry.npmjs.org";
 const runtimeCacheControl = "public, max-age=60, s-maxage=300";
+
+// Agent-facing Markdown door for the marketing pages. Scoped to the exact
+// sitemap paths only: a package URL that merely ends in .md (a README, say)
+// never matches MARKETING_MARKDOWN and falls through to package handling.
+// SEO guards: the Markdown response canonicalizes to the HTML page and is
+// noindexed, so it can never compete with (or be mistaken for) the human
+// page; the sitemap lists HTML only. `Vary: Accept` keeps the two variants
+// from ever being swapped by a cache.
+function markdownResponse(request: Request, env: Env, path: string, source: string): Response {
+  let canonical = `${env.ORIGIN}${path}`;
+  return new Response(source.replaceAll("https://unpkg.com", env.ORIGIN), {
+    headers: {
+      "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+      "Content-Type": "text/markdown; charset=utf-8",
+      Link: `<${canonical}>; rel="canonical"`,
+      Vary: "Accept",
+      "X-Robots-Tag": "noindex",
+    },
+  });
+}
 
 export async function handleRequest(request: Request, env: Env, context: ExecutionContext): Promise<Response> {
   let url = new URL(request.url);
@@ -77,6 +98,19 @@ export async function handleRequest(request: Request, env: Env, context: Executi
   if (url.pathname === "/index.html") {
     return redirect("/", 301);
   }
+  // Markdown for agents: explicit `.md` paths, or content negotiation on a
+  // marketing path. Browsers send Accept preferring text/html, so humans
+  // always get the HTML page; this only triggers for agent-style requests.
+  {
+    let isMarkdownPath = url.pathname.endsWith(".md");
+    let markdownPath = isMarkdownPath ? (url.pathname === "/index.md" ? "/" : url.pathname.slice(0, -3)) : url.pathname;
+    let markdown = MARKETING_MARKDOWN[markdownPath];
+    let wantsMarkdown = (request.headers.get("Accept") ?? "").includes("text/markdown");
+    if (markdown != null && (isMarkdownPath || wantsMarkdown)) {
+      return markdownResponse(request, env, markdownPath, markdown);
+    }
+  }
+
   if (url.pathname === "/") {
     return renderPage(env, <Home esmOrigin={env.ESM_ORIGIN} origin={env.ORIGIN} />, {
       page: {
@@ -602,6 +636,9 @@ async function renderPage(
     ...responseInit,
     headers: {
       "Content-Type": "text/html",
+      // The same URLs serve Markdown to `Accept: text/markdown` requesters;
+      // Vary keeps caches from swapping the HTML and Markdown variants.
+      Vary: "Accept",
       ...responseInit.headers,
     },
   });

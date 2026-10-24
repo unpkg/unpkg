@@ -4,6 +4,8 @@
   "assets": { "directory": "./public" },
   "build": { "command": "pnpm run build:assets" },
 
+  "rules": [{ "type": "Text", "globs": ["**/*.md"], "fallthrough": true }],
+
   "name": "unpkg-www",
   "observability": { "enabled": true, "head_sampling_rate": 0.001 },
   "kv_namespaces": [

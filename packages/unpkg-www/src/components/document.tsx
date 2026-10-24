@@ -2,6 +2,8 @@ import { type VNode } from "preact";
 
 import { useAsset } from "../hooks.ts";
 import { type ImportMap } from "../import-map.ts";
+import { markdownPathFor } from "../markdown.ts";
+import { MARKETING_PATHS } from "../seo.ts";
 
 export function Document({
   breadcrumbs,
@@ -57,6 +59,9 @@ export function Document({
 
         <link rel="icon" type="image/png" href="/favicon.png" />
         <link rel="canonical" href={new URL(path, origin).href} />
+        {(MARKETING_PATHS as readonly string[]).includes(path) && (
+          <link rel="alternate" type="text/markdown" href={new URL(markdownPathFor(path), origin).href} />
+        )}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
