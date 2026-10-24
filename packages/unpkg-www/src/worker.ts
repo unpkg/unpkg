@@ -135,6 +135,12 @@ export default {
 
       if (response) {
         response = auditCachedResponse(cache, cacheRequest, response);
+        // Cached file entries predate the noindex header; apply it here
+        // too so package files are covered on cache hits, not just misses.
+        let cachedParsed = parsePackagePathname(url.pathname);
+        if (cachedParsed?.version && cachedParsed?.filename) {
+          response.headers.set("X-Robots-Tag", "noindex");
+        }
       }
 
       if (!response) {
