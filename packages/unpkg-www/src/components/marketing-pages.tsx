@@ -247,6 +247,28 @@ export function GuidesPage({ origin }: { origin: string }): VNode {
   );
 }
 
+export function GuideNotFoundPage(): VNode {
+  return (
+    <MarketingPage
+      current="/guides"
+      heading="Guide not found"
+      intro="That guide doesn't exist. It may have been renamed, or the link may have a typo."
+    >
+      <p class="mt-6">
+        Browse{" "}
+        <a class={link} href="/guides">
+          all guides
+        </a>
+        , or head back to the{" "}
+        <a class={link} href="/">
+          homepage
+        </a>
+        .
+      </p>
+    </MarketingPage>
+  );
+}
+
 export function AboutPage(): VNode {
   return (
     <MarketingPage

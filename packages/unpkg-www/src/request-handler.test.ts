@@ -379,6 +379,15 @@ describe("handleRequest", () => {
 
     response = await dispatchFetch("https://unpkg.com/guides/not-a-guide");
     expect(response.status).toBe(404);
+    let notFoundHtml = await response.text();
+    expect(notFoundHtml).toContain("Guide not found");
+    expect(notFoundHtml).toContain('href="/guides"');
+  });
+
+  it("keeps plain package 404s for non-guide paths", async () => {
+    let response = await dispatchFetch("https://unpkg.com/network@1.0.0/index.js");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Package not found: network");
   });
 
   it("emits breadcrumb structured data and prev/next links on guide pages", async () => {

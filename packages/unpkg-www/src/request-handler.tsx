@@ -29,7 +29,7 @@ import {
   NobuildAppsGuide,
   SupplyChainSecurityGuide,
 } from "./components/guide-pages.tsx";
-import { AboutPage, GuidesPage, NetworkPage, StatusPage } from "./components/marketing-pages.tsx";
+import { AboutPage, GuideNotFoundPage, GuidesPage, NetworkPage, StatusPage } from "./components/marketing-pages.tsx";
 
 const publicNpmRegistry = "https://registry.npmjs.org";
 const runtimeCacheControl = "public, max-age=60, s-maxage=300";
@@ -173,6 +173,23 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         headers: { Location: `${env.ORIGIN}${trimmed}${url.search}` },
       });
     }
+  }
+
+  // Unknown slugs inside our own /guides/ namespace get a branded 404.
+  // Scoped to that prefix only: every other path continues to package
+  // handling exactly as before, so npm traffic can never land here.
+  if (url.pathname.startsWith("/guides/")) {
+    return renderPage(env, <GuideNotFoundPage />, {
+      status: 404,
+      page: {
+        path: url.pathname,
+        title: "Guide Not Found — UNPKG",
+        description: "That UNPKG guide doesn't exist. Browse all guides or return to the homepage.",
+      },
+      headers: {
+        "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+      },
+    });
   }
 
   let marketingPage = marketingPages[url.pathname];
