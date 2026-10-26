@@ -441,6 +441,9 @@ describe("handleRequest", () => {
     response = await dispatchFetch("https://unpkg.com/network", { headers: { Accept: "text/markdown" } });
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/markdown; charset=utf-8");
+    // Negotiated URLs must never be shared-cacheable: edge caches do not
+    // key on Accept and would serve one variant to the other audience.
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(await response.text()).toContain("# Network & Architecture");
 
     // Browsers prefer HTML and keep getting the formatted page, which
@@ -450,6 +453,7 @@ describe("handleRequest", () => {
     });
     expect(response.headers.get("Content-Type")).toBe("text/html");
     expect(response.headers.get("Vary")).toBe("Accept");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(await response.text()).toContain(
       '<link rel="alternate" type="text/markdown" href="https://unpkg.com/network.md"/>',
     );

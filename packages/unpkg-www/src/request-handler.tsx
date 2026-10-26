@@ -46,7 +46,10 @@ function markdownResponse(request: Request, env: Env, path: string, source: stri
   let canonical = `${env.ORIGIN}${path}`;
   return new Response(source.replaceAll("https://unpkg.com", env.ORIGIN), {
     headers: {
-      "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+      // No shared caching for negotiated URLs: Cloudflare's edge cache does
+      // not key entries on Accept, so a cacheable HTML response would be
+      // served to Markdown requesters (and vice versa) until it expired.
+      "Cache-Control": "no-store",
       "Content-Type": "text/markdown; charset=utf-8",
       Link: `<${canonical}>; rel="canonical"`,
       Vary: "Accept",
@@ -120,7 +123,8 @@ export async function handleRequest(request: Request, env: Env, context: Executi
           "UNPKG is a fast, global content delivery network for everything on npm. Load any file from any package by URL. Files are served from Cloudflare's edge.",
       },
       headers: {
-        "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+        // See markdownResponse: negotiated URLs are never shared-cacheable.
+        "Cache-Control": "no-store",
       },
     });
   }
@@ -193,7 +197,8 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         ],
       },
       headers: {
-        "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+        // See markdownResponse: negotiated URLs are never shared-cacheable.
+        "Cache-Control": "no-store",
       },
     });
   }
@@ -221,7 +226,8 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         description: "That UNPKG guide doesn't exist. Browse all guides or return to the homepage.",
       },
       headers: {
-        "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+        // See markdownResponse: negotiated URLs are never shared-cacheable.
+        "Cache-Control": "no-store",
       },
     });
   }
@@ -231,7 +237,8 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     return renderPage(env, marketingPage.node, {
       page: marketingPage.page,
       headers: {
-        "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",
+        // See markdownResponse: negotiated URLs are never shared-cacheable.
+        "Cache-Control": "no-store",
       },
     });
   }
