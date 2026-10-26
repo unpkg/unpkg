@@ -144,7 +144,7 @@ function FileListingContent({
 
       <main>
         {files.length === 0 ? (
-          <p class="p-4 border-x border-b border-slate-200 dark:border-dark-border w-full bg-white dark:bg-dark-page">No files found.</p>
+          <p class="p-4 border-x border-b border-hairline dark:border-dark-border w-full bg-white dark:bg-dark-page">No files found.</p>
         ) : (
           <table class="border-x border-b border-slate-300 dark:border-dark-border w-full max-w-full bg-white dark:bg-dark-page">
             <thead class="hidden">
@@ -158,13 +158,13 @@ function FileListingContent({
             <tbody>
               {parentHref != null && (
                 <tr class="hover:bg-slate-50 dark:hover:bg-dark-hover">
-                  <td class="pl-4 border-b border-slate-200 dark:border-dark-border text-sm w-12">
+                  <td class="pl-4 border-b border-hairline dark:border-dark-border text-sm w-12">
                     <span class="text-slate-600 dark:text-dark-secondary">
                       <FolderIcon class="w-6 h-6" />
                     </span>
                   </td>
-                  <td colspan={3} class="pr-2 border-b border-slate-200 dark:border-dark-border text-sm">
-                    <a href={parentHref} class="inline-link py-3 w-full inline-block text-blue-600 dark:text-dark-link hover:underline">
+                  <td colspan={3} class="pr-2 border-b border-hairline dark:border-dark-border text-sm">
+                    <a href={parentHref} class="inline-link py-3 w-full inline-block text-accent dark:text-dark-link hover:underline">
                       ../
                     </a>
                   </td>
@@ -172,18 +172,18 @@ function FileListingContent({
               )}
               {rowData.map((row) => (
                 <tr class="hover:bg-slate-50 dark:hover:bg-dark-hover">
-                  <td class="pl-4 border-b border-slate-200 dark:border-dark-border text-sm w-12">
+                  <td class="pl-4 border-b border-hairline dark:border-dark-border text-sm w-12">
                     <span class="text-slate-600 dark:text-dark-secondary">{row.icon}</span>
                   </td>
-                  <td class="pr-2 border-b border-slate-200 dark:border-dark-border text-sm max-w-60 sm:max-w-xl">
+                  <td class="pr-2 border-b border-hairline dark:border-dark-border text-sm max-w-60 sm:max-w-xl">
                     <div class="overflow-hidden whitespace-nowrap text-ellipsis">
-                      <a href={row.href} class="inline-link py-3 w-full inline-block text-blue-600 dark:text-dark-link hover:underline">
+                      <a href={row.href} class="inline-link py-3 w-full inline-block text-accent dark:text-dark-link hover:underline">
                         {row.filename}
                       </a>
                     </div>
                   </td>
-                  <td class="pr-2 border-b border-slate-200 dark:border-dark-border text-sm hidden sm:table-cell">{row.contentType}</td>
-                  <td class="pr-4 border-b border-slate-200 dark:border-dark-border text-sm text-right">{row.size}</td>
+                  <td class="pr-2 border-b border-hairline dark:border-dark-border text-sm hidden sm:table-cell">{row.contentType}</td>
+                  <td class="pr-4 border-b border-hairline dark:border-dark-border text-sm text-right">{row.size}</td>
                 </tr>
               ))}
             </tbody>

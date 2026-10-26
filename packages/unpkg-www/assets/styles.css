@@ -1,17 +1,29 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
     "Noto Color Emoji";
-  --color-dark-page: #1a1a1a;
-  --color-dark-code: #000;
-  --color-dark-panel: #222;
-  --color-dark-border: #262626;
-  --color-dark-border-strong: #404040;
+  /* Brand tokens, harmonized with UNPKG Shield's palette (teal accent,
+     ink navy, warm paper) while keeping UNPKG's own type and layout. */
+  --color-ink: #0e1a23;
+  --color-accent: #3a6b7a;
+  --color-accent-deep: #264a56;
+  --color-accent-soft: #e8f0f2;
+  --color-paper: #fbfaf7;
+  --color-paper-alt: #f4f1eb;
+  --color-hairline: #ede7dc;
+  --color-hairline-strong: #d9d2c5;
+  --color-dark-page: #0e1a23;
+  --color-dark-code: #081118;
+  --color-dark-panel: #16242f;
+  --color-dark-border: #223645;
+  --color-dark-border-strong: #33505f;
   --color-dark-muted: rgb(255 255 255 / 52%);
   --color-dark-secondary: rgb(255 255 255 / 70%);
   --color-dark-foreground: #fff;
-  --color-dark-link: #7cb7ff;
+  --color-dark-link: #9cc2cc;
 }
 
 :root {
@@ -32,7 +44,13 @@ section[id] {
   }
 }
 
-@media (prefers-color-scheme: dark) {
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
   .inline-link {
     text-decoration-line: underline;
     text-underline-offset: 0.125em;
@@ -42,4 +60,16 @@ section[id] {
     color: var(--color-dark-link);
     opacity: 1;
   }
+}
+
+[data-theme="light"] .theme-icon-sun {
+  display: none;
+}
+
+[data-theme="dark"] .theme-icon-moon {
+  display: none;
+}
+
+::selection {
+  background: var(--color-accent-soft);
 }

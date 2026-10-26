@@ -49,6 +49,12 @@ export async function handleRequest(request: Request, env: Env, context: Executi
     return new Response("OK");
   }
 
+  if (url.pathname === "/robots.txt") {
+    return new Response(`User-agent: *\nAllow: /\n`, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
   if (url.pathname === "/index.html") {
     return redirect("/", 301);
   }

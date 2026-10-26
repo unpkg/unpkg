@@ -211,6 +211,12 @@ describe("handleRequest", () => {
     globalThis.fetch = globalFetch!;
   });
 
+  it("serves robots.txt", async () => {
+    let response = await dispatchFetch("https://esm.unpkg.com/robots.txt");
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("User-agent: *");
+  });
+
   it("serves the beta home page from /", async () => {
     let response = await dispatchFetch("https://esm.unpkg.com/");
 
@@ -219,12 +225,15 @@ describe("handleRequest", () => {
 
     let html = await response.text();
     expect(html).toContain('<meta name="color-scheme" content="light dark"/>');
-    expect(html).toContain("@media (prefers-color-scheme: dark)");
+    expect(html).toContain("[data-theme=\"dark\"] body");
+    expect(html).toContain("document.documentElement.dataset.theme");
+    expect(html).toContain('id="theme-toggle"');
     expect(html).toContain('<link rel="icon" type="image/png" href="/favicon.png"/>');
     expect(html).toContain("UNPKG ESM");
     expect(html).toContain("esm.unpkg.com is currently in beta.");
-    expect(html).toContain("https://unpkg.com/#browser-modules");
-    expect(html).toContain('class="inline-link text-blue-600"');
+    expect(html).toContain("https://unpkg.com/guides/browser-modules");
+    expect(html).toContain('<link rel="canonical" href="https://unpkg.com/guides/browser-modules"/>');
+    expect(html).toContain('class="inline-link"');
     expect(html).toContain("https://esm.unpkg.com/react@18.3.1");
     expect(html).toContain('href="https://github.com/unpkg"');
     expect(html).toContain('href="https://x.com/unpkg"');

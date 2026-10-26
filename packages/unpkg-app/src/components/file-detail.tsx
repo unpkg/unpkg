@@ -97,7 +97,7 @@ export function FileDetail({
         </div>
         <div class="hidden flex-grow sm:block text-center">{getLanguageName(file)}</div>
         <div class="w-64 hidden sm:block text-right">
-          <a href={rawHref} class="py-1 px-2 border border-slate-300 dark:border-dark-border bg-slate-100 dark:bg-dark-panel hover:bg-slate-200 dark:hover:bg-dark-border rounded-sm">
+          <a href={rawHref} class="py-1 px-2 border border-slate-300 dark:border-dark-border bg-paper-alt dark:bg-dark-panel hover:bg-slate-200 dark:hover:bg-dark-border rounded-sm">
             View Raw
           </a>
         </div>
@@ -169,7 +169,7 @@ function LargeFileNotice({ rawHref }: { rawHref: string }): VNode {
   return (
     <div class="py-4 border-b border-x border-slate-300 dark:border-dark-border bg-white dark:bg-dark-page text-center">
       <span>This file is too large to preview. </span>
-      <a href={rawHref} class="inline-link text-blue-600 dark:text-dark-link hover:underline">
+      <a href={rawHref} class="inline-link text-accent dark:text-dark-link hover:underline">
         View Raw
       </a>
     </div>

@@ -62,7 +62,7 @@ export function RunDemo({ runUrl }: { runUrl: string }): VNode {
     <div class="mt-3 flex items-center gap-4">
       <button
         type="button"
-        class={`px-4 py-2 text-sm font-semibold border border-slate-300 dark:border-dark-border-strong bg-slate-100 dark:bg-dark-panel ${
+        class={`px-4 py-2 text-sm font-semibold border border-hairline-strong dark:border-dark-border-strong bg-paper-alt dark:bg-dark-panel ${
           slowRun
             ? "opacity-50 cursor-default"
             : "hover:bg-slate-200 dark:hover:bg-dark-border cursor-pointer"

@@ -115,6 +115,19 @@ describe("handleRequest", () => {
       let url = new URL(request.url);
 
       if (url.origin === env.FILES_ORIGIN) {
+        if (url.pathname === "/list/htmlpkg@1.0.0/") {
+          return Response.json({
+            package: "htmlpkg",
+            version: "1.0.0",
+            prefix: "/",
+            files: [{ path: "/index.html", size: 22, type: "text/html", integrity: "sha256-dGVzdA==" }],
+          });
+        }
+        if (url.pathname === "/file/htmlpkg@1.0.0/index.html") {
+          return new Response("<html><body>app</body></html>", {
+            headers: { "Content-Digest": "sha256=:dGVzdA==:", "Content-Type": "text/html" },
+          });
+        }
         if (url.pathname === "/list/cesium@1.144.0/") {
           return Response.json({
             package: "cesium",
@@ -215,6 +228,16 @@ describe("handleRequest", () => {
           return fileResponse(packageInfo.preact);
         case "https://registry.npmjs.org/react":
           return fileResponse(packageInfo.react);
+        case "https://registry.npmjs.org/htmlpkg":
+          return Response.json({
+            name: "htmlpkg",
+            "dist-tags": { latest: "1.0.0" },
+            versions: { "1.0.0": { name: "htmlpkg", version: "1.0.0" } },
+          });
+        case "https://registry.npmjs.org/guides":
+          return new Response("Not found", { status: 404 });
+        case "https://registry.npmjs.org/network":
+          return new Response("Not found", { status: 404 });
         case "https://registry.npmjs.org/run":
           return new Response("Not found", { status: 404 });
         case "https://registry.npmjs.org/robots.txt":
@@ -255,35 +278,26 @@ describe("handleRequest", () => {
 
     expect(html).toContain('<meta name="color-scheme" content="light dark"/>');
     expect(html).toContain('media="(prefers-color-scheme: dark)"');
-    expect(html).toContain('code-dark.css" media="(prefers-color-scheme: dark)"');
+    expect(html).toContain('code-dark.css"');
+    expect(html).toContain('document.documentElement.dataset.theme');
+    expect(html).toContain('id="theme-toggle"');
     expect(html).toContain('href="https://esm.unpkg.dev/"');
-    expect(html).toContain('href="https://esm.unpkg.dev/preact"');
-    expect(html).toContain('href="https://esm.unpkg.dev/react-dom@18/client"');
     expect(html).toContain("https://unpkg.dev/run");
-    expect(html).toContain('section id="inline-scripts"');
-    expect(html).toContain('href="#inline-scripts"');
-    expect(html).toContain(">Inline Scripts<");
-    expect(html).toContain(">Run this example<");
+    expect(html).toContain('href="/guides/inline-scripts"');
+    expect(html).toContain('href="/guides/loading-files"');
+    expect(html).toContain('href="/network"');
     expect(html).toContain("&quot;key&quot;:&quot;RunDemo&quot;");
     expect(html).toContain("&quot;runUrl&quot;:&quot;https://unpkg.dev/run&quot;");
-    expect(html).toContain(">Segment<");
-    expect(html).toContain(">Parameter<");
-    expect(html).toContain("overflow-x-auto");
     expect(html).toContain("hljs-dark-listing");
     expect(html).toContain("hljs-frame");
     expect(html).not.toContain('class="hljs-listing');
     expect(html).toContain("focus-visible:outline-slate-500");
-    expect(html).toContain("section-permalink");
-    expect(html).toContain("inline-link text-blue-600");
-    expect(html).toContain(">esm.unpkg.com/preact<");
-    expect(html).toContain(">esm.unpkg.com/react-dom@18/client<");
+    expect(html).toContain("inline-link text-accent");
     expect(html).toContain('href="https://github.com/unpkg"');
     expect(html).toContain('href="https://x.com/unpkg"');
     expect(html).toContain('aria-label="UNPKG on GitHub"');
     expect(html).toContain('aria-label="UNPKG on X"');
     expect(html).toContain('viewBox="0 0 24 24"');
-    expect(html).not.toContain("react@18/client");
-    expect(html).not.toContain('href="https://esm.unpkg.com/');
     expect(html).not.toContain("https://esm.unpkg.dev/tsx");
   });
 
@@ -335,6 +349,132 @@ describe("handleRequest", () => {
     }
   });
 
+  it("serves the marketing pages from exact paths with per-page SEO metadata", async () => {
+    const pages: Record<string, string> = {
+      "/network": "Network & Architecture — UNPKG",
+      "/status": "Status & Reliability — UNPKG",
+      "/guides": "Guides — UNPKG",
+      "/about": "About & Trust — UNPKG",
+    };
+    for (const [path, title] of Object.entries(pages)) {
+      let response = await dispatchFetch(`https://unpkg.com${path}`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("text/html");
+      let html = await response.text();
+      expect(html).toContain(`<title>${title.replaceAll("&", "&amp;")}</title>`);
+      expect(html).toContain(`<link rel="canonical" href="https://unpkg.com${path}"/>`);
+      expect(html).toContain(`<meta property="og:url" content="https://unpkg.com${path}"/>`);
+      expect(html).toContain('href="/network"');
+      expect(html).toContain('href="https://shield.unpkg.com/"');
+    }
+  });
+
+  it("serves individual guide pages with their own SEO metadata", async () => {
+    let response = await dispatchFetch("https://unpkg.com/guides/browser-modules");
+    expect(response.status).toBe(200);
+    let html = await response.text();
+    expect(html).toContain("<title>Browser Modules — UNPKG Guides</title>");
+    expect(html).toContain('<link rel="canonical" href="https://unpkg.com/guides/browser-modules"/>');
+    expect(html).toContain("esm.unpkg.com");
+
+    response = await dispatchFetch("https://unpkg.com/guides/not-a-guide");
+    expect(response.status).toBe(404);
+    let notFoundHtml = await response.text();
+    expect(notFoundHtml).toContain("Guide not found");
+    expect(notFoundHtml).toContain('href="/guides"');
+  });
+
+  it("keeps plain package 404s for non-guide paths", async () => {
+    let response = await dispatchFetch("https://unpkg.com/network@1.0.0/index.js");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Package not found: network");
+  });
+
+  it("emits breadcrumb structured data and prev/next links on guide pages", async () => {
+    let response = await dispatchFetch("https://unpkg.com/guides/browser-modules");
+    let html = await response.text();
+    expect(html).toContain('\"@type\":\"BreadcrumbList\"');
+    expect(html).toContain("esm.unpkg.com/guides/browser-modules".replace("esm.unpkg.com", "unpkg.com"));
+    expect(html).toContain('href="/guides/inline-scripts"');
+    expect(html).toContain('href="/guides/metadata-api"');
+  });
+
+  it("redirects trailing-slash marketing URLs to the canonical path", async () => {
+    let response = await dispatchFetch("https://unpkg.com/network/");
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("https://unpkg.com/network");
+
+    response = await dispatchFetch("https://unpkg.com/guides/loading-files/");
+    expect(response.status).toBe(301);
+    expect(response.headers.get("Location")).toBe("https://unpkg.com/guides/loading-files");
+  });
+
+  it("does not intercept versioned lookalikes of marketing paths", async () => {
+    let response = await dispatchFetch("https://unpkg.com/network@1.0.0/index.js");
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Package not found: network");
+  });
+
+  it("lists the marketing pages in the sitemap", async () => {
+    let response = await dispatchFetch("https://unpkg.com/sitemap.xml");
+    let body = await response.text();
+    for (let path of ["/", "/network", "/guides", "/guides/loading-files", "/guides/browser-modules", "/status", "/about"]) {
+      expect(body).toContain(`<loc>https://unpkg.com${path}</loc>`);
+    }
+  });
+
+  it("serves Markdown for agents via .md paths and Accept negotiation, with SEO guards", async () => {
+    let response = await dispatchFetch("https://unpkg.com/guides/loading-files.md");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("text/markdown; charset=utf-8");
+    expect(response.headers.get("Link")).toBe("<https://unpkg.com/guides/loading-files>; rel=\"canonical\"");
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex");
+    expect(response.headers.get("Vary")).toBe("Accept");
+    let body = await response.text();
+    expect(body).toContain("# Loading Files");
+    expect(body).toContain("unpkg.com/:package@:version/:file");
+
+    response = await dispatchFetch("https://unpkg.com/index.md");
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain("# UNPKG");
+
+    response = await dispatchFetch("https://unpkg.com/network", { headers: { Accept: "text/markdown" } });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("text/markdown; charset=utf-8");
+    expect(await response.text()).toContain("# Network & Architecture");
+
+    // Browsers prefer HTML and keep getting the formatted page, which
+    // advertises the Markdown alternate in its head.
+    response = await dispatchFetch("https://unpkg.com/network", {
+      headers: { Accept: "text/html,application/xhtml+xml" },
+    });
+    expect(response.headers.get("Content-Type")).toBe("text/html");
+    expect(response.headers.get("Vary")).toBe("Accept");
+    expect(await response.text()).toContain(
+      '<link rel="alternate" type="text/markdown" href="https://unpkg.com/network.md"/>',
+    );
+
+    // Package files that end in .md are still package traffic, not site pages.
+    response = await dispatchFetch("https://unpkg.com/react@18.2.0/readme.md");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Link")).toBeNull();
+    expect(await response.text()).not.toContain("# Loading Files");
+  });
+
+  it("welcomes AI crawlers in robots.txt and keeps Markdown out of the sitemap", async () => {
+    let response = await dispatchFetch("https://unpkg.com/robots.txt");
+    let robots = await response.text();
+    for (let agent of ["GPTBot", "ClaudeBot", "Google-Extended", "CCBot"]) {
+      expect(robots).toContain(`User-agent: ${agent}`);
+    }
+
+    response = await dispatchFetch("https://unpkg.com/sitemap.xml");
+    expect(await response.text()).not.toContain(".md<");
+
+    response = await dispatchFetch("https://unpkg.com/llms.txt");
+    expect(await response.text()).toContain("https://unpkg.com/guides/loading-files.md");
+  });
+
   it("redirects /favicon.ico to the png icon", async () => {
     let response = await dispatchFetch("https://unpkg.com/favicon.ico");
     expect(response.status).toBe(301);
@@ -366,10 +506,12 @@ describe("handleRequest", () => {
   it("renders canonical and structured data on the home page", async () => {
     let response = await dispatchFetch("https://unpkg.com/");
     let html = await response.text();
+    expect(html).toContain("<title>UNPKG — The CDN for everything on npm</title>");
     expect(html).toContain('<link rel="canonical" href="https://unpkg.com/"/>');
     expect(html).toContain('type="application/ld+json"');
     expect(html).toContain('"@type":"Organization"');
-    expect(html).toContain('section id="supply-chain-security"');
+    expect(html).toContain('section id="production"');
+    expect(html).toContain('href="/guides/supply-chain-security"');
     expect(html).toContain('href="https://shield.unpkg.com/"');
   });
 
@@ -377,6 +519,19 @@ describe("handleRequest", () => {
     it("returns 404 for invalid version specifiers", async () => {
       let response = await dispatchFetch("https://unpkg.com/react@not-valid/");
       expect(response.status).toBe(404);
+    });
+
+    it("serves package files of any type with X-Robots-Tag noindex", async () => {
+      let html = await dispatchFetch("https://unpkg.com/htmlpkg@1.0.0/index.html");
+      expect(html.status).toBe(200);
+      expect(html.headers.get("X-Robots-Tag")).toBe("noindex");
+
+      let js = await dispatchFetch("https://unpkg.com/react@18.2.0/package.json");
+      expect(js.headers.get("X-Robots-Tag")).toBe("noindex");
+
+      // Marketing pages stay indexable.
+      let page = await dispatchFetch("https://unpkg.com/network");
+      expect(page.headers.get("X-Robots-Tag")).toBeNull();
     });
 
     it("serves a file", async () => {

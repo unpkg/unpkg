@@ -1,16 +1,82 @@
-## UNPKG
+# UNPKG
 
-Welcome to UNPKG!
-
-UNPKG is a fast, global content delivery network for everything on npm. Use it to quickly and easily load any file from [npm](https://npmjs.com) using a URL like:
+UNPKG is a fast, global content delivery network for everything on npm. Load any file from any package with a URL — no install, no build step:
 
 ```
 https://unpkg.com/:package@:version/:file
 ```
 
-Where `:package` is the package name, `:version` is the version range, and `:file` is the path to the file in the package.
+- `:package` is the package name on npm, including scope (`@scope/name`).
+- `:version` is an exact version, a semver range, or a dist-tag. Omit it and `latest` is used.
+- `:file` is the path to a file in the package. Omit it and UNPKG resolves the package's entry point from `package.json` (`exports` first, then `main`; a package can choose its UNPKG default with the `unpkg` field).
 
-You can [learn more about UNPKG on the website](https://unpkg.com).
+Examples:
+
+- https://unpkg.com/preact@10.26.4/dist/preact.min.js
+- https://unpkg.com/react@18.3.1/umd/react.production.min.js
+- https://unpkg.com/three@0.174.0/build/three.module.min.js
+
+## Quick start
+
+Load a library with a classic script tag:
+
+```html
+<script src="https://unpkg.com/preact@10.26.4/dist/preact.min.js"></script>
+```
+
+Or build a browser app with no build step, using an import map and native ES modules:
+
+```html
+<script type="importmap">
+  {
+    "imports": {
+      "preact": "https://unpkg.com/preact@10.25.4/dist/preact.module.js",
+      "preact/hooks": "https://unpkg.com/preact@10.25.4/hooks/dist/hooks.module.js",
+      "htm": "https://unpkg.com/htm@3.1.1/dist/htm.module.js"
+    }
+  }
+</script>
+<script type="module">
+  import { h, render } from "preact";
+  // your app here
+</script>
+```
+
+Append `?module` to a package URL and UNPKG rewrites its bare imports to UNPKG URLs, so many packages work directly in a module script. For packages that are not published as browser-ready modules, [esm.unpkg.com](https://esm.unpkg.com) converts them first (currently in beta) — see the browser modules guide below.
+
+## Choosing a version specifier
+
+Ranges and tags (`preact@^10`, `preact@latest`) redirect to the exact version they resolve to, so the response you ultimately get is always a permanent URL.
+
+- **Exact versions** (e.g. `preact@10.26.4`) are permanent and cache best. Bug fixes arrive only when you update the URL.
+- **Patch-level ranges** (e.g. `preact@10.26`) take bug fixes within a release line automatically, while major and minor changes stay deliberate. This is a good default for production pages.
+- **Loose ranges and tags** always give you the newest matching release, at the cost of a redirect on the way in.
+
+The security side of letting versions move is what [UNPKG Shield](https://shield.unpkg.com/) (currently in beta) is for: it watches every npm release as it publishes and can pin or swap a compromised version at the edge before a browser executes it.
+
+## Discovering what's in a package
+
+Append `?meta` to any package or directory URL for JSON metadata — file paths, sizes, MIME types, and SHA-256 integrity hashes:
+
+```
+https://unpkg.com/react-router@7.3.0/?meta
+https://unpkg.com/react-router@7.3.0/dist/?meta
+```
+
+Add a trailing `/` to a package URL (e.g. https://unpkg.com/react/) to browse its files in the package browser.
+
+## Guides
+
+- [Loading files](https://unpkg.com/guides/loading-files) — the URL pattern, versions, entry points, and exports
+- [Nobuild apps](https://unpkg.com/guides/nobuild-apps) — import maps and native modules, no bundler
+- [Inline scripts](https://unpkg.com/guides/inline-scripts) — run TypeScript/JSX inline with the `/run` helper
+- [Browser modules](https://unpkg.com/guides/browser-modules) — esm.unpkg.com parameters and behavior
+- [Metadata API](https://unpkg.com/guides/metadata-api) — the `?meta` JSON format
+- [Cache performance](https://unpkg.com/guides/cache-performance) — permanent URLs and the pinning trade-off
+- [Supply chain security](https://unpkg.com/guides/supply-chain-security) — how UNPKG Shield works, and how it differs from SRI
+- [Network](https://unpkg.com/network) — how files are served, cached, and verified
+
+Machine-readable versions of the site are available for agents and crawlers: every page above is also served as Markdown (append `.md` to the URL, or send `Accept: text/markdown`), and https://unpkg.com/llms.txt indexes the full set.
 
 ## Development
 

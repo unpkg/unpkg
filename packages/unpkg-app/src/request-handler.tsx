@@ -162,6 +162,9 @@ async function renderPage(env: Env, node: VNode, init?: ResponseInit): Promise<R
     ...init,
     headers: {
       "Content-Type": "text/html",
+      // Browse pages are an effectively infinite package/version/
+      // directory surface; keep them out of search indexes.
+      "X-Robots-Tag": "noindex",
       ...init?.headers,
     },
   });
