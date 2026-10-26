@@ -18,7 +18,7 @@ export function UrlBuilder({ esmOrigin, origin }: { esmOrigin: string; origin: s
   return (
     <div class="border border-hairline-strong dark:border-dark-border-strong bg-white dark:bg-dark-panel p-4 text-slate-900 dark:text-dark-secondary">
       <label class="block text-base font-semibold text-ink dark:text-dark-foreground" htmlFor="url-builder-package">
-        Try it — build a URL
+        Try it: build a URL
       </label>
       <input
         id="url-builder-package"

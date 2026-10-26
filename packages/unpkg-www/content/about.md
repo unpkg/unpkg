@@ -6,7 +6,7 @@ Source page: https://unpkg.com/about
 
 ## The project
 
-UNPKG is an open source project that serves everything on npm from a fast, global content delivery network. Source code: https://github.com/unpkg — the production source, including the website/CDN worker, package browser, esm service, and file backend, lives in that organization.
+UNPKG is an open source project that serves everything on npm from a fast, global content delivery network. Source code: https://github.com/unpkg. The production source, including the website/CDN worker, package browser, esm service, and file backend, lives in that organization.
 
 ## Contact and abuse reports
 

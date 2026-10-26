@@ -33,7 +33,7 @@ No-build app with an import map:
 ## Choosing a version specifier
 
 - Exact versions are permanent and cache best; updates are deliberate.
-- Patch-level ranges (e.g. `preact@10.26`) receive bug fixes within a release line automatically — a good production default.
+- Patch-level ranges (e.g. `preact@10.26`) receive bug fixes within a release line automatically. This is a good production default.
 - Loose ranges and tags always resolve to the newest matching release, via a redirect to the permanent URL.
 
 ## Discovering package contents

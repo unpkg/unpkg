@@ -11,11 +11,6 @@ export function CodeBlock({ children }: { children: string }): VNode {
 
   return (
     <div class="hljs-frame border border-hairline-strong dark:border-dark-border-strong bg-white dark:bg-dark-page">
-      <div aria-hidden="true" class="flex items-center gap-1.5 px-4 py-2 border-b border-hairline dark:border-dark-border">
-        <span class="w-2.5 h-2.5 rounded-full bg-hairline-strong dark:bg-dark-border-strong" />
-        <span class="w-2.5 h-2.5 rounded-full bg-hairline-strong dark:bg-dark-border-strong" />
-        <span class="w-2.5 h-2.5 rounded-full bg-accent dark:bg-dark-link" />
-      </div>
       <div
         class="hljs-dark-listing p-4 font-mono text-sm leading-6 whitespace-pre overflow-x-auto"
         style={{ tabSize }}

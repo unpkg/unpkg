@@ -28,8 +28,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
           <a class={link} href="https://www.npmjs.com/">
             npm
           </a>
-          . Load any file from any package with a URL — no build step, no origin to run, served from the global
-          edge.
+          . Load any file from any package by URL. Files are served from Cloudflare's edge.
         </p>
         <p class="mt-10 flex flex-wrap items-center justify-center gap-3">
           <a class={btnPrimary} href="/guides">
@@ -128,32 +127,32 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
             <li class="marker:pr-2">
               <a class={link} href="/guides/loading-files">
                 Load files from npm
-              </a>{" "}
-              — any file, any package, one URL. Versions, entry points, and exports resolution explained.
+              </a>
+              : any file, any package, one URL. Versions, entry points, and exports resolution explained.
             </li>
             <li class="marker:pr-2 mt-2">
               <a class={link} href="/guides/nobuild-apps">
                 Build apps with no build step
-              </a>{" "}
-              — import maps turn a plain HTML file into a working app.
+              </a>
+              : import maps turn a plain HTML file into a working app.
             </li>
             <li class="marker:pr-2 mt-2">
               <a class={link} href="/guides/browser-modules">
                 Use native browser modules
-              </a>{" "}
-              — esm.unpkg.com converts packages into modules browsers load directly.
+              </a>
+              : esm.unpkg.com converts packages into modules browsers load directly.
             </li>
             <li class="marker:pr-2 mt-2">
               <a class={link} href="/guides/inline-scripts">
                 Run inline TypeScript and JSX
-              </a>{" "}
-              — the <code class={code}>/run</code> helper transforms inline scripts in the page.
+              </a>
+              : the <code class={code}>/run</code> helper transforms inline scripts in the page.
             </li>
             <li class="mt-2">
               <a class={link} href="/guides/metadata-api">
                 Inspect packages programmatically
-              </a>{" "}
-              — file listings, sizes, and integrity hashes as JSON, for tools and agents.
+              </a>
+              : file listings, sizes, and integrity hashes as JSON, for tools and agents.
             </li>
           </ul>
 
@@ -175,10 +174,10 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
 
         <section id="production">
           <h2 class="mt-20 mb-6 text-xl font-semibold text-slate-900 dark:text-dark-foreground">
-            Trusted in production
+            Running in production
           </h2>
           <p>
-            Exact-version files are cached at the edge for a year, and every cached byte is digest-verified — a
+            Exact-version files are cached at the edge for a year, and every cached byte is digest-verified. A
             damaged entry is evicted and refetched, never served. If a version has to be withdrawn, it can be
             evicted from every cache layer without touching any other version. The{" "}
             <a class={link} href="/network">
@@ -190,10 +189,6 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
             </a>{" "}
             describes how changes ship safely.
           </p>
-          <p class="mt-6">
-            <span class="font-semibold">Security that doesn't wait for you to change your website.</span> When a
-            release goes bad, protection updates at the edge — not in a thousand customer deploys.
-          </p>
           <div class="mt-8 p-4 bg-paper-alt dark:bg-dark-panel">
             <p>
               <span class="font-semibold">Serving production traffic through UNPKG?</span>{" "}
@@ -201,7 +196,7 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
                 UNPKG Shield
               </a>{" "}
               (currently in Beta) watches every npm release as it publishes. Arm a domain and a compromised version
-              is pinned to the last known-good release — or blocked — at the edge, before a browser executes it.{" "}
+              is pinned to the last known-good release (or blocked) at the edge, before a browser executes it.{" "}
               <a class={link} href="/guides/supply-chain-security">
                 How supply-chain defense works
               </a>

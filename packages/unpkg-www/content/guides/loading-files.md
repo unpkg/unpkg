@@ -22,7 +22,7 @@ Examples:
 
 ## Versions, ranges, and tags
 
-Ranges and tags (`^18`, `latest`) redirect to the exact version they resolve to, so the response you ultimately get is always a permanent URL. Which specifier to use in production is a trade-off — see [cache performance](https://unpkg.com/guides/cache-performance.md).
+Ranges and tags (`^18`, `latest`) redirect to the exact version they resolve to, so the response you ultimately get is always a permanent URL. Which specifier to use in production is a trade-off; see [cache performance](https://unpkg.com/guides/cache-performance.md).
 
 ## Entry points and exports
 

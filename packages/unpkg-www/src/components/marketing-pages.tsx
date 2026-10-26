@@ -15,37 +15,13 @@ export function NetworkPage({ origin }: { origin: string }): VNode {
       heading="How UNPKG serves files"
       intro="UNPKG is deliberately simple at the edge and careful behind it. Requests are answered by Cloudflare's global network; behind that edge sits a small, verified path back to the npm tarball your file came from."
     >
-      <dl class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-hairline-strong dark:border-dark-border-strong bg-white dark:bg-dark-panel shadow-[0_1px_2px_rgba(14,26,35,0.06)] text-base">
-        <div class="p-4 border-b sm:border-b-0 lg:border-r border-hairline dark:border-dark-border">
-          <svg class="w-6 h-6 text-accent dark:text-dark-link" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5" /><path stroke-linecap="round" d="M3.5 12h17M12 3.5c2.3 2.3 3.4 5.2 3.4 8.5s-1.1 6.2-3.4 8.5c-2.3-2.3-3.4-5.2-3.4-8.5S9.7 5.8 12 3.5Z" /></svg>
-          <dt class="mt-2.5 font-semibold text-ink dark:text-dark-foreground">Edge</dt>
-          <dd class="mt-1 text-[0.95rem] leading-snug text-slate-600 dark:text-dark-secondary">Cloudflare's global network answers most requests.</dd>
-        </div>
-        <div class="p-4 border-b sm:border-b-0 lg:border-r border-hairline dark:border-dark-border">
-          <svg class="w-6 h-6 text-accent dark:text-dark-link" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v2A2.5 2.5 0 0 1 17.5 10h-11A2.5 2.5 0 0 1 4 7.5v-2ZM4 16a2.5 2.5 0 0 1 2.5-2.5h11A2.5 2.5 0 0 1 20 16v2a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18v-2Z" /><path stroke-linecap="round" d="M7 6.5h.01M7 17h.01" /></svg>
-          <dt class="mt-2.5 font-semibold text-ink dark:text-dark-foreground">Origin</dt>
-          <dd class="mt-1 text-[0.95rem] leading-snug text-slate-600 dark:text-dark-secondary">Origin machines in 11 regions fetch from npm tarballs.</dd>
-        </div>
-        <div class="p-4 border-b sm:border-b-0 lg:border-r border-hairline dark:border-dark-border">
-          <svg class="w-6 h-6 text-accent dark:text-dark-link" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5" /><path stroke-linecap="round" stroke-linejoin="round" d="m8.5 12.2 2.4 2.4 4.6-5" /></svg>
-          <dt class="mt-2.5 font-semibold text-ink dark:text-dark-foreground">Verified</dt>
-          <dd class="mt-1 text-[0.95rem] leading-snug text-slate-600 dark:text-dark-secondary">Every byte is digest-checked before it enters a cache.</dd>
-        </div>
-        <div class="p-4">
-          <svg class="w-6 h-6 text-accent dark:text-dark-link" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3 5 5.8v5.4c0 4.3 2.9 7.4 7 9.3 4.1-1.9 7-5 7-9.3V5.8L12 3Z" /><path stroke-linecap="round" stroke-linejoin="round" d="m9.3 11.8 2 2 3.6-3.9" /></svg>
-          <dt class="mt-2.5 font-semibold text-ink dark:text-dark-foreground">Defended</dt>
-          <dd class="mt-1 text-[0.95rem] leading-snug text-slate-600 dark:text-dark-secondary">Optional add-on: for armed domains, Shield rules are checked before any cache lookup.</dd>
-        </div>
-      </dl>
-
       <PageSection id="request-flow" title="The path of a request">
-
         <figure class="mt-6 border border-hairline-strong dark:border-dark-border-strong bg-white dark:bg-dark-panel p-4 overflow-x-auto">
           <ol class="min-w-[560px]">
             {[
               { name: "Browser cache", detail: "Exact-version files, up to a year. Shield-pinned responses are never stored here." },
               { name: "Cloudflare edge cache", detail: "The hot path. Permanent URLs served near the user; hits never reach the origin." },
-              { name: "Worker cache layers", detail: "File and listing caches keyed by package@version — and by cache generation after an eviction." },
+              { name: "Worker cache layers", detail: "File and listing caches keyed by package@version, and by cache generation after an eviction." },
               { name: "File origin", detail: "Verified fetches with retries and resume; corrupt entries are evicted and healed." },
               { name: "npm tarball", detail: "The source of truth: byte-for-byte what the maintainer published." },
             ].map((layer, i, layers) => (
@@ -69,7 +45,7 @@ export function NetworkPage({ origin }: { origin: string }): VNode {
         </figure>
       </PageSection>
 
-      <PageSection id="edge-caching" title="Caching that can be trusted">
+      <PageSection id="edge-caching" title="Edge caching meets supply chain security">
         <p class="mt-4">
           Exact-version URLs (like <code class={code}>/react@18.3.1/umd/react.production.min.js</code>) are
           immutable in practice, so they are cached at the edge for a year. Range and tag URLs redirect to the exact
@@ -77,6 +53,14 @@ export function NetworkPage({ origin }: { origin: string }): VNode {
           digest-verified, a truncated or damaged entry cannot quietly persist: it fails verification, is evicted,
           and is refetched complete. When a version must be withdrawn, operators can evict that exact{" "}
           <code class={code}>package@version</code> from every cache layer without touching any other version.
+        </p>
+        <p class="mt-4">
+          A year-long cache would be a liability if it kept serving a compromised release, so for domains armed with{" "}
+          <a class={link} href="#shield">
+            UNPKG Shield
+          </a>{" "}
+          the check runs before any cache lookup: a bad version is rewritten to the last known-good one (or blocked)
+          before a cached copy can be served.
         </p>
       </PageSection>
 
@@ -282,7 +266,7 @@ export function AboutPage(): VNode {
           <a class={link} href="https://github.com/unpkg" title="UNPKG on GitHub">
             open source project
           </a>
-          . The code that serves unpkg.com — the Workers, the file origin, and this site — lives in the{" "}
+          . The code that serves unpkg.com (the Workers, the file origin, and this site) lives in the{" "}
           <a class={link} href="https://github.com/unpkg/unpkg">
             unpkg/unpkg repository
           </a>
@@ -312,7 +296,7 @@ export function AboutPage(): VNode {
           <a class={link} href="https://github.com/unpkg/unpkg">
             GitHub repository
           </a>
-          . If a package on npm is malicious, report it to npm as well — and see how{" "}
+          . If a package on npm is malicious, report it to npm as well, and see how{" "}
           <a class={link} href="https://shield.unpkg.com/">
             UNPKG Shield
           </a>{" "}
@@ -326,12 +310,12 @@ export function AboutPage(): VNode {
           <a class={link} href="mailto:support@unpkg.com">
             support@unpkg.com
           </a>{" "}
-          rather than in a public issue. For the supply-chain threats UNPKG defends against — compromised
-          npm releases served to production pages —{" "}
+          rather than in a public issue. If the problem is a compromised npm release being served to your
+          production pages,{" "}
           <a class={link} href="https://shield.unpkg.com/">
             UNPKG Shield
           </a>{" "}
-          is the product built for exactly that.
+          handles that.
         </p>
       </PageSection>
 

@@ -26,6 +26,6 @@ An import map tells the browser where bare imports like `preact` should load fro
 
 ## Version specifiers in the map
 
-Pinning exact versions in the map keeps the browser cache and the edge cache hot, with the same trade-off as any pinned URL: patches only arrive when you update the map. Looser specifiers — patch-level ones (e.g. `preact@10.25`) especially — flow bug fixes to you automatically, at the cost of a redirect on the way in. The security side of letting versions move is what [supply-chain defense at the edge](https://unpkg.com/guides/supply-chain-security.md) is for.
+Pinning exact versions in the map keeps the browser cache and the edge cache hot, with the same trade-off as any pinned URL: patches only arrive when you update the map. Looser specifiers, especially patch-level ones (e.g. `preact@10.25`), flow bug fixes to you automatically, at the cost of a redirect on the way in. The security side of letting versions move is what [supply-chain defense at the edge](https://unpkg.com/guides/supply-chain-security.md) is for.
 
 For packages that aren't published as browser modules, [esm.unpkg.com converts them first](https://unpkg.com/guides/browser-modules.md).

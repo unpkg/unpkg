@@ -42,7 +42,7 @@ export const GUIDES: GuideDef[] = [
       "Run TypeScript, JSX, and TSX inline in HTML with UNPKG's /run helper: script types, data attributes, and examples.",
     heading: "Inline scripts",
     intro:
-      "The /run helper finds inline TypeScript and JSX script blocks in your page, transforms them, and executes them as modules — no build step and no separate files.",
+      "The /run helper finds inline TypeScript and JSX script blocks in your page, transforms them, and executes them as modules, with no build step and no separate files.",
   },
   {
     slug: "browser-modules",
@@ -198,7 +198,7 @@ export function LoadingFilesGuide(): VNode {
         <p class="mt-4">
           Ranges and tags (<code class={code}>^18</code>, <code class={code}>latest</code>) redirect to the exact
           version they resolve to, so the response you ultimately get is always a permanent URL. For production, pin
-          the full version yourself — see{" "}
+          the full version yourself. See{" "}
           <a class={link} href="/guides/cache-performance">
             cache performance
           </a>
@@ -278,12 +278,12 @@ export function NobuildAppsGuide(): VNode {
           </CodeBlock>
         </div>
         <p class="mt-6">
-          Pin exact versions in the map so the browser cache and the edge cache both stay hot — with the{" "}
+          Pin exact versions in the map so the browser cache and the edge cache both stay hot, with the{" "}
           <a class={link} href="/guides/cache-performance">
             same trade-off as any pinned URL
           </a>
-          : patches only arrive when you update the map. Looser specifiers — patch-level ones especially — flow
-          updates automatically, at the cost of a redirect and accepting whatever the next release brings — the
+          : patches only arrive when you update the map. Looser specifiers, patch-level ones especially, flow
+          updates automatically at the cost of a redirect and accepting whatever the next release brings. The
           security side of that risk is what{" "}
           <a class={link} href="/guides/supply-chain-security">
             supply-chain defense at the edge
@@ -513,11 +513,11 @@ export function CachePerformanceGuide(): VNode {
       <PageSection id="permanent-urls" title="Permanent URLs are the fast path">
         <p class="mt-4">
           npm never lets a published version be overwritten, so an exact-version file URL is permanent. UNPKG caches
-          those responses at the edge for a year. URLs without a fully resolved version —{" "}
+          those responses at the edge for a year. URLs without a fully resolved version, such as{" "}
           <a class={link} href="/preact@10">
             unpkg.com/preact@10
-          </a>{" "}
-          — must resolve first and redirect, so they are never the direct cache hit.{" "}
+          </a>
+          , must resolve first and redirect, so they are never the direct cache hit.{" "}
           <span class="font-semibold">
             For the best chance of a cache hit, use the full package version and file path in production URLs
           </span>
@@ -532,7 +532,7 @@ export function CachePerformanceGuide(): VNode {
           arrive when you update it. Looser specifiers flow updates to you automatically, at the cost of a redirect
           on the way in and accepting whatever the next release brings. A middle path is a patch-level specifier
           (such as <code class={code}>preact@10.26</code>), which takes bug fixes within a release line while major
-          and minor changes stay deliberate. Which side you choose is a judgment call — and the security side of it
+          and minor changes stay deliberate. Which side you choose is a judgment call, and the security side of it
           is exactly the risk{" "}
           <a class={link} href="/guides/supply-chain-security">
             UNPKG Shield
@@ -571,7 +571,7 @@ export function SupplyChainSecurityGuide(): VNode {
         <ul class="mt-6 ml-6 list-disc list-outside">
           <li class="marker:pr-2">
             <span class="font-semibold">Armed domains</span> get a compromised version pinned or swapped to the last
-            known-good release at the edge — or blocked — before a browser executes it.
+            known-good release at the edge (or blocked) before a browser executes it.
           </li>
           <li class="marker:pr-2 mt-2">
             <span class="font-semibold">Monitoring domains</span> stay unarmed and simply observe, so you can watch
@@ -587,7 +587,7 @@ export function SupplyChainSecurityGuide(): VNode {
       <PageSection id="why-not-sri" title="Why not just use SRI?">
         <p class="mt-4">
           Subresource Integrity is a good tool, and the two approaches solve different problems. An SRI hash proves
-          the bytes you received are the bytes you pinned — nothing more. It can't tell you whether a new release is
+          the bytes you received are the bytes you pinned, and nothing more. It can't tell you whether a new release is
           safe, and every update, including critical bug fixes, waits on someone updating hashes across every page
           and dependency.
         </p>
@@ -597,7 +597,7 @@ export function SupplyChainSecurityGuide(): VNode {
           hash maintenance, and no deploy on your side when something goes wrong.
         </p>
         <p class="mt-4">
-          It's a genuine choice. If you pin and verify hashes yourself, keep doing that — it's the right model when
+          It's a genuine choice. If you pin and verify hashes yourself, keep doing that. It's the right model when
           you want to trust no intermediary. If you'd rather not maintain hashes across every dependency and update,
           Shield is the barrier that stays current for you.
         </p>

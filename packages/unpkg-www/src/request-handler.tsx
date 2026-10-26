@@ -117,7 +117,7 @@ export async function handleRequest(request: Request, env: Env, context: Executi
         path: "/",
         title: "UNPKG — The CDN for everything on npm",
         description:
-          "UNPKG is a fast, global content delivery network for everything on npm. Load any file from any package with a URL — no build step, served from the edge, with supply-chain defense built in.",
+          "UNPKG is a fast, global content delivery network for everything on npm. Load any file from any package by URL. Files are served from Cloudflare's edge.",
       },
       headers: {
         "Cache-Control": env.DEV ? "no-store" : "public, max-age=60, s-maxage=300",

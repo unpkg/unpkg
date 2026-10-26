@@ -54,19 +54,19 @@ export function llmsTxt(origin: string): string {
 Every page below is also served as Markdown: append .md to the URL, or send an Accept: text/markdown header on the HTML URL. Markdown URLs are the preferred form for agents.
 
 - [UNPKG home](${origin}/index.md): URL pattern, semver ranges, nobuild apps, inline scripts, browser modules, metadata API, cache performance
-- [Guides](${origin}/guides.md): a map of the UNPKG guides — files, nobuild apps, inline scripts, browser modules, metadata API, caching
+- [Guides](${origin}/guides.md): a map of the UNPKG guides: files, nobuild apps, inline scripts, browser modules, metadata API, caching
 - [Loading files](${origin}/guides/loading-files.md): the URL pattern, versions and tags, entry points and exports
-- [Browser modules](${origin}/guides/browser-modules.md): esm.unpkg.com — every parameter, stylesheet handling, errors
+- [Browser modules](${origin}/guides/browser-modules.md): esm.unpkg.com: every parameter, stylesheet handling, errors
 - [Metadata API](${origin}/guides/metadata-api.md): the ?meta JSON format for discovering package contents
 - [Cache performance](${origin}/guides/cache-performance.md): permanent URLs and the pinning trade-off
-- [Network](${origin}/network.md): how files are served — Cloudflare edge, digest-verified origin fetches, self-healing caches
+- [Network](${origin}/network.md): how files are served: Cloudflare edge, digest-verified origin fetches, self-healing caches
 - [Status](${origin}/status.md): the surfaces behind UNPKG and how changes ship safely
 - [About](${origin}/about.md): the open source project, contacts, abuse and security reporting
-- [Supply Chain Security](${origin}/guides/supply-chain-security.md): UNPKG Shield (currently in Beta) — edge defense for production traffic, adoption visibility for package owners
+- [Supply Chain Security](${origin}/guides/supply-chain-security.md): UNPKG Shield (currently in Beta), edge defense for production traffic, adoption visibility for package owners
 
 ## Related
 
-- [UNPKG Shield](https://shield.unpkg.com/): supply chain defense for the packages and domains you depend on — currently in Beta
+- [UNPKG Shield](https://shield.unpkg.com/): supply chain defense for the packages and domains you depend on, currently in Beta
 - [Shield agent brief](https://shield.unpkg.com/llms.txt): machine-readable Shield product brief
 
 ## Full detail
@@ -93,7 +93,7 @@ Append \`?meta\` to any file URL for JSON metadata about the package, version, a
 
 ## Supply chain security
 
-[UNPKG Shield](https://shield.unpkg.com/) (currently in Beta) defends the supply chain on top of UNPKG. It watches every npm release the moment it publishes and judges each change with its own diff-aware classifier — informed by OSV, the GitHub Advisory Database, and the OpenSSF malicious-packages feed. Arming a domain pins or swaps compromised packages at the edge before they reach a browser; unarmed domains stay in monitoring. Package owners can see which domains serve their packages and which versions are live. Join the Beta waitlist at https://shield.unpkg.com/register.
+[UNPKG Shield](https://shield.unpkg.com/) (currently in Beta) defends the supply chain on top of UNPKG. It watches every npm release the moment it publishes and judges each change with its own diff-aware classifier, informed by OSV, the GitHub Advisory Database, and the OpenSSF malicious-packages feed. Arming a domain pins or swaps compromised packages at the edge before they reach a browser; unarmed domains stay in monitoring. Package owners can see which domains serve their packages and which versions are live. Join the Beta waitlist at https://shield.unpkg.com/register.
 
 ## Pages
 

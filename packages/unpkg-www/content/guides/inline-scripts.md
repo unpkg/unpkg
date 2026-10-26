@@ -1,6 +1,6 @@
 # Inline Scripts
 
-The `/run` helper finds inline TypeScript and JSX script blocks in your page, transforms them, and executes them as modules — no build step and no separate files.
+The `/run` helper finds inline TypeScript and JSX script blocks in your page, transforms them, and executes them as modules, with no build step and no separate files.
 
 Source page: https://unpkg.com/guides/inline-scripts
 
