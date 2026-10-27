@@ -139,6 +139,9 @@ export default {
         // too so package files are covered on cache hits, not just misses.
         let cachedParsed = parsePackagePathname(url.pathname);
         if (cachedParsed?.version && cachedParsed?.filename) {
+          // The audit can return the immutable cache response unchanged,
+          // e.g. for a bodyless 304 or an entry without verification metadata.
+          response = new Response(response.body, response);
           response.headers.set("X-Robots-Tag", "noindex");
         }
       }
