@@ -52,7 +52,94 @@ function workerRequest(url: string, init?: RequestInit): WorkerRequest {
   return new Request(url, init) as unknown as WorkerRequest;
 }
 
+function immutableCachedResponse(body: BodyInit | null, init: ResponseInit): Response {
+  let response = new Response(body, init);
+  // Bun's Response headers are mutable, unlike a workerd Cache API response.
+  for (let method of ["set", "append", "delete"] as const) {
+    Object.defineProperty(response.headers, method, {
+      value() {
+        throw new TypeError("Can't modify immutable headers.");
+      },
+    });
+  }
+  return response;
+}
+
 describe("worker", () => {
+  it.each([
+    ["If-Modified-Since", "Tue, 04 Aug 2026 07:34:22 GMT"],
+    ["If-None-Match", '"cached-file"'],
+  ])("preserves an immutable cached 304 for %s", async (header, value) => {
+    let cachedResponse = immutableCachedResponse(null, {
+      status: 304,
+      statusText: "Not Modified",
+      headers: {
+        "Cache-Control": "public, max-age=31536000",
+        "Content-Type": "text/javascript; charset=utf-8",
+        "Last-Modified": "Tue, 04 Aug 2026 07:34:22 GMT",
+        ETag: '"cached-file"',
+      },
+    });
+    expect(() => cachedResponse.headers.set("X-Robots-Tag", "noindex")).toThrow("immutable headers");
+
+    globalThis.caches = {
+      default: {
+        async match(request: Request) {
+          expect(request.headers.get(header)).toBe(value);
+          return cachedResponse;
+        },
+      },
+    } as unknown as CacheStorage;
+    globalThis.fetch = (async () => {
+      throw new Error("A cached 304 must not fetch from the origin");
+    }) as unknown as typeof fetch;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/index.js", { headers: { [header]: value } }),
+      {} as Env,
+      context
+    );
+
+    expect(response.status).toBe(304);
+    expect(response.statusText).toBe("Not Modified");
+    expect(response.body).toBeNull();
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex");
+    for (let name of ["Cache-Control", "Content-Type", "Last-Modified", "ETag"]) {
+      expect(response.headers.get(name)).toBe(cachedResponse.headers.get(name));
+    }
+    expect(cachedResponse.headers.get("X-Robots-Tag")).toBeNull();
+  });
+
+  it("serves an immutable cached file without verification metadata", async () => {
+    let cachedResponse = immutableCachedResponse("hello", {
+      headers: {
+        "Cache-Control": "public, max-age=31536000",
+        "Content-Type": "text/javascript; charset=utf-8",
+      },
+    });
+    expect(() => cachedResponse.headers.set("X-Robots-Tag", "noindex")).toThrow("immutable headers");
+
+    globalThis.caches = {
+      default: {
+        async match() {
+          return cachedResponse;
+        },
+      },
+    } as unknown as CacheStorage;
+
+    let response = await worker.fetch(
+      workerRequest("https://unpkg.com/example@1.0.0/index.js"),
+      {} as Env,
+      context
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("X-Robots-Tag")).toBe("noindex");
+    expect(response.headers.get("Cache-Control")).toBe("public, max-age=31536000");
+    expect(await response.text()).toBe("hello");
+    expect(cachedResponse.headers.get("X-Robots-Tag")).toBeNull();
+  });
+
   it("adds a UTF-8 charset to cached text responses", async () => {
     let cachedResponse = new Response('.icon::after { content: "×"; }', {
       headers: {
