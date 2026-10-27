@@ -19,7 +19,12 @@ concurrency:
 jobs:
   build-test:
     name: Build and test
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: the floating label moved to Ubuntu 26.04,
+    # which Playwright 1.60 cannot install Chromium on ("Playwright does
+    # not support chromium on ubuntu26.04-x64"), failing the browser
+    # install step before the ESM smoke suites. 24.04 is supported by the
+    # pinned Playwright. Revisit when upgrading Playwright.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
