@@ -12,6 +12,7 @@ import {
 import {
   getFile,
   listFiles,
+  OverloadedError,
   PackageNotFoundError,
   TarballFetchTimeoutError,
 } from "./npm-files.ts";
@@ -135,7 +136,7 @@ async function handleRequest_(request: Request): Promise<Response> {
 
       let [algorithm, hash] = file.integrity.split("-", 2);
 
-      return new Response(file.body, {
+      return new Response(file.bodyStream ?? file.body, {
         headers: {
           "Cache-Control": "public, max-age=31536000",
           "Content-Digest": `${algorithm}=:${hash}:`,
@@ -181,6 +182,12 @@ async function handleRequest_(request: Request): Promise<Response> {
   } catch (error) {
     if (error instanceof PackageNotFoundError) {
       return notFound(`Package not found: ${error.packageName}@${error.version}`);
+    }
+    if (error instanceof OverloadedError) {
+      return new Response("Origin busy, retry shortly", {
+        status: 429,
+        headers: { "Retry-After": "1" },
+      });
     }
     if (error instanceof TarballFetchTimeoutError) {
       return new Response(`Timed out fetching package: ${error.packageName}@${error.version}`, {

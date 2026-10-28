@@ -1,6 +1,7 @@
 import { expect, describe, it, beforeAll, afterAll } from "bun:test";
 
 import { packageTarballs } from "../../test/fixtures.ts";
+import { ConcurrencyLimiter, resetDefaultTarballLimiterForTests } from "./concurrency.ts";
 import { handleRequest } from "./request-handler.ts";
 
 function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -65,6 +66,24 @@ describe("handleRequest", () => {
     if (globalFetch) {
       globalThis.fetch = globalFetch;
     }
+  });
+
+  describe("overload shedding", () => {
+    it("returns 429 with Retry-After when the tarball queue times out", async () => {
+      // One slot, 10 ms queue timeout: the first request occupies the
+      // slot parsing lodash while the second queues and is shed.
+      resetDefaultTarballLimiterForTests(new ConcurrencyLimiter(1, 10));
+      try {
+        let first = dispatchFetch("https://files.unpkg.com/file/lodash@4.17.21/lodash.js");
+        let second = await dispatchFetch("https://files.unpkg.com/file/lodash@4.17.21/package.json");
+        expect(second.status).toBe(429);
+        expect(second.headers.get("Retry-After")).toBe("1");
+        let firstResponse = await first;
+        expect(firstResponse.status).toBe(200);
+      } finally {
+        resetDefaultTarballLimiterForTests(undefined);
+      }
+    });
   });
 
   describe("/file requests", () => {
