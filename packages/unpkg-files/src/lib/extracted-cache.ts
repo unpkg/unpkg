@@ -137,6 +137,19 @@ export class ExtractedCache {
     return this.wrap(entry);
   }
 
+  async evictKey(key: string): Promise<boolean> {
+    let entry = this.entries.get(key);
+    if (!entry) return false;
+    this.entries.delete(key);
+    this.totalBytes -= entry.size;
+    if (entry.refs <= 0) {
+      await rm(entry.directory, { recursive: true, force: true });
+      await rm(entry.listingPath, { force: true });
+    }
+    this.voidPersistDebounced();
+    return true;
+  }
+
   private wrap(entry: Entry): ExtractedHandle {
     let released = false;
     return {

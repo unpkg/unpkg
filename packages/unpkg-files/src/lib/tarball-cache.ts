@@ -146,15 +146,16 @@ export class TarballCache {
     (this.statsTimer as unknown as { unref?: () => void }).unref?.();
   }
 
-  async evictKey(key: string): Promise<void> {
+  async evictKey(key: string): Promise<boolean> {
     let entry = this.entries.get(key);
-    if (!entry) return;
+    if (!entry) return false;
     this.entries.delete(key);
     this.totalBytes -= entry.size;
     this.evictionCount++;
     this.evictedBytes += entry.size;
     if (entry.refs <= 0) await rm(entry.path, { force: true });
     this.voidPersistDebounced();
+    return true;
   }
 
   private wrap(entry: Entry, cached: boolean): AcquiredTarball {

@@ -307,9 +307,9 @@ export class FileCache {
     return this.wrap(entry);
   }
 
-  async evictKey(key: string): Promise<void> {
+  async evictKey(key: string): Promise<boolean> {
     let entry = this.entries.get(key);
-    if (!entry) return;
+    if (!entry) return false;
     this.entries.delete(key);
     this.totalBytes -= entry.size;
     this.evictionCount++;
@@ -319,6 +319,7 @@ export class FileCache {
       await rm(entry.listingPath, { force: true });
     }
     this.voidPersistDebounced();
+    return true;
   }
 
   private wrap(entry: Entry): FileHandle {

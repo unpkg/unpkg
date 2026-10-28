@@ -18,6 +18,16 @@
  *
  * Requires a Cloudflare credential with Workers KV write access
  * (the same wrangler OAuth/API token used for deploys).
+ *
+ * Origin fan-out (production only, default on): edge eviction alone
+ * is not a purge — the Fly origin holds its own tarball/file-tier
+ * copies of the version and would re-serve it on refetch. After the
+ * KV bump verifies, this script also POSTs /_purge to every serving
+ * Fly machine (via `fly ssh console`) and requires a 200 eviction
+ * report from each. Needs `fly` on PATH, Fly auth, and
+ * UNPKG_PURGE_TOKEN set to the same value as the origin's Fly
+ * secret; without the token the origin leg is skipped with a loud
+ * warning. --no-origin opts out explicitly.
  */
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -107,13 +117,134 @@ async function namespaceIdFor(envName: "staging" | "production"): Promise<string
   return found.id;
 }
 
-export function parseArgs(args: string[]): { target: string; envName: "staging" | "production"; dryRun: boolean } {
+export interface FlyMachine {
+  id: string;
+  region?: string;
+  state?: string;
+  cordoned?: boolean;
+}
+
+/** Serving (non-cordoned, started) machine ids from `fly machine list --json`. */
+export function parseServingMachines(jsonText: string): { id: string; region: string }[] {
+  let parsed = JSON.parse(jsonText) as FlyMachine[];
+  if (!Array.isArray(parsed)) throw new Error("Unexpected fly machine list output; refusing to fan out");
+  return parsed
+    .filter((m) => m && typeof m.id === "string" && !m.cordoned && m.state === "started")
+    .map((m) => ({ id: m.id, region: m.region ?? "?" }));
+}
+
+const SAFE_TOKEN = /^[A-Za-z0-9._\-+]+$/;
+
+/**
+ * The in-machine purge command, run via `fly ssh console -C`. The
+ * origin has no curl; bun's fetch is the HTTP client. Inputs are
+ * charset-validated because they are interpolated into a shell
+ * single-quoted string.
+ */
+export function buildOriginPurgeCommand(packageName: string, version: string, token: string): string {
+  if (!SAFE_TOKEN.test(token)) throw new Error("UNPKG_PURGE_TOKEN contains characters unsafe for shell interpolation");
+  if (!SAFE_TOKEN.test(version) || !/^((?:@[^/@]+\/)?[^/@]+)$/.test(packageName) || /['"\\]/.test(packageName)) {
+    throw new Error(`Unsafe purge target: ${packageName}@${version}`);
+  }
+  let body = JSON.stringify({ packageName, version });
+  return `bun -e 'const r=await fetch("http://localhost:3000/_purge",{method:"POST",headers:{authorization:"Bearer ${token}","content-type":"application/json"},body:${JSON.stringify(body)}});console.log("PURGE_RESULT "+r.status+" "+(await r.text()))'`;
+}
+
+/** Parse the marker line from an in-machine purge run. Throws unless HTTP 200 with an evicted report. */
+export function parseOriginPurgeOutput(stdout: string): { tarball: boolean; file: boolean; extracted: boolean } {
+  let line = stdout.split("\n").find((l) => l.includes("PURGE_RESULT "));
+  if (!line) throw new Error(`No purge result in machine output: ${stdout.slice(0, 200)}`);
+  let match = /PURGE_RESULT (\d{3}) (\{.*\})/.exec(line);
+  if (!match || match[1] !== "200") throw new Error(`Origin purge failed: ${line.slice(0, 200)}`);
+  let payload = JSON.parse(match[2]) as { evicted?: { tarball: boolean; file: boolean; extracted: boolean } };
+  if (!payload.evicted) throw new Error(`Origin purge returned no eviction report: ${line.slice(0, 200)}`);
+  return payload.evicted;
+}
+
+function fly(args: string[]): string {
+  return execFileSync(process.env.FLYCTL ?? "fly", args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 120_000,
+  });
+}
+
+async function purgeOrigin(
+  packageName: string,
+  version: string,
+  envName: "staging" | "production",
+  dryRun: boolean,
+  enabled: boolean
+): Promise<void> {
+  if (envName !== "production") {
+    console.log("Origin purge: skipped (staging has no Fly fleet leg in this script).");
+    return;
+  }
+  if (!enabled) {
+    console.log("Origin purge: skipped (--no-origin). WARNING: origin caches still hold this version.");
+    return;
+  }
+  let token = process.env.UNPKG_PURGE_TOKEN;
+  if (!token) {
+    console.warn(
+      "Origin purge: SKIPPED — UNPKG_PURGE_TOKEN is not set. The edge generation was bumped, but origin " +
+        "machines still hold this version and will re-serve it on refetch. Set UNPKG_PURGE_TOKEN (same value " +
+        "as the Fly secret) and rerun to complete a true purge."
+    );
+    return;
+  }
+  let machines = parseServingMachines(fly(["machine", "list", "-a", "unpkg", "--json"]));
+  if (dryRun) {
+    console.log(`[dry-run] Origin purge: would purge ${packageName}@${version} on ${machines.length} machines.`);
+    return;
+  }
+  console.log(`Origin purge: purging ${packageName}@${version} on ${machines.length} serving machines...`);
+  let command = buildOriginPurgeCommand(packageName, version, token);
+  let failures: string[] = [];
+  for (let machine of machines) {
+    let lastError: unknown;
+    let done = false;
+    for (let attempt = 1; attempt <= 2 && !done; attempt++) {
+      try {
+        let out = fly(["ssh", "console", "-a", "unpkg", "--machine", machine.id, "-C", command]);
+        let evicted = parseOriginPurgeOutput(out);
+        console.log(
+          `  ${machine.region} ${machine.id}: tarball=${evicted.tarball} file=${evicted.file} extracted=${evicted.extracted}`
+        );
+        done = true;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (!done) {
+      failures.push(machine.id);
+      console.error(`  ${machine.region} ${machine.id}: FAILED (${lastError instanceof Error ? lastError.message.slice(0, 160) : lastError})`);
+    }
+  }
+  if (failures.length > 0) {
+    throw new Error(
+      `Origin purge failed on ${failures.length}/${machines.length} machines (${failures.join(", ")}); ` +
+        "the edge generation bump succeeded, but those machines still hold the version. Rerun to retry."
+    );
+  }
+  console.log(`Origin purge: verified on all ${machines.length} machines.`);
+}
+
+export function parseArgs(args: string[]): {
+  target: string;
+  envName: "staging" | "production";
+  dryRun: boolean;
+  origin: boolean;
+} {
   let target: string | undefined;
   let envName: "staging" | "production" = "staging";
   let dryRun = false;
+  let origin = true;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "--dry-run") {
+    if (arg === "--no-origin") {
+      origin = false;
+    } else if (arg === "--dry-run") {
       dryRun = true;
     } else if (arg === "--env") {
       const value = args[++i];
@@ -136,13 +267,15 @@ export function parseArgs(args: string[]): { target: string; envName: "staging" 
     }
   }
   if (!target) {
-    throw new Error("Usage: bun scripts/cache-evict.ts <package@version> [--env staging|production] [--dry-run]");
+    throw new Error(
+      "Usage: bun scripts/cache-evict.ts <package@version> [--env staging|production] [--dry-run] [--no-origin]"
+    );
   }
-  return { target, envName, dryRun };
+  return { target, envName, dryRun, origin };
 }
 
 async function main(): Promise<void> {
-  const { target, envName, dryRun } = parseArgs(process.argv.slice(2));
+  const { target, envName, dryRun, origin } = parseArgs(process.argv.slice(2));
 
   const { packageName, version } = parsePackageVersionArg(target);
   const key = `${packageName}@${version}`;
@@ -181,7 +314,10 @@ async function main(): Promise<void> {
         `${next.generations[key].gen} (expires ${next.generations[key].expires_at}, ` +
         `${Object.keys(next.generations).length} live entries, doc v${current.v} -> v${next.v})`
     );
-    if (dryRun) return;
+    if (dryRun) {
+      await purgeOrigin(packageName, version, envName, true, origin);
+      return;
+    }
 
     const dir = mkdtempSync(join(tmpdir(), "cache-evict-"));
     try {
@@ -202,6 +338,10 @@ async function main(): Promise<void> {
     if (verified && verified.gen >= next.generations[key].gen && allPreserved) {
       console.log(`Verified in KV: ${key} gen=${verified.gen} (document v${readBack.v})`);
       console.log("Workers pick this up on their next cache-generations refresh (~60s).");
+      // Edge eviction alone is not a purge any more: the Fly origin
+      // holds its own tarball/file-tier copies (since #522/#523) and
+      // would re-serve the version on refetch. Fan out to it too.
+      await purgeOrigin(packageName, version, envName, false, origin);
       return;
     }
     console.warn(`Attempt ${attempt}: read-back did not contain the expected document; retrying`);
