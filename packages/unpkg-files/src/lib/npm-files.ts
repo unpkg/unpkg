@@ -155,6 +155,31 @@ export async function withPackageFileDirectory<T>(
   }
 }
 
+// Evict one exact package@version from every origin cache tier on
+// this machine. The key in all tiers is the tarball URL, so one
+// eviction per tier covers the whole package version. Returns which
+// tiers actually held an entry. Note: this is cache eviction, not
+// a blocklist — if the registry still serves the tarball, the next
+// request re-downloads and re-caches it (by design; the registry
+// is the source of truth, e.g. after a takedown it 404s instead).
+export async function purgePackageVersion(
+  registry: string,
+  packageName: string,
+  version: string
+): Promise<{ tarball: boolean; file: boolean; extracted: boolean }> {
+  let result = { tarball: false, file: false, extracted: false };
+  let names = packageName === packageName.toLowerCase() ? [packageName] : [packageName, packageName.toLowerCase()];
+  for (let name of names) {
+    let key = createTarballUrl(registry, name, version).toString();
+    let fileCache = getDefaultFileCache();
+    if (fileCache) result.file = (await fileCache.evictKey(key)) || result.file;
+    result.tarball = (await getDefaultTarballCache().evictKey(key)) || result.tarball;
+    let extracted = getDefaultExtractedCache();
+    if (extracted) result.extracted = (await extracted.evictKey(key)) || result.extracted;
+  }
+  return result;
+}
+
 export class PackageNotFoundError extends Error {
   registry: string;
   packageName: string;

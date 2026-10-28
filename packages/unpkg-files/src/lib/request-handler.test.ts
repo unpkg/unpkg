@@ -1,8 +1,15 @@
 import { expect, describe, it, beforeAll, afterAll } from "bun:test";
 
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
 import { packageTarballs } from "../../test/fixtures.ts";
 import { ConcurrencyLimiter, resetDefaultTarballLimiterForTests } from "./concurrency.ts";
+import { FileCache, resetDefaultFileCacheForTests } from "./file-cache.ts";
+import { resetDefaultExtractedCacheForTests } from "./extracted-cache.ts";
 import { handleRequest } from "./request-handler.ts";
+import { resetDefaultTarballCacheForTests, TarballCache } from "./tarball-cache.ts";
 
 function dispatchFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let request = input instanceof Request ? input : new Request(input, init);
@@ -82,6 +89,74 @@ describe("handleRequest", () => {
         expect(firstResponse.status).toBe(200);
       } finally {
         resetDefaultTarballLimiterForTests(undefined);
+      }
+    });
+  });
+
+  describe("/_purge", () => {
+    function purgeRequest(token?: string, body: unknown = { packageName: "lodash", version: "4.17.21" }) {
+      return dispatchFetch("https://files.unpkg.com/_purge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it("is disabled when no purge token is configured", async () => {
+      let previous = process.env.UNPKG_PURGE_TOKEN;
+      delete process.env.UNPKG_PURGE_TOKEN;
+      try {
+        let response = await purgeRequest("anything");
+        expect(response.status).toBe(503);
+      } finally {
+        if (previous !== undefined) process.env.UNPKG_PURGE_TOKEN = previous;
+      }
+    });
+
+    it("rejects wrong tokens and bad bodies, evicts both tiers with the right token", async () => {
+      let tarballDir = await mkdtemp(path.join(os.tmpdir(), "unpkg-purge-tarballs-"));
+      let fileDir = await mkdtemp(path.join(os.tmpdir(), "unpkg-purge-files-"));
+      process.env.UNPKG_PURGE_TOKEN = "test-token";
+      let fileCache = new FileCache({ directory: fileDir, maxBytes: 100_000_000, promotionThreshold: 1 });
+      try {
+        resetDefaultTarballCacheForTests(
+          new TarballCache({ directory: tarballDir, maxBytes: 100_000_000, admissionThreshold: 1 })
+        );
+        resetDefaultExtractedCacheForTests(null);
+        resetDefaultFileCacheForTests(fileCache);
+
+        expect((await purgeRequest("wrong-token")).status).toBe(401);
+        expect((await purgeRequest("test-token", { packageName: "lodash" })).status).toBe(400);
+
+        // Populate both tiers, then purge and confirm the entry is
+        // gone and stats report the eviction per tier.
+        let before = await dispatchFetch("https://files.unpkg.com/file/lodash@4.17.21/package.json");
+        expect(before.status).toBe(200);
+        expect(fileCache.stats().entries).toBe(1);
+
+        let response = await purgeRequest("test-token");
+        expect(response.status).toBe(200);
+        let payload = (await response.json()) as { evicted: { tarball: boolean; file: boolean } };
+        expect(payload.evicted.file).toBe(true);
+        expect(payload.evicted.tarball).toBe(true);
+        expect(fileCache.stats().entries).toBe(0);
+
+        // Second purge is a clean no-op, and the file still serves
+        // (re-downloaded from the registry: purge is not a blocklist).
+        let again = await purgeRequest("test-token");
+        expect(((await again.json()) as { evicted: { file: boolean } }).evicted.file).toBe(false);
+        let after = await dispatchFetch("https://files.unpkg.com/file/lodash@4.17.21/package.json");
+        expect(after.status).toBe(200);
+      } finally {
+        delete process.env.UNPKG_PURGE_TOKEN;
+        resetDefaultTarballCacheForTests(null);
+        resetDefaultExtractedCacheForTests(undefined);
+        resetDefaultFileCacheForTests(undefined);
+        await rm(tarballDir, { recursive: true, force: true });
+        await rm(fileDir, { recursive: true, force: true });
       }
     });
   });

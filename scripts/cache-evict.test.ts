@@ -1,6 +1,14 @@
 import { describe, expect, it } from "bun:test";
 
-import { bumpDocument, emptyDocument, parseDocument, parsePackageVersionArg } from "./cache-evict.ts";
+import {
+  buildOriginPurgeCommand,
+  bumpDocument,
+  emptyDocument,
+  parseDocument,
+  parseOriginPurgeOutput,
+  parsePackageVersionArg,
+  parseServingMachines,
+} from "./cache-evict.ts";
 
 describe("cache-evict", () => {
   it("parses scoped and unscoped package@version arguments", () => {
@@ -34,6 +42,30 @@ describe("cache-evict", () => {
     const next = bumpDocument(emptyDocument(), "pkg@1.0.0", new Date("2026-10-23T00:00:00Z"));
     expect(next.generations["pkg@1.0.0"].gen).toBe(1);
     expect(next.v).toBe(1);
+  });
+
+  it("selects only serving machines for origin fan-out", () => {
+    let machines = parseServingMachines(
+      JSON.stringify([
+        { id: "a", region: "ewr", state: "started", cordoned: false },
+        { id: "b", region: "sjc", state: "started", cordoned: true },
+        { id: "c", region: "sin", state: "stopped", cordoned: false },
+      ])
+    );
+    expect(machines).toEqual([{ id: "a", region: "ewr" }]);
+    expect(() => parseServingMachines("{}")).toThrow();
+  });
+
+  it("builds a shell-safe origin purge command and parses its result", () => {
+    let command = buildOriginPurgeCommand("@scope/pkg", "1.0.0", "tok-123");
+    expect(command).toContain("localhost:3000/_purge");
+    expect(command).toContain("Bearer tok-123");
+    expect(() => buildOriginPurgeCommand("pkg", "1.0.0", "bad'token")).toThrow();
+    expect(
+      parseOriginPurgeOutput('noise\nPURGE_RESULT 200 {"package":"x","evicted":{"tarball":true,"file":false,"extracted":false}}')
+    ).toEqual({ tarball: true, file: false, extracted: false });
+    expect(() => parseOriginPurgeOutput("PURGE_RESULT 401 Unauthorized")).toThrow();
+    expect(() => parseOriginPurgeOutput("nothing here")).toThrow();
   });
 
   it("parses an existing document and defaults a missing one", () => {

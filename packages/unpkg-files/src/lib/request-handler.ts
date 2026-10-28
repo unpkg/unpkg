@@ -9,11 +9,14 @@ import {
   UnsupportedDynamicRequireError,
   UnsupportedSourceTypeError,
 } from "./esm-build-service.ts";
+import { timingSafeEqual } from "node:crypto";
+
 import {
   getFile,
   listFiles,
   OverloadedError,
   PackageNotFoundError,
+  purgePackageVersion,
   TarballFetchTimeoutError,
 } from "./npm-files.ts";
 import { logRequest } from "./request-logging.ts";
@@ -44,6 +47,50 @@ export async function handleRequest(request: Request): Promise<Response> {
 async function handleRequest_(request: Request): Promise<Response> {
   let url = new URL(request.url);
   let isInlineTransformRequest = url.pathname === "/transform" && request.method === "POST";
+
+  // Operator cache purge: evict one exact package@version from
+  // every origin cache tier on this machine. Token-gated because
+  // the origin is public; disabled unless UNPKG_PURGE_TOKEN is
+  // set (via Fly secrets, never fly.json). Fan-out across machines
+  // is the caller's job (see scripts/cache-evict.ts).
+  if (url.pathname === "/_purge") {
+    if (request.method !== "POST") {
+      return new Response("Invalid request method: purge requires POST", { status: 405 });
+    }
+    let token = process.env.UNPKG_PURGE_TOKEN;
+    if (!token) {
+      return new Response("Purge endpoint is not configured", { status: 503 });
+    }
+    let provided = request.headers.get("authorization") ?? "";
+    let expected = `Bearer ${token}`;
+    let a = Buffer.from(provided);
+    let b = Buffer.from(expected);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return new Response("Invalid JSON request body", { status: 400 });
+    }
+    let { packageName, version } = (body ?? {}) as { packageName?: unknown; version?: unknown };
+    if (
+      typeof packageName !== "string" ||
+      !/^((?:@[^/@]+\/)?[^/@]+)$/.test(packageName) ||
+      typeof version !== "string" ||
+      semver.clean(version) !== version
+    ) {
+      return new Response("Invalid purge body: expected {packageName, version} with an exact version", {
+        status: 400,
+      });
+    }
+    let evicted = await purgePackageVersion(publicNpmRegistry, packageName, version);
+    console.log(
+      `[purge] ${packageName}@${version} tarball=${evicted.tarball} file=${evicted.file} extracted=${evicted.extracted}`
+    );
+    return Response.json({ package: packageName, version, evicted });
+  }
 
   if (request.method === "OPTIONS") {
     return new Response(null, {
