@@ -576,3 +576,32 @@ ewr canary entries 183 at 6.87 GB with eviction active. Latency
 in the v4 window was parity with current-stack controls (calm
 window; the v3 window above holds the clearer win). Serving
 cost is unchanged — validation runs at build time only.
+
+## Addendum: #523 fleet rollout + pax byte-offset fix (2026-10-28)
+
+Fleet updated in place to
+`deployment-01M623C8JWRQNSPZQP19SFD1MF` (built from merged
+main at `44efa5a`), region by region, ewr last, health check
+verified after each machine. All 26 serving machines on the
+merged image with file-tier env (extracted off); orphaned
+extracted trees (0.5-6.2 GB/machine) deleted from volumes.
+
+Post-rollout vs pre-rollout (origin log samples, ~10k GETs
+each, windows differ in traffic mix): fleet p50 142 -> 68 ms,
+p90 912 -> 428, p95 2,456 -> 704, p99 13,986 -> 2,218, mean
+703 -> 199, >=1s 9.4% -> 3.3%, >=5s 3.47% -> 0.12%. ewr alone:
+p50 190 -> 54, p95 10,488 -> 788, p99 17,274 -> 2,501, >=5s
+8.36% -> 0.13%. Zero 429/5xx, zero shed. File-cache reporting
+on all 26 machines (6,129 hits, 338 builds in-window). RSS
+median 0.54 GB, max 1.90 GB (watchdog 3 GB).
+
+Cross-validation then did its job: `@pepicons/vue` builds
+failed validation fleet-wide (`failures=` climbing) because
+pax record lengths are byte counts and the indexer parsed the
+header as a JS string — an em-dash in `Color — CSS.vue.d.ts`
+shifted offsets and corrupted paths. No wrong bytes were ever
+served; affected packages used the parse fallback. Fix:
+byte-space pax parsing + regression test; verified exact
+index/parse agreement on `@pepicons/vue` (15,377 entries) and
+`sass-spec` (15,079). Small follow-up PR; fleet image rebuild
++ in-place update after merge should return `failures=` to ~0.
