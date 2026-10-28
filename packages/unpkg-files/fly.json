@@ -1,19 +1,19 @@
 {
   "app": "unpkg",
   "primary_region": "sjc",
-
   "build": {
     "dockerfile": "./Dockerfile",
     "args": {
       "MODE": "production"
     }
   },
-
   "http_service": {
     "internal_port": 3000,
     "auto_start_machines": true,
     "min_machines_running": 2,
-    "processes": ["app"],
+    "processes": [
+      "app"
+    ],
     "concurrency": {
       "type": "requests",
       "soft_limit": 10,
@@ -30,8 +30,29 @@
       }
     ]
   },
-
   "vm": {
     "size": "performance-2x"
+  },
+  "env": {
+    "UNPKG_TARBALL_CACHE_DIR": "/data/tarball-cache",
+    "UNPKG_TARBALL_CACHE_MAX_BYTES": "14000000000",
+    "UNPKG_TARBALL_CACHE_ADMISSION": "2",
+    "UNPKG_STREAM_FIRST_SIGHTINGS": "2",
+    "UNPKG_EXTRACTED_CACHE_DIR": "/data/unpkg-extracted-cache",
+    "UNPKG_EXTRACTED_CACHE_MAX_BYTES": "6000000000",
+    "UNPKG_EXTRACTED_CACHE_PROMOTION": "25",
+    "UNPKG_EXTRACTED_CACHE_MAX_FILES": "1500",
+    "UNPKG_MAX_CONCURRENT_TARBALLS": "32",
+    "UNPKG_TARBALL_QUEUE_TIMEOUT_MS": "20000",
+    "UNPKG_RSS_WATCHDOG_BYTES": "3221225472"
+  },
+  "mounts": [
+    {
+      "source": "unpkg_cache",
+      "destination": "/data"
+    }
+  ],
+  "processes": {
+    "app": "bun --smol run ./dist/server.js"
   }
 }

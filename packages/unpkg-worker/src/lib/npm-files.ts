@@ -16,6 +16,10 @@ import {
 export interface PackageFile {
   path: string;
   body: Uint8Array;
+  // Optional streamed body (origin extracted tier): when present,
+  // producers serve this instead of `body` to avoid materializing
+  // whole files in memory. `body` may be empty in that case.
+  bodyStream?: Blob;
   size: number;
   type: string;
   integrity: string;
