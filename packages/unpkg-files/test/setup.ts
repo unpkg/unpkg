@@ -4,3 +4,4 @@ process.env.MODE = "test";
 // cache behavior into each other.
 process.env.UNPKG_TARBALL_CACHE = "off";
 process.env.UNPKG_EXTRACTED_CACHE = "off";
+process.env.UNPKG_FILE_CACHE = "off";

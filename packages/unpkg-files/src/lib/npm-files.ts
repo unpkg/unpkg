@@ -1,7 +1,7 @@
 import { createReadStream, createWriteStream } from "node:fs";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -13,6 +13,7 @@ import { getContentType } from "./content-type.ts";
 import { getDefaultTarballCache } from "./tarball-cache.ts";
 import { getDefaultTarballLimiter, OverloadedError } from "./concurrency.ts";
 import { getDefaultExtractedCache, type ExtractedHandle } from "./extracted-cache.ts";
+import { getDefaultFileCache, indexTarFile, type FileHandle } from "./file-cache.ts";
 import { SubresourceIntegrityHasher } from "./subresource-integrity.ts";
 
 const TARBALL_FETCH_TIMEOUT_MS = 30_000;
@@ -24,6 +25,31 @@ export async function getFile(
   version: string,
   filename: string
 ): Promise<PackageFile | null> {
+  // File-tier fast path: serve a slice of the uncompressed tarball
+  // at the indexed offset. Never builds here (builds happen inside
+  // the limiter on the parse path); peek only serves built entries.
+  let fileCache = getDefaultFileCache();
+  if (fileCache) {
+    let handle = await fileCache.peek(createTarballUrl(registry, packageName, version).toString());
+    if (handle) {
+      let entry = handle.get(filename.toLowerCase());
+      if (!entry) {
+        await handle.release();
+        return null;
+      }
+      let streamed: PackageFile = {
+        path: entry.path,
+        body: new Uint8Array(0),
+        bodyStream: Bun.file(handle.tarPath).slice(entry.offset, entry.offset + entry.size),
+        size: entry.size,
+        type: getContentType(entry.path),
+        integrity: entry.integrity,
+      };
+      setTimeout(() => void handle.release(), 60_000).unref?.();
+      return streamed;
+    }
+  }
+
   // Streamed fast path: for extracted (hot) packages, serve the file
   // as a lazy Bun.file blob instead of reading it into a JS Buffer.
   // Whole-file buffers at high concurrency are the native-allocator
@@ -303,6 +329,97 @@ function createTarballDownload(registry: string, packageName: string, version: s
   return { tarballUrl, fetchTarballResponse, download };
 }
 
+async function acquireFileHandle(
+  registry: string,
+  packageName: string,
+  version: string
+): Promise<FileHandle | null> {
+  let fileCache = getDefaultFileCache();
+  if (!fileCache) return null;
+  fileCache.startStatsLogging();
+  let cache = getDefaultTarballCache();
+  let { download } = createTarballDownload(registry, packageName, version);
+  let key = createTarballUrl(registry, packageName, version).toString();
+  return fileCache.maybeBuild(key, async (stagingTarPath) => {
+    let acquired = await cache.acquire(key, download);
+    try {
+      // Size gate: small tarballs parse cheaply and never earn an
+      // uncompressed copy. Declining is not a rejection.
+      let minTarballBytes = Number(process.env.UNPKG_FILE_CACHE_MIN_TARBALL_BYTES ?? 262_144);
+      if (Number.isFinite(minTarballBytes) && minTarballBytes > 0) {
+        let tarballInfo = await stat(acquired.path);
+        if (tarballInfo.size < minTarballBytes) return null;
+      }
+      await pipeline(createReadStream(acquired.path), gunzipMaybe(), createWriteStream(stagingTarPath));
+      let listing = await indexTarFile(stagingTarPath);
+      // Cross-validate the new index against the proven tar-stream
+      // parse of the same tarball: every regular file must agree on
+      // path, size, and integrity. Any mismatch throws, the build is
+      // counted as a failure, and requests fall back to the parse
+      // path — the file tier can lose performance, never correctness.
+      if (process.env.UNPKG_FILE_CACHE_VALIDATE !== "off") {
+        let parsed: { path: string; size: number; integrity: string }[] = [];
+        await parseTarballFile(acquired.path, {
+          filter: (name) => !name.endsWith("/"),
+          handler: (name, _content, integrity, size, header) => {
+            let type = (header as { type?: string }).type;
+            if (type && type !== "file") return;
+            parsed.push({ path: name, size, integrity });
+          },
+        });
+        let keyOf = (e: { path: string; size: number; integrity: string }) =>
+          `${e.path}\0${e.size}\0${e.integrity}`;
+        let remaining = new Map<string, number>();
+        for (let e of parsed) remaining.set(keyOf(e), (remaining.get(keyOf(e)) ?? 0) + 1);
+        let mismatch = parsed.length !== listing.length;
+        if (!mismatch) {
+          for (let e of listing) {
+            let count = remaining.get(keyOf(e)) ?? 0;
+            if (count === 0) {
+              mismatch = true;
+              break;
+            }
+            remaining.set(keyOf(e), count - 1);
+          }
+        }
+        if (mismatch) {
+          throw new Error(
+            `file-cache validation mismatch: index=${listing.length} entries, parse=${parsed.length} entries`
+          );
+        }
+      }
+      let info = await stat(stagingTarPath);
+      return { size: info.size, listing };
+    } finally {
+      await acquired.release();
+    }
+  });
+}
+
+async function serveFromFileTier(handle: FileHandle, options: EntryHandlerOptions): Promise<void> {
+  let header = {} as tar.Headers;
+  let mode = options.extractedMode ?? "all";
+  if (mode === "list") {
+    for (let entry of handle.listing) {
+      if (options.filter && !options.filter(entry.path, header)) continue;
+      await options.handler(entry.path, null, entry.integrity, entry.size, header);
+    }
+    return;
+  }
+  if (mode === "single") {
+    let entry = handle.listing.find(
+      (candidate) => !options.filter || options.filter(candidate.path, header)
+    );
+    if (!entry) return;
+    let bytes = new Uint8Array(
+      await Bun.file(handle.tarPath).slice(entry.offset, entry.offset + entry.size).arrayBuffer()
+    );
+    await options.handler(entry.path, bytes, entry.integrity, entry.size, header);
+    return;
+  }
+  // "all" mode needs a real directory; the file tier does not serve it.
+}
+
 async function acquireExtractedHandle(
   registry: string,
   packageName: string,
@@ -334,6 +451,22 @@ async function fetchAndParsePackageExact(
   let cache = getDefaultTarballCache();
   cache.startStatsLogging();
   let key = tarballUrl.toString();
+
+  // File tier: a proven-hot tarball may have an uncompressed copy
+  // with an offset index. Serving from it avoids the gunzip + tar
+  // scan without extracting a tree. "all" mode still needs a tree
+  // or a parse, so it skips this tier.
+  if ((options.extractedMode ?? "all") !== "all") {
+    let fileHandle = await acquireFileHandle(registry, packageName, version);
+    if (fileHandle) {
+      try {
+        await serveFromFileTier(fileHandle, options);
+        return;
+      } finally {
+        await fileHandle.release();
+      }
+    }
+  }
 
   // Tier 2: a proven-hot tarball may already have a shared extracted
   // tree. Serving from it avoids the gunzip + tar scan entirely.
