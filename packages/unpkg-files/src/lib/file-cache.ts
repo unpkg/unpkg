@@ -174,15 +174,19 @@ function parseSize(header: Buffer): number {
 }
 
 function parsePaxRecords(data: Buffer): Map<string, string> {
+  // Pax record lengths are BYTE counts. Parsing must stay in byte
+  // space: decoding to a JS string first would shift every offset
+  // after a multibyte character (e.g. an em-dash in a filename) and
+  // corrupt the following records — cross-validation caught exactly
+  // that on @pepicons/vue before this fix.
   let records = new Map<string, string>();
-  let text = data.toString("utf8");
   let i = 0;
-  while (i < text.length) {
-    let space = text.indexOf(" ", i);
+  while (i < data.length) {
+    let space = data.indexOf(0x20, i);
     if (space === -1) break;
-    let len = parseInt(text.slice(i, space), 10);
-    if (!Number.isFinite(len) || len <= 0) break;
-    let record = text.slice(space + 1, i + len).replace(/\n$/, "");
+    let len = parseInt(data.toString("ascii", i, space), 10);
+    if (!Number.isFinite(len) || len <= 0 || i + len > data.length) break;
+    let record = data.toString("utf8", space + 1, i + len).replace(/\n$/, "");
     let eq = record.indexOf("=");
     if (eq > 0) records.set(record.slice(0, eq), record.slice(eq + 1));
     i += len;

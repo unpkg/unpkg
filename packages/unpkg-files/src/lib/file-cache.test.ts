@@ -131,9 +131,11 @@ function tarData(content: Buffer): Buffer {
 }
 
 function paxRecord(key: string, value: string): Buffer {
+  // Pax lengths are byte counts, including for multibyte values.
   let kv = `${key}=${value}\n`;
-  let len = kv.length + 2;
-  while (String(len).length + 1 + kv.length !== len) len = String(len).length + 1 + kv.length;
+  let kvBytes = Buffer.byteLength(kv, "utf8");
+  let len = kvBytes + 2;
+  while (String(len).length + 1 + kvBytes !== len) len = String(len).length + 1 + kvBytes;
   return Buffer.from(`${len} ${kv}`, "utf8");
 }
 
@@ -153,6 +155,34 @@ describe("indexTarFile unsupported variants", () => {
         ])
       );
       await expect(indexTarFile(tarPath)).rejects.toBeInstanceOf(TarIndexUnsupportedError);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("parses pax paths with multibyte characters by byte offsets", async () => {
+    let dir = await mkdtemp(path.join(os.tmpdir(), "unpkg-filecache-paxpath-"));
+    try {
+      let tarPath = path.join(dir, "paxpath.tar");
+      // Regression: pax record lengths are byte counts. Parsing the
+      // header as a JS string shifted offsets after the em-dash and
+      // corrupted this path in production (@pepicons/vue); build
+      // cross-validation caught it before any bad bytes shipped.
+      let pax = paxRecord("path", "package/Color \u2014 CSS.vue.d.ts");
+      await writeFile(
+        tarPath,
+        Buffer.concat([
+          tarHeader("package/pax", pax.length, "x"),
+          tarData(pax),
+          tarHeader("package/Color", 5, "0"),
+          tarData(Buffer.from("hello")),
+          Buffer.alloc(1024),
+        ])
+      );
+      let index = await indexTarFile(tarPath);
+      expect(index.length).toBe(1);
+      expect(index[0]!.path).toBe("/Color \u2014 CSS.vue.d.ts");
+      expect((await sliceBytes(tarPath, index[0]!.offset, index[0]!.size)).toString()).toBe("hello");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
