@@ -347,3 +347,232 @@ must be read against that escalation. Workspace gate: all packages
 pass (files 109). Remaining honest unknown: whether smol+streaming
 plateaus anon growth overnight; the watchdog bounds the blast
 radius either way (clean restart, no truncated bodies).
+
+## Addendum: PR #522 merged and fleet-wide rollout (2026-10-28)
+
+PR #522 (`perf(files): tarball + extracted caching, parse semaphore,
+and origin memory/disk hardening`) merged to `unpkg/unpkg:main`
+(merge commit `3a6e811`). Rollout image:
+`registry.fly.io/unpkg:deployment-01M61REG41QF40F8ES7GNQTYCP`,
+built from merged main.
+
+Rollout method (fleet-wide `fly deploy` was never run, because the
+`mounts` block in `fly.json` fails until volumes exist): per region,
+per machine — create a 30 GB `unpkg_cache` volume in that region
+first, clone the old machine with `--attach-volume <vol>:/data`,
+update the clone to the merged image with
+`bun --smol run ./dist/server.js` and the combined cache/limiter/
+watchdog env, verify `started` + health check `passing`, then
+cordon the old machine. The 4 pre-existing canaries (sjc
+`87e124a02460d8`, ewr trio) were updated in place to the merged
+image, one at a time, with passing checks between updates.
+
+Final fleet state (verified 2026-10-28 ~17:40 UTC,
+`fly machine list -a unpkg --json`):
+
+- 47 machines total: 24 serving (non-cordoned), 23 old machines
+  cordoned as rollback (none destroyed yet).
+- Serving per region: ams 2, cdg 2, dfw 2, ewr 3, gru 2, lax 2,
+  lhr 1, nrt 2, sin 4, sjc 2, syd 2.
+- Every serving machine: merged image, `/data` volume mount,
+  `bun --smol` command, `started`, check `passing`. No exceptions.
+- Smoke: `GET https://unpkg.fly.dev/file/react@18.3.1/package.json`
+  → 200 in 0.12 s with correct body. (The origin requires the
+  `/file/` prefix; a bare `/react@...` path 404s by design.)
+
+Post-rollout latency (two `fly logs` samples, 2026-10-28
+~17:45–17:50 UTC, 8,668 GETs parsed from origin duration logs;
+all 8,668 returned 200, zero 429, zero limiter shed):
+
+| Scope | n | p50 | p95 | p99 | ≥1 s | ≥5 s |
+| --- | --- | --- | --- | --- | --- | --- |
+| Fleet | 8,668 | 142 ms | 2,456 ms | 13,986 ms | 9.4% | 3.47% |
+| Excl. ewr | 5,115 | 113 ms | 582 ms | 1,140 ms | 1.5% | 0.08% |
+| ewr only | 3,553 | 190 ms | 10,488 ms | 17,274 ms | 20.6% | 8.36% |
+
+Baseline for comparison (pre-change fleet sample, 2026-10-27
+05:37 UTC, see Provenance): median 267 ms, mean 3,173 ms,
+p90 13.0 s, p99 32.9 s. Fleet p50 improved ~47% and p99 ~57%
+despite the ~6x traffic escalation noted above; excluding the
+ewr hot spot, p99 improved ~97% (32.9 s → 1.14 s). Windows and
+traffic mix differ, so these are directional, not lab-identical.
+
+Reliability post-rollout: zero `exit` events on any serving
+machine at verification time (all exit events in machine history
+belong to the cordoned old machines, `exit_code=137,
+oom_killed=true`). Restarts on the new stack are the RSS
+watchdog's deliberate `exit 1` at 3 GB RSS with a warm volume —
+a clean drain-and-restart, not a kernel OOM.
+
+ewr remains the hot spot (~38–43% of origin requests across both
+samples, stable before and after rollout). Fly's proxy routes by
+proximity to the requester and knows nothing about cache warmth,
+so this is demand geography (plus likely transatlantic spillover
+at European peaks), not the warm cache attracting traffic. Its
+slow tail is concentrated in huge-tarball enumerations — in the
+17:45 UTC sample, 190 of 293 ewr requests ≥5 s were `openclaw`,
+followed by `@pulumi/azure-native` and `gdal-async` (21 each).
+The tarball cache is effective there (e.g. `e82676db334418`:
+2,127 hits vs 162 downloads) but the extracted tier gets few
+hits for this pattern (~180/machine), so distinct files still
+pay large-tarball parse cost split across 3 machines.
+
+Current CPU snapshot (2026-10-28 ~17:55 UTC, `/proc/loadavg`
+via `fly ssh console`, machines are 2 vCPU): ewr 1.44–2.06
+(run-queue saturated), sin 0.84, sjc 0.44. No %CPU pre-change
+baseline was ever captured — instrumentation was log-based —
+so no CPU improvement percentage should be quoted; use Grafana
+panels for any CPU slide.
+
+Cost: 30 GB volumes at $0.15/GB/month = $4.50/machine/month,
+~$108/month for the 24 serving machines (scheduled snapshots
+disabled; cache data is disposable).
+
+Cleanup / follow-ups:
+
+- The ewr trio still carries the leftover `UNPKG_PERIODIC_GC_MS`
+  env var from the negative GC experiment. The merged code does
+  not read it; it is inert and should be stripped.
+- Do not destroy the 23 cordoned old machines until the new
+  fleet has soaked; they are the instant rollback (uncordon to
+  rejoin).
+- Watch: per-machine `[memory]` slope and watchdog restart
+  cadence (especially ewr at crawl peaks), disk-throttle events
+  as new volumes warm (expected to decay as on ewr), and
+  `extractions` vs `evictions` on the extracted tier.
+- Next optimization candidate for the ewr tail: hash affinity
+  so one package@version's enumeration lands on one machine,
+  plus extracted-tier promotion/max-files tuning for
+  mega-tarballs such as `openclaw`.
+
+## Addendum: file tier (uncompressed tar + offset index), canary (2026-10-28)
+
+Design (user-directed simplification of the earlier three-tier
+sketch): one unified tier replaces the whole-tree extracted tier.
+`src/lib/file-cache.ts`: on admission (default 10 sightings and
+compressed tarball >= 256 KB), gunzip the cached `.tgz` once to an
+uncompressed `.tar` on the volume and index every file as
+`{path, offset, size, integrity}` (`indexTarFile`, a raw tar
+parser handling ustar prefixes, pax 'x' path overrides, GNU
+longname 'L', and base-256 sizes). `getFile` serves
+`Bun.file(tar).slice(offset, offset+size)` via the existing
+`bodyStream` path; `/list` answers from the index. No file-count
+ceiling — the class the extracted tier permanently rejects
+(>1,500 files: `openclaw`, `@pulumi/*`, `gdal-async`) is exactly
+the target. Lookup is a precomputed lowercase-path map per entry
+(a linear `find` over a 26k-entry listing cost ~34 ms p50 in the
+first bench; the map brought it to 0.32 ms). Kill switches:
+`UNPKG_FILE_CACHE=off`; canaries ran with
+`UNPKG_EXTRACTED_CACHE=off` so the comparison is file tier vs
+extracted tier, not both.
+
+Motivating telemetry (fleet log sample, 2026-10-28): 8,668 GETs
+covered 8,531 distinct paths but only 4,766 distinct tarballs;
+exact-repeat paths were 1.6% of requests, while tarballs seen
+>= 10x were 19.3%. The win is avoiding the re-scan, not caching
+repeat files. `/list` was only 3.7% of slow requests.
+
+Tests: 118 pass in `unpkg-files` (was 109), workspace gate 492
+pass / 0 fail. New: oracle equivalence — `indexTarFile` vs system
+`tar` extraction for every file in the lodash/react/preact
+fixtures (bytes, size, SRI integrity all compared; 4,871 expects)
+plus a synthetic long-path/empty/binary tar; unit tests for
+single-flight, admission, declined-build-as-skip, byte-cap
+rejection, residence hysteresis; integration test asserting
+distinct files cost 1 download + 1 build and `/list` (1,054
+files) is served from the index.
+
+Offline bench (synthetic, distinct-file workload, concurrency
+32, 240 files; macOS `tar` adds `._*` AppleDouble entries to the
+synthetic tarballs, inflating file counts equally for all arms):
+
+| Arm | Warm p50 | Warm p99 | Wall |
+| --- | --- | --- | --- |
+| Tarball only (3,001 files) | 369 ms | 594 ms | 3,001 ms |
+| Extracted tier (3,001 files) | 4.4 ms | 9.2 ms | 35 ms |
+| File tier (3,001 files) | 0.32 ms | 0.87 ms | 3 ms |
+| Extracted, prod cap (26,001 files, rejected) | 2,906 ms | 4,694 ms | 23,464 ms |
+| File tier (26,001 files) | 0.32 ms | 0.68 ms | 3 ms |
+
+Canary (clones with fresh 30 GB volumes, current-stack machines
+as same-region controls; per-machine percentiles from origin
+duration logs, ~60 s windows):
+
+- v1 (promotion 3, image `deployment-01M61Z2VVRS8ZFNGMFWGQ7B741`):
+  sjc canary no regression. ewr canary cold sample was worse
+  (paying builds), warmed sample best p50 (46 ms). But builds
+  were too eager: 154 builds / 5.3 GB written in ~7 min on the
+  ewr canary — disk-throttle territory, the failure mode this
+  project has already fought.
+- Revision: promotion 3 -> 10, >= 256 KB compressed size gate
+  (declined builds are skips, not rejections), and a periodic
+  eviction sweep (eviction previously only ran after builds, so
+  the byte cap stopped self-enforcing once builds got rare).
+- v3 (image `deployment-01M620NVE5KDBFVSAPY4EDGWN2`), warmed:
+  ewr canary `2862175c115378` p50 29 ms / p95 322 ms / p99
+  713 ms / >=1 s 0.7% vs current-stack ewr controls p50 45–77 /
+  p95 534–918 / p99 930–2,284 / >=1 s 1.1–4.6%. sjc canary
+  `e826333fd9e528` p50 45 / p95 245 / p99 414 vs controls
+  49–58 / 304–393 / 537–837. Zero 429/5xx on both canaries,
+  limiter shed=0 throughout.
+- Eviction verified live: ewr canary entries 360 -> 255,
+  4.05 GB evicted, `totalBytes` 11.1 -> 7.3 GB converging on the
+  6 GB cap (overage was v1-built entries inside their 30-min
+  residence), volume 39% -> 27% used.
+- Memory watch item: ewr canary heapUsed peaked 1.12 GB before
+  eviction freed listings, settling ~459 MB (listings + lookup
+  maps are held in RAM, as extracted listings were); RSS
+  ~1.19 GB vs 3 GB watchdog. Higher than extracted machines
+  (~80–220 MB heap) — acceptable headroom, but the reason the
+  byte cap and sweep matter.
+
+`fly.json` now ships the file tier as the production default
+(extracted off, promotion 10, size gate 256 KB, 6 GB cap);
+`fly config validate` passes. Decision: hard data supports
+drafting the PR. Not yet done: fleet rollout of this tier
+(same clone/cordon playbook), stripping the two canary clones
+back out after rollout, and a longer ewr peak soak to confirm
+the heap plateau. Cordoned pre-#522 machines remain the
+rollback fleet.
+
+## Addendum: file-tier correctness protections (2026-10-28, post-canary)
+
+Added after the canary, before drafting the PR, to close the
+one silent-corruption failure mode (an exotic tar variant
+mis-indexed would serve wrong bytes with a valid-looking
+integrity string):
+
+- Indexer hardening: pax `size=` overrides are honored (offsets
+  stay correct for >8 GB files); GNU sparse entries (`S`,
+  `GNU.sparse*` pax keys) throw `TarIndexUnsupportedError`
+  instead of being guessed at.
+- Fail-safe builds: any build error is counted
+  (`[file-cache] failures=`), the staging file is dropped, and
+  the request falls back to the tar-stream parse path. A build
+  can never 500 a request again.
+- Build-time cross-validation: every admitted build re-parses
+  the original `.tgz` with the proven tar-stream parser and
+  requires exact agreement on path/size/integrity for every
+  regular file. Mismatch = build failure + fallback. Residual
+  risk becomes two independent tar implementations agreeing on
+  the same wrong bytes. `UNPKG_FILE_CACHE_VALIDATE=off` disables
+  (not recommended).
+
+Tests: 122 pass in `unpkg-files`, workspace gate green. New:
+sparse rejection, pax-size override offsets, throwing-build
+fallback counting, and an end-to-end sparse-tarball integration
+test proving the request is served correctly by the parse
+fallback with `buildFailures > 0` and no entry built. Bench
+note: the first bench run after the size gate landed showed the
+monster arm at parse speed — the synthetic `xxxx…` payload
+gzips below the 256 KB gate, so builds were correctly declined;
+with the gate disabled for synthetic data the file tier is back
+at 0.30 ms p50 (validation active during those builds).
+
+Canary v4 (`deployment-01M622NPXJ6N1RKGX3DRXAJQA4`, both
+canaries updated in place, volumes/entries retained):
+`failures=0` on sjc and ewr under real traffic, zero 429/5xx,
+ewr canary entries 183 at 6.87 GB with eviction active. Latency
+in the v4 window was parity with current-stack controls (calm
+window; the v3 window above holds the clearer win). Serving
+cost is unchanged — validation runs at build time only.
