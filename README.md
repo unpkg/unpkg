@@ -78,6 +78,12 @@ Add a trailing `/` to a package URL (e.g. https://unpkg.com/react/) to browse it
 
 Machine-readable versions of the site are available for agents and crawlers: every page above is also served as Markdown (append `.md` to the URL, or send `Accept: text/markdown`), and https://unpkg.com/llms.txt indexes the full set.
 
+## UNPKG for AI agents
+
+The [UNPKG MCP server](https://mcp.unpkg.com/) gives AI agents live UNPKG and npm data instead of recalled versions and file paths: resolution, file listings, project audits, and import-map validation for direct UNPKG file lookups. It also checks dependencies before they ship — exact-version malware verdicts and CVE checks against a named package or a whole project, with the version to upgrade to — and, with an optional UNPKG Shield account, the same checks for everything your domains actually serve.
+
+Connect your agent at https://mcp.unpkg.com/ (per-client setup, tools, and example prompts).
+
 ## Development
 
 This repository contains the production source for UNPKG. There are 5 packages:
