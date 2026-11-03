@@ -172,6 +172,38 @@ export function Home({ esmOrigin, origin }: { esmOrigin: string; origin: string 
           </div>
         </section>
 
+        <section id="agents">
+          <h2 class="mt-20 mb-6 text-xl font-semibold text-slate-900 dark:text-dark-foreground">
+            UNPKG, inside your AI agent
+          </h2>
+          <p>
+            Agents are bad at recalling npm: versions that don't exist, files that were never published. The{" "}
+            UNPKG MCP server{" "}
+            gives your agent live resolution, real file listings, project audits, and import-map validation — so
+            it builds direct UNPKG file lookups from facts, and tells you when a framework should keep its bundle
+            instead.
+          </p>
+          <p class="mt-4">
+            It also checks what you're about to ship. Ask about any dependency — or your whole project — and it
+            answers with exact-version malware verdicts and CVE checks, including the version to upgrade to. No
+            account is needed for packages you name; connect a Shield account and it does the same for everything
+            your domains actually serve, ranked by your traffic.
+          </p>
+          <div class="mt-6 p-4 bg-paper-alt dark:bg-dark-panel">
+            <p class="font-mono text-base">
+              "Is lodash@4.17.20 safe to load? Check it for malware and CVEs."
+            </p>
+            <p class="font-mono text-base mt-3">
+              "Audit my project, and check every dependency for known compromises before converting anything."
+            </p>
+          </div>
+          <p class="mt-6">
+            <a class={btnPrimary} href="https://mcp.unpkg.com/">
+              Connect your agent
+            </a>
+          </p>
+        </section>
+
         <section id="production">
           <h2 class="mt-20 mb-6 text-xl font-semibold text-slate-900 dark:text-dark-foreground">
             Running in production
